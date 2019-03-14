@@ -1,0 +1,88 @@
+diff --git a/maven-core/src/main/java/org/apache/maven/project/ProjectBuildingException.java b/maven-core/src/main/java/org/apache/maven/project/ProjectBuildingException.java
+old mode 100644
+new mode 100755
+index 7786c90de..c40ad014f
+--- a/maven-core/src/main/java/org/apache/maven/project/ProjectBuildingException.java
++++ b/maven-core/src/main/java/org/apache/maven/project/ProjectBuildingException.java
+@@ -19,8 +19,10 @@
+  * under the License.
+  */
+ 
++import org.apache.maven.model.building.ModelBuildingException;
+ import org.apache.maven.model.building.ModelProblem;
+ import org.apache.maven.model.building.ModelProblemUtils;
++import org.apache.maven.model.resolution.UnresolvableModelException;
+ 
+ import java.io.File;
+ import java.io.PrintWriter;
+@@ -147,4 +149,20 @@ private static String createMessage( List<ProjectBuildingResult> results )
+         return buffer.toString();
+     }
+ 
++    public ModelProblem hasMissingParentPom()
++    {
++        if ( getCause() instanceof ModelBuildingException)
++        {
++            ModelBuildingException mbe = (ModelBuildingException) getCause();
++            for ( ModelProblem problem : mbe.getProblems() )
++            {
++                if ( problem.getException() instanceof UnresolvableModelException)
++                {
++                    return problem;
++                }
++            }
++
++        }
++        return null;
++    }
+ }
+diff --git a/maven-core/src/main/java/org/apache/maven/project/artifact/MavenMetadataSource.java b/maven-core/src/main/java/org/apache/maven/project/artifact/MavenMetadataSource.java
+old mode 100644
+new mode 100755
+index 2dc93728f..4eebb15f8
+--- a/maven-core/src/main/java/org/apache/maven/project/artifact/MavenMetadataSource.java
++++ b/maven-core/src/main/java/org/apache/maven/project/artifact/MavenMetadataSource.java
+@@ -57,10 +57,8 @@
+ import org.apache.maven.model.DistributionManagement;
+ import org.apache.maven.model.Exclusion;
+ import org.apache.maven.model.Relocation;
+-import org.apache.maven.model.building.ModelBuildingException;
+ import org.apache.maven.model.building.ModelBuildingRequest;
+ import org.apache.maven.model.building.ModelProblem;
+-import org.apache.maven.model.resolution.UnresolvableModelException;
+ import org.apache.maven.plugin.LegacySupport;
+ import org.apache.maven.project.DefaultProjectBuildingRequest;
+ import org.apache.maven.project.MavenProject;
+@@ -578,7 +576,7 @@ private ProjectRelocation retrieveRelocatedProject( Artifact artifact, MetadataR
+                 }
+                 catch ( ProjectBuildingException e )
+                 {
+-                    ModelProblem missingParentPom = hasMissingParentPom( e );
++                    ModelProblem missingParentPom = e.hasMissingParentPom();
+                     if ( missingParentPom != null )
+                     {
+                         throw new ArtifactMetadataRetrievalException( "Failed to process POM for "
+@@ -710,23 +708,6 @@ else if ( isNonTransferrablePom( e ) )
+         return rel;
+     }
+ 
+-    private ModelProblem hasMissingParentPom( ProjectBuildingException e )
+-    {
+-        if ( e.getCause() instanceof ModelBuildingException )
+-        {
+-            ModelBuildingException mbe = (ModelBuildingException) e.getCause();
+-            for ( ModelProblem problem : mbe.getProblems() )
+-            {
+-                if ( problem.getException() instanceof UnresolvableModelException )
+-                {
+-                    return problem;
+-                }
+-            }
+-
+-        }
+-        return null;
+-    }
+-
+     private boolean isMissingPom( Exception e )
+     {
+         if ( e.getCause() instanceof MultipleArtifactsNotFoundException )

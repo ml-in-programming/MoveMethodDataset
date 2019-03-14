@@ -1,0 +1,41 @@
+diff --git a/maven-core/src/main/java/org/apache/maven/execution/MavenSession.java b/maven-core/src/main/java/org/apache/maven/execution/MavenSession.java
+old mode 100644
+new mode 100755
+index 5b56df36d..119d1c2b5
+--- a/maven-core/src/main/java/org/apache/maven/execution/MavenSession.java
++++ b/maven-core/src/main/java/org/apache/maven/execution/MavenSession.java
+@@ -438,5 +438,10 @@ public Object lookup( String role, String roleHint )
+         return container.lookupMap( role );
+     }
+ 
++    public boolean projectIsNotPresent()
++    {
++        return !getRequest().isProjectPresent();
++    }
++
+     /*end[MAVEN4]*/
+ }
+diff --git a/maven-core/src/main/java/org/apache/maven/lifecycle/internal/LifecycleStarter.java b/maven-core/src/main/java/org/apache/maven/lifecycle/internal/LifecycleStarter.java
+old mode 100644
+new mode 100755
+index cee807392..05fcd78a6
+--- a/maven-core/src/main/java/org/apache/maven/lifecycle/internal/LifecycleStarter.java
++++ b/maven-core/src/main/java/org/apache/maven/lifecycle/internal/LifecycleStarter.java
+@@ -79,7 +79,7 @@ public void execute( MavenSession session )
+ 
+         try
+         {
+-            if ( buildExecutionRequiresProject( session ) && projectIsNotPresent( session ) )
++            if ( buildExecutionRequiresProject( session ) && session.projectIsNotPresent() )
+             {
+                 throw new MissingProjectException( "The goal you specified requires a project to execute"
+                     + " but there is no POM in this directory (" + session.getExecutionRootDirectory() + ")."
+@@ -143,8 +143,4 @@ private boolean buildExecutionRequiresProject( MavenSession session )
+         return lifecycleTaskSegmentCalculator.requiresProject( session );
+     }
+ 
+-    private boolean projectIsNotPresent( MavenSession session )
+-    {
+-        return !session.getRequest().isProjectPresent();
+-    }
+ }

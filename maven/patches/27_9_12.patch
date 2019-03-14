@@ -1,0 +1,80 @@
+diff --git a/maven-compat/src/main/java/org/apache/maven/repository/metadata/MetadataGraph.java b/maven-compat/src/main/java/org/apache/maven/repository/metadata/MetadataGraph.java
+old mode 100644
+new mode 100755
+index 1ae008add..2e74394ed
+--- a/maven-compat/src/main/java/org/apache/maven/repository/metadata/MetadataGraph.java
++++ b/maven-compat/src/main/java/org/apache/maven/repository/metadata/MetadataGraph.java
+@@ -167,28 +167,7 @@ private void processTreeNodes( MetadataGraphVertex parentVertex, MetadataTreeNod
+             processTreeNodes( vertex, n, depth + 1, i );
+         }
+     }
+-    //------------------------------------------------------------------------
+-    public MetadataGraphVertex findVertex( ArtifactMetadata md )
+-    {
+-        if ( md == null || vertices == null || vertices.size() < 1 )
+-        {
+-            return null;
+-        }
+-
+-        MetadataGraphVertex v = new MetadataGraphVertex( md );
+-        v.setCompareVersion( versionedVertices );
+-        v.setCompareScope( scopedVertices );
+ 
+-        for ( MetadataGraphVertex gv : vertices )
+-        {
+-            if ( gv.equals( v ) )
+-            {
+-                return gv;
+-            }
+-        }
+-
+-        return null;
+-    }
+     //------------------------------------------------------------------------
+     public MetadataGraphVertex addVertex( ArtifactMetadata md )
+     {
+@@ -199,7 +178,7 @@ public MetadataGraphVertex addVertex( ArtifactMetadata md )
+ 
+         checkVertices();
+ 
+-        MetadataGraphVertex v = findVertex( md );
++        MetadataGraphVertex v = entry.findVertex( md, this);
+         if ( v != null )
+         {
+             return v;
+diff --git a/maven-compat/src/main/java/org/apache/maven/repository/metadata/MetadataGraphVertex.java b/maven-compat/src/main/java/org/apache/maven/repository/metadata/MetadataGraphVertex.java
+old mode 100644
+new mode 100755
+index 495d061ca..4871b36ae
+--- a/maven-compat/src/main/java/org/apache/maven/repository/metadata/MetadataGraphVertex.java
++++ b/maven-compat/src/main/java/org/apache/maven/repository/metadata/MetadataGraphVertex.java
+@@ -211,6 +211,29 @@ public int hashCode()
+         // return b64.encode( hashString.toString().getBytes() ).hashCode();
+     }
+ 
++    //------------------------------------------------------------------------
++    public MetadataGraphVertex findVertex(ArtifactMetadata md, MetadataGraph metadataGraph)
++    {
++        if ( md == null || metadataGraph.getVertices() == null || metadataGraph.getVertices().size() < 1 )
++        {
++            return null;
++        }
++
++        MetadataGraphVertex v = new MetadataGraphVertex( md );
++        v.setCompareVersion(metadataGraph.isVersionedVertices());
++        v.setCompareScope(metadataGraph.isScopedVertices());
++
++        for ( MetadataGraphVertex gv : metadataGraph.getVertices())
++        {
++            if ( gv.equals( v ) )
++            {
++                return gv;
++            }
++        }
++
++        return null;
++    }
++
+     // ---------------------------------------------------------------------
+     // ---------------------------------------------------------------------
+ }

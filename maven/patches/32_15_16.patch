@@ -1,0 +1,94 @@
+diff --git a/maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/MojoDescriptor.java b/maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/MojoDescriptor.java
+old mode 100644
+new mode 100755
+index a15bdcf0c..41615a15b
+--- a/maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/MojoDescriptor.java
++++ b/maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/MojoDescriptor.java
+@@ -715,4 +715,31 @@ public MojoDescriptor clone()
+         }
+     }
+ 
++    public void addMojo(PluginDescriptor pluginDescriptor)
++        throws DuplicateMojoDescriptorException
++    {
++        MojoDescriptor existing = null;
++        // this relies heavily on the equals() and hashCode() for ComponentDescriptor,
++        // which uses role:roleHint for identity...and roleHint == goalPrefix:goal.
++        // role does not vary for Mojos.
++        List<MojoDescriptor> mojos = pluginDescriptor.getMojos();
++
++        if ( mojos != null && mojos.contains(this) )
++        {
++            int indexOf = mojos.indexOf(this);
++
++            existing = mojos.get( indexOf );
++        }
++
++        if ( existing != null )
++        {
++            throw new DuplicateMojoDescriptorException( pluginDescriptor.getGoalPrefix(), getGoal(),
++                                                        existing.getImplementation(),
++                                                        getImplementation() );
++        }
++        else
++        {
++            pluginDescriptor.addComponentDescriptor(this);
++        }
++    }
+ }
+diff --git a/maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/PluginDescriptor.java b/maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/PluginDescriptor.java
+old mode 100644
+new mode 100755
+index e05d86a4a..7b6058072
+--- a/maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/PluginDescriptor.java
++++ b/maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/PluginDescriptor.java
+@@ -96,34 +96,6 @@
+         return (List) getComponents();
+     }
+ 
+-    public void addMojo( MojoDescriptor mojoDescriptor )
+-        throws DuplicateMojoDescriptorException
+-    {
+-        MojoDescriptor existing = null;
+-        // this relies heavily on the equals() and hashCode() for ComponentDescriptor,
+-        // which uses role:roleHint for identity...and roleHint == goalPrefix:goal.
+-        // role does not vary for Mojos.
+-        List<MojoDescriptor> mojos = getMojos();
+-
+-        if ( mojos != null && mojos.contains( mojoDescriptor ) )
+-        {
+-            int indexOf = mojos.indexOf( mojoDescriptor );
+-
+-            existing = mojos.get( indexOf );
+-        }
+-
+-        if ( existing != null )
+-        {
+-            throw new DuplicateMojoDescriptorException( getGoalPrefix(), mojoDescriptor.getGoal(),
+-                                                        existing.getImplementation(),
+-                                                        mojoDescriptor.getImplementation() );
+-        }
+-        else
+-        {
+-            addComponentDescriptor( mojoDescriptor );
+-        }
+-    }
+-
+     public String getGroupId()
+     {
+         return groupId;
+diff --git a/maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/PluginDescriptorBuilder.java b/maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/PluginDescriptorBuilder.java
+old mode 100644
+new mode 100755
+index 3df7ab4e0..0a4132d45
+--- a/maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/PluginDescriptorBuilder.java
++++ b/maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/PluginDescriptorBuilder.java
+@@ -83,7 +83,7 @@ public PluginDescriptor build( Reader reader, String source )
+         {
+             MojoDescriptor mojoDescriptor = buildComponentDescriptor( component, pluginDescriptor );
+ 
+-            pluginDescriptor.addMojo( mojoDescriptor );
++            mojoDescriptor.addMojo(pluginDescriptor);
+         }
+ 
+         // ----------------------------------------------------------------------

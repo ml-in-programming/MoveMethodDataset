@@ -1,0 +1,94 @@
+diff --git a/maven-core/src/main/java/org/apache/maven/project/DefaultDependencyResolutionResult.java b/maven-core/src/main/java/org/apache/maven/project/DefaultDependencyResolutionResult.java
+old mode 100644
+new mode 100755
+index 509e8b48d..5cc052e07
+--- a/maven-core/src/main/java/org/apache/maven/project/DefaultDependencyResolutionResult.java
++++ b/maven-core/src/main/java/org/apache/maven/project/DefaultDependencyResolutionResult.java
+@@ -19,14 +19,11 @@
+  * under the License.
+  */
+ 
+-import java.util.ArrayList;
+-import java.util.Collections;
+-import java.util.IdentityHashMap;
+-import java.util.List;
+-import java.util.Map;
++import java.util.*;
+ 
+ import org.eclipse.aether.graph.Dependency;
+ import org.eclipse.aether.graph.DependencyNode;
++import org.eclipse.aether.resolution.ArtifactResult;
+ 
+ /**
+  * @author Benjamin Bentmann
+@@ -111,4 +108,19 @@ public void setResolutionErrors( Dependency dependency, List<Exception> errors )
+         resolutionErrors.put( dependency, errors );
+     }
+ 
++    void process(Collection<ArtifactResult> results)
++    {
++        for ( ArtifactResult ar : results )
++        {
++            DependencyNode node = ar.getRequest().getDependencyNode();
++            if ( ar.isResolved() )
++            {
++                addResolvedDependency( node.getDependency() );
++            }
++            else
++            {
++                setResolutionErrors( node.getDependency(), ar.getExceptions() );
++            }
++        }
++    }
+ }
+diff --git a/maven-core/src/main/java/org/apache/maven/project/DefaultProjectDependenciesResolver.java b/maven-core/src/main/java/org/apache/maven/project/DefaultProjectDependenciesResolver.java
+old mode 100644
+new mode 100755
+index 4bb9609fc..6a2dfd746
+--- a/maven-core/src/main/java/org/apache/maven/project/DefaultProjectDependenciesResolver.java
++++ b/maven-core/src/main/java/org/apache/maven/project/DefaultProjectDependenciesResolver.java
+@@ -44,7 +44,6 @@
+ import org.eclipse.aether.graph.DependencyFilter;
+ import org.eclipse.aether.graph.DependencyNode;
+ import org.eclipse.aether.graph.DependencyVisitor;
+-import org.eclipse.aether.resolution.ArtifactResult;
+ import org.eclipse.aether.resolution.DependencyRequest;
+ import org.eclipse.aether.util.artifact.ArtifactIdUtils;
+ import org.eclipse.aether.util.artifact.JavaScopes;
+@@ -199,11 +198,11 @@ public DependencyResolutionResult resolve( DependencyResolutionRequest request )
+ 
+         try
+         {
+-            process( result, repoSystem.resolveDependencies( session, depRequest ).getArtifactResults() );
++            result.process(repoSystem.resolveDependencies( session, depRequest ).getArtifactResults() );
+         }
+         catch ( org.eclipse.aether.resolution.DependencyResolutionException e )
+         {
+-            process( result, e.getResult().getArtifactResults() );
++            result.process(e.getResult().getArtifactResults() );
+ 
+             throw new DependencyResolutionException( result, "Could not resolve dependencies for project "
+                 + project.getId() + ": " + e.getMessage(), e );
+@@ -212,22 +211,6 @@ public DependencyResolutionResult resolve( DependencyResolutionRequest request )
+         return result;
+     }
+ 
+-    private void process( DefaultDependencyResolutionResult result, Collection<ArtifactResult> results )
+-    {
+-        for ( ArtifactResult ar : results )
+-        {
+-            DependencyNode node = ar.getRequest().getDependencyNode();
+-            if ( ar.isResolved() )
+-            {
+-                result.addResolvedDependency( node.getDependency() );
+-            }
+-            else
+-            {
+-                result.setResolutionErrors( node.getDependency(), ar.getExceptions() );
+-            }
+-        }
+-    }
+-
+     class GraphLogger
+         implements DependencyVisitor
+     {
