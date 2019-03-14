@@ -1,0 +1,60 @@
+diff --git a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTMethodCallExpression.java b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTMethodCallExpression.java
+index b15ccfd..d97220a 100644
+--- a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTMethodCallExpression.java
++++ b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTMethodCallExpression.java
+@@ -5,9 +5,11 @@
+ package net.sourceforge.pmd.lang.apex.ast;
+ 
+ import java.util.Iterator;
++import java.util.List;
+ 
+ import apex.jorje.data.Identifier;
+ import apex.jorje.semantic.ast.expression.MethodCallExpression;
++import net.sourceforge.pmd.lang.rule.AbstractRule;
+ 
+ public class ASTMethodCallExpression extends AbstractApexNode<MethodCallExpression> {
+ 
+@@ -32,4 +34,11 @@ public class ASTMethodCallExpression extends AbstractApexNode<MethodCallExpressi
+         }
+         return typeName.toString() + methodName;
+     }
++
++    public void validateLiteralPresence(Object data, AbstractRule abstractRule) {
++        List<ASTVariableExpression> variables = findDescendantsOfType(ASTVariableExpression.class);
++        for (ASTVariableExpression v : variables) {
++            abstractRule.addViolation(data, v);
++        }
++    }
+ }
+diff --git a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/security/ApexXSSFromEscapeFalseRule.java b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/security/ApexXSSFromEscapeFalseRule.java
+index e17db57..fa265c3 100644
+--- a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/security/ApexXSSFromEscapeFalseRule.java
++++ b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/security/ApexXSSFromEscapeFalseRule.java
+@@ -9,7 +9,6 @@ import java.util.List;
+ import net.sourceforge.pmd.lang.apex.ast.ASTLiteralExpression;
+ import net.sourceforge.pmd.lang.apex.ast.ASTMethodCallExpression;
+ import net.sourceforge.pmd.lang.apex.ast.ASTUserClass;
+-import net.sourceforge.pmd.lang.apex.ast.ASTVariableExpression;
+ import net.sourceforge.pmd.lang.apex.rule.AbstractApexRule;
+ 
+ /**
+@@ -52,18 +51,11 @@ public class ApexXSSFromEscapeFalseRule extends AbstractApexRule {
+                 if (o instanceof Boolean) {
+                     Boolean paramValue = (Boolean) o;
+                     if (paramValue.equals(Boolean.FALSE)) {
+-                        validateLiteralPresence(methodCall, data);
++                        methodCall.validateLiteralPresence(data, null);
+                     }
+                 }
+             }
+         }
+     }
+ 
+-    private void validateLiteralPresence(ASTMethodCallExpression methodCall, Object data) {
+-        List<ASTVariableExpression> variables = methodCall.findDescendantsOfType(ASTVariableExpression.class);
+-        for (ASTVariableExpression v : variables) {
+-            addViolation(data, v);
+-        }
+-    }
+-
+ }

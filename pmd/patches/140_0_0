@@ -1,0 +1,79 @@
+diff --git a/pmd-ui/src/main/java/net/sourceforge/pmd/util/fxdesigner/util/controls/ASTTreeItem.java b/pmd-ui/src/main/java/net/sourceforge/pmd/util/fxdesigner/util/controls/ASTTreeItem.java
+index 5b317a8..aadf9ed 100644
+--- a/pmd-ui/src/main/java/net/sourceforge/pmd/util/fxdesigner/util/controls/ASTTreeItem.java
++++ b/pmd-ui/src/main/java/net/sourceforge/pmd/util/fxdesigner/util/controls/ASTTreeItem.java
+@@ -5,12 +5,14 @@
+ package net.sourceforge.pmd.util.fxdesigner.util.controls;
+ 
+ import static net.sourceforge.pmd.internal.util.IteratorUtil.reverse;
++import static net.sourceforge.pmd.internal.util.IteratorUtil.toIterable;
+ import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.parentIterator;
+ 
+ import java.util.Arrays;
+ import java.util.Collections;
+ import java.util.Iterator;
+ import java.util.List;
++import java.util.function.BiConsumer;
+ 
+ import org.reactfx.value.Var;
+ 
+@@ -134,4 +136,13 @@ public final class ASTTreeItem extends TreeItem<Node> {
+     }
+ 
+ 
++    void sideEffectParents(BiConsumer<ASTTreeItem, Integer> itemAndDepthConsumer) {
++
++        int depth = 0;
++        for (TreeItem<Node> item : toIterable(parentIterator(this, true))) {
++            // the depth is "reversed" here, i.e. the deepest node has depth 0
++            itemAndDepthConsumer.accept((ASTTreeItem) item, depth++);
++        }
++
++    }
+ }
+diff --git a/pmd-ui/src/main/java/net/sourceforge/pmd/util/fxdesigner/util/controls/AstTreeView.java b/pmd-ui/src/main/java/net/sourceforge/pmd/util/fxdesigner/util/controls/AstTreeView.java
+index 51670ae..e70e1dc 100644
+--- a/pmd-ui/src/main/java/net/sourceforge/pmd/util/fxdesigner/util/controls/AstTreeView.java
++++ b/pmd-ui/src/main/java/net/sourceforge/pmd/util/fxdesigner/util/controls/AstTreeView.java
+@@ -4,11 +4,9 @@
+ 
+ package net.sourceforge.pmd.util.fxdesigner.util.controls;
+ 
+-import static net.sourceforge.pmd.internal.util.IteratorUtil.toIterable;
+ import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.parentIterator;
+ 
+ import java.util.Objects;
+-import java.util.function.BiConsumer;
+ 
+ import org.reactfx.EventSource;
+ import org.reactfx.EventStreams;
+@@ -111,27 +109,16 @@ public class AstTreeView extends TreeView<Node> implements NodeSelectionSource {
+     private void highlightFocusNodeParents(ASTTreeItem oldSelection, ASTTreeItem newSelection) {
+         if (oldSelection != null) {
+             // remove highlighting on the cells of the item
+-            sideEffectParents(oldSelection, (item, depth) -> item.setStyleClasses());
++            oldSelection.sideEffectParents((item, depth) -> item.setStyleClasses());
+         }
+ 
+         if (newSelection != null) {
+             // 0 is the deepest node, "depth" goes up as we get up the parents
+-            sideEffectParents(newSelection, (item, depth) -> item.setStyleClasses("ast-parent", "depth-" + depth));
++            newSelection.sideEffectParents((item, depth) -> item.setStyleClasses("ast-parent", "depth-" + depth));
+         }
+     }
+ 
+ 
+-    private void sideEffectParents(ASTTreeItem deepest, BiConsumer<ASTTreeItem, Integer> itemAndDepthConsumer) {
+-
+-        int depth = 0;
+-        for (TreeItem<Node> item : toIterable(parentIterator(deepest, true))) {
+-            // the depth is "reversed" here, i.e. the deepest node has depth 0
+-            itemAndDepthConsumer.accept((ASTTreeItem) item, depth++);
+-        }
+-
+-    }
+-
+-
+     /**
+      * Returns true if the item at the given index
+      * is visible in the TreeView.

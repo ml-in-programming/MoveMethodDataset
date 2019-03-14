@@ -1,0 +1,48 @@
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTPrimaryPrefix.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTPrimaryPrefix.java
+index b25e6c7..c5d7132 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTPrimaryPrefix.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTPrimaryPrefix.java
+@@ -41,4 +41,11 @@ public class ASTPrimaryPrefix extends AbstractJavaTypeNode {
+     public Object jjtAccept(JavaParserVisitor visitor, Object data) {
+         return visitor.visit(this, data);
+     }
++
++    public String getNameFromPrimaryPrefix() {
++        if (jjtGetNumChildren() == 1 && jjtGetChild(0) instanceof ASTName) {
++            return ((ASTName) jjtGetChild(0)).getImage();
++        }
++        return null;
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/SingletonClassReturningNewInstanceRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/SingletonClassReturningNewInstanceRule.java
+index 8efd0be..205b762 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/SingletonClassReturningNewInstanceRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/SingletonClassReturningNewInstanceRule.java
+@@ -11,7 +11,6 @@ import net.sourceforge.pmd.lang.java.ast.ASTAllocationExpression;
+ import net.sourceforge.pmd.lang.java.ast.ASTBlockStatement;
+ import net.sourceforge.pmd.lang.java.ast.ASTLocalVariableDeclaration;
+ import net.sourceforge.pmd.lang.java.ast.ASTMethodDeclaration;
+-import net.sourceforge.pmd.lang.java.ast.ASTName;
+ import net.sourceforge.pmd.lang.java.ast.ASTPrimaryExpression;
+ import net.sourceforge.pmd.lang.java.ast.ASTPrimaryPrefix;
+ import net.sourceforge.pmd.lang.java.ast.ASTReturnStatement;
+@@ -98,7 +97,7 @@ public class SingletonClassReturningNewInstanceRule extends AbstractJavaRule {
+         Node lastChild = ape.jjtGetChild(0);
+         String returnVariableName = null;
+         if (lastChild instanceof ASTPrimaryPrefix) {
+-            returnVariableName = getNameFromPrimaryPrefix((ASTPrimaryPrefix) lastChild);
++            returnVariableName = ((ASTPrimaryPrefix) lastChild).getNameFromPrimaryPrefix();
+         }
+         /*
+          * if(lastChild instanceof ASTPrimarySuffix){ returnVariableName =
+@@ -108,10 +107,4 @@ public class SingletonClassReturningNewInstanceRule extends AbstractJavaRule {
+ 
+     }
+ 
+-    private String getNameFromPrimaryPrefix(ASTPrimaryPrefix pp) {
+-        if (pp.jjtGetNumChildren() == 1 && pp.jjtGetChild(0) instanceof ASTName) {
+-            return ((ASTName) pp.jjtGetChild(0)).getImage();
+-        }
+-        return null;
+-    }
+ }

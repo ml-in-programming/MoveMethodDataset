@@ -1,0 +1,43 @@
+diff --git a/pmd-visualforce/src/main/java/net/sourceforge/pmd/lang/vf/ast/ASTText.java b/pmd-visualforce/src/main/java/net/sourceforge/pmd/lang/vf/ast/ASTText.java
+index 16a359c..94f98f5 100644
+--- a/pmd-visualforce/src/main/java/net/sourceforge/pmd/lang/vf/ast/ASTText.java
++++ b/pmd-visualforce/src/main/java/net/sourceforge/pmd/lang/vf/ast/ASTText.java
+@@ -21,4 +21,11 @@ public class ASTText extends AbstractVFNode {
+     public Object jjtAccept(VfParserVisitor visitor, Object data) {
+         return visitor.visit(this, data);
+     }
++
++    public boolean isJsonParse() {
++        final String text = getImage().endsWith("'")
++                ? getImage().substring(0, getImage().length() - 1) : getImage();
++
++        return text.endsWith("JSON.parse(") || text.endsWith("jQuery.parseJSON(") || text.endsWith("$.parseJSON(");
++    }
+ }
+diff --git a/pmd-visualforce/src/main/java/net/sourceforge/pmd/lang/vf/rule/security/VfUnescapeElRule.java b/pmd-visualforce/src/main/java/net/sourceforge/pmd/lang/vf/rule/security/VfUnescapeElRule.java
+index 6f79196..1df13bc 100644
+--- a/pmd-visualforce/src/main/java/net/sourceforge/pmd/lang/vf/rule/security/VfUnescapeElRule.java
++++ b/pmd-visualforce/src/main/java/net/sourceforge/pmd/lang/vf/rule/security/VfUnescapeElRule.java
+@@ -80,7 +80,7 @@ public class VfUnescapeElRule extends AbstractVfRule {
+         boolean jsonParse = false;
+ 
+         if (prevText != null) {
+-            jsonParse = isJsonParse(prevText);
++            jsonParse = prevText.isJsonParse();
+             if (isUnbalanced(prevText.getImage(), '\'') || isUnbalanced(prevText.getImage(), '\"')) {
+                 quoted = true;
+             }
+@@ -104,13 +104,6 @@ public class VfUnescapeElRule extends AbstractVfRule {
+         }
+     }
+ 
+-    private boolean isJsonParse(ASTText prevText) {
+-        final String text = prevText.getImage().endsWith("'")
+-                ? prevText.getImage().substring(0, prevText.getImage().length() - 1) : prevText.getImage();
+-
+-        return text.endsWith("JSON.parse(") || text.endsWith("jQuery.parseJSON(") || text.endsWith("$.parseJSON(");
+-    }
+-
+     private boolean isUnbalanced(String image, char pattern) {
+         char[] array = image.toCharArray();
+ 

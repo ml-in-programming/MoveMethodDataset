@@ -1,0 +1,51 @@
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTPrimaryExpression.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTPrimaryExpression.java
+index 92d645f..ea95870 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTPrimaryExpression.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTPrimaryExpression.java
+@@ -22,4 +22,14 @@ public class ASTPrimaryExpression extends AbstractJavaTypeNode {
+         return visitor.visit(this, data);
+     }
+ 
++    public String getNameImage() {
++        ASTPrimaryPrefix prefix = getFirstDescendantOfType(ASTPrimaryPrefix.class);
++        ASTName name = prefix.getFirstDescendantOfType(ASTName.class);
++
++        String image = null;
++        if (name != null) {
++            image = name.getImage();
++        }
++        return image;
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/metrics/impl/visitors/AtfdBaseVisitor.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/metrics/impl/visitors/AtfdBaseVisitor.java
+index 6576ae6..009217f 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/metrics/impl/visitors/AtfdBaseVisitor.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/metrics/impl/visitors/AtfdBaseVisitor.java
+@@ -61,7 +61,7 @@ public class AtfdBaseVisitor extends JavaParserVisitorAdapter {
+ 
+     private boolean isForeignAttributeOrMethod(ASTPrimaryExpression node) {
+         boolean result;
+-        String nameImage = getNameImage(node);
++        String nameImage = node.getNameImage();
+ 
+         if (nameImage != null && (!nameImage.contains(".") || nameImage.startsWith("this."))) {
+             result = false;
+@@ -77,18 +77,6 @@ public class AtfdBaseVisitor extends JavaParserVisitorAdapter {
+     }
+ 
+ 
+-    private String getNameImage(ASTPrimaryExpression node) {
+-        ASTPrimaryPrefix prefix = node.getFirstDescendantOfType(ASTPrimaryPrefix.class);
+-        ASTName name = prefix.getFirstDescendantOfType(ASTName.class);
+-
+-        String image = null;
+-        if (name != null) {
+-            image = name.getImage();
+-        }
+-        return image;
+-    }
+-
+-
+     private String getMethodOrAttributeName(ASTPrimaryExpression node) {
+         ASTPrimaryPrefix prefix = node.getFirstDescendantOfType(ASTPrimaryPrefix.class);
+         ASTName name = prefix.getFirstDescendantOfType(ASTName.class);

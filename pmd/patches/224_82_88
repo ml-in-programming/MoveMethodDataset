@@ -1,0 +1,41 @@
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTAllocationExpression.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTAllocationExpression.java
+index 3ea7ef0..3e0df93 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTAllocationExpression.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTAllocationExpression.java
+@@ -58,4 +58,7 @@ public class ASTAllocationExpression extends AbstractJavaTypeNode implements Jav
+         this.qualifiedName = qname;
+     }
+ 
++    public boolean fourthParentNotThrow() {
++        return !(jjtGetParent().jjtGetParent().jjtGetParent().jjtGetParent() instanceof ASTThrowStatement);
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/AvoidInstantiatingObjectsInLoopsRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/AvoidInstantiatingObjectsInLoopsRule.java
+index af7045b..75d0221 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/AvoidInstantiatingObjectsInLoopsRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/AvoidInstantiatingObjectsInLoopsRule.java
+@@ -10,23 +10,18 @@ import net.sourceforge.pmd.lang.java.ast.ASTDoStatement;
+ import net.sourceforge.pmd.lang.java.ast.ASTForInit;
+ import net.sourceforge.pmd.lang.java.ast.ASTForStatement;
+ import net.sourceforge.pmd.lang.java.ast.ASTReturnStatement;
+-import net.sourceforge.pmd.lang.java.ast.ASTThrowStatement;
+ import net.sourceforge.pmd.lang.java.ast.ASTWhileStatement;
+ 
+ public class AvoidInstantiatingObjectsInLoopsRule extends AbstractOptimizationRule {
+ 
+     @Override
+     public Object visit(ASTAllocationExpression node, Object data) {
+-        if (insideLoop(node) && fourthParentNotThrow(node) && fourthParentNotReturn(node)) {
++        if (insideLoop(node) && node.fourthParentNotThrow() && fourthParentNotReturn(node)) {
+             addViolation(data, node);
+         }
+         return data;
+     }
+ 
+-    private boolean fourthParentNotThrow(ASTAllocationExpression node) {
+-        return !(node.jjtGetParent().jjtGetParent().jjtGetParent().jjtGetParent() instanceof ASTThrowStatement);
+-    }
+-
+     private boolean fourthParentNotReturn(ASTAllocationExpression node) {
+         return !(node.jjtGetParent().jjtGetParent().jjtGetParent().jjtGetParent() instanceof ASTReturnStatement);
+     }

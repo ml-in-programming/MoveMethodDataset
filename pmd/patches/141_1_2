@@ -1,0 +1,79 @@
+diff --git a/pmd-vm/src/main/java/net/sourceforge/pmd/lang/vm/ast/ASTStringLiteral.java b/pmd-vm/src/main/java/net/sourceforge/pmd/lang/vm/ast/ASTStringLiteral.java
+index 16aea34..28718d4 100644
+--- a/pmd-vm/src/main/java/net/sourceforge/pmd/lang/vm/ast/ASTStringLiteral.java
++++ b/pmd-vm/src/main/java/net/sourceforge/pmd/lang/vm/ast/ASTStringLiteral.java
+@@ -44,35 +44,6 @@ public class ASTStringLiteral extends AbstractVmNode {
+     }
+ 
+     /**
+-     * Adjust all the line and column numbers that comprise a node so that they
+-     * are corrected for the string literals position within the template file.
+-     * This is neccessary if an exception is thrown while processing the node so
+-     * that the line and column position reported reflects the error position
+-     * within the template and not just relative to the error position within
+-     * the string literal.
+-     */
+-    public void adjTokenLineNums(final AbstractVmNode node) {
+-        Token tok = node.getFirstToken();
+-        // Test against null is probably not neccessary, but just being safe
+-        while (tok != null && tok != node.getLastToken()) {
+-            // If tok is on the first line, then the actual column is
+-            // offset by the template column.
+-
+-            if (tok.beginLine == 1) {
+-                tok.beginColumn += getColumn();
+-            }
+-
+-            if (tok.endLine == 1) {
+-                tok.endColumn += getColumn();
+-            }
+-
+-            tok.beginLine += getLine() - 1;
+-            tok.endLine += getLine() - 1;
+-            tok = tok.next;
+-        }
+-    }
+-
+-    /**
+      * @since 1.6
+      */
+     public static String unescape(final String string) {
+diff --git a/pmd-vm/src/main/java/net/sourceforge/pmd/lang/vm/ast/AbstractVmNode.java b/pmd-vm/src/main/java/net/sourceforge/pmd/lang/vm/ast/AbstractVmNode.java
+index a640db2..fcc17f6 100644
+--- a/pmd-vm/src/main/java/net/sourceforge/pmd/lang/vm/ast/AbstractVmNode.java
++++ b/pmd-vm/src/main/java/net/sourceforge/pmd/lang/vm/ast/AbstractVmNode.java
+@@ -238,4 +238,34 @@ public class AbstractVmNode extends AbstractNode implements VmNode {
+     public String getTemplateName() {
+         return templateName;
+     }
++
++    /**
++     * Adjust all the line and column numbers that comprise a node so that they
++     * are corrected for the string literals position within the template file.
++     * This is neccessary if an exception is thrown while processing the node so
++     * that the line and column position reported reflects the error position
++     * within the template and not just relative to the error position within
++     * the string literal.
++     * @param astStringLiteral
++     */
++    public void adjTokenLineNums(ASTStringLiteral astStringLiteral) {
++        Token tok = getFirstToken();
++        // Test against null is probably not neccessary, but just being safe
++        while (tok != null && tok != getLastToken()) {
++            // If tok is on the first line, then the actual column is
++            // offset by the template column.
++
++            if (tok.beginLine == 1) {
++                tok.beginColumn += astStringLiteral.getColumn();
++            }
++
++            if (tok.endLine == 1) {
++                tok.endColumn += astStringLiteral.getColumn();
++            }
++
++            tok.beginLine += astStringLiteral.getLine() - 1;
++            tok.endLine += astStringLiteral.getLine() - 1;
++            tok = tok.next;
++        }
++    }
+ }

@@ -1,0 +1,84 @@
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/pathfinder/DAAPathFinder.java b/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/pathfinder/DAAPathFinder.java
+index ae12cc0..c60047b 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/pathfinder/DAAPathFinder.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/pathfinder/DAAPathFinder.java
+@@ -201,7 +201,7 @@ public class DAAPathFinder {
+                 }
+                 PathElement ref = this.getDoBranchNodeInLevel(level);
+                 if (ref != null) {
+-                    addNode(level, ref);
++                    ref.addNode(level);
+                 } else {
+                     this.addNewPathElement(level);
+                 }
+@@ -211,7 +211,7 @@ public class DAAPathFinder {
+                     if (level.getChildCount() != 0) {
+                         PathElement ref = this.isNodeInLevel(level);
+                         if (ref != null) {
+-                            addNode(level, ref);
++                            ref.addNode(level);
+                             break;
+                         } else {
+                             level = this.getLastChildNode(level);
+@@ -249,21 +249,21 @@ public class DAAPathFinder {
+     }
+ 
+     private void addNewPathElement(DefaultMutableTreeNode level) {
+-        addNode(level, new PathElement(currentPath.getLast()));
++        new PathElement(currentPath.getLast()).addNode(level);
+     }
+ 
+     /*
+      * Needed for do loops
+      */
+     private void addNewPseudoPathElement(DefaultMutableTreeNode level, DataFlowNode ref) {
+-        addNode(level, new PathElement(currentPath.getLast(), ref));
++        new PathElement(currentPath.getLast(), ref).addNode(level);
+     }
+ 
+     /*
+      * Needed for do loops
+      */
+     private void addRefPseudoPathElement(DefaultMutableTreeNode level, PathElement ref) {
+-        addNode(level, ref);
++        ref.addNode(level);
+     }
+ 
+     private boolean equalsPseudoPathElementWithDoBranchNodeInLevel(DefaultMutableTreeNode level) {
+@@ -305,12 +305,6 @@ public class DAAPathFinder {
+         return null;
+     }
+ 
+-    private void addNode(DefaultMutableTreeNode level, PathElement element) {
+-        DefaultMutableTreeNode node = new DefaultMutableTreeNode();
+-        node.setUserObject(element);
+-        level.add(node);
+-    }
+-
+     private PathElement isNodeInLevel(DefaultMutableTreeNode level) {
+         DataFlowNode inode = currentPath.getLast();
+         DefaultMutableTreeNode child = (DefaultMutableTreeNode) level.getFirstChild();
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/pathfinder/PathElement.java b/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/pathfinder/PathElement.java
+index 0bd6ebf..2e469ce 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/pathfinder/PathElement.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/pathfinder/PathElement.java
+@@ -6,6 +6,8 @@ package net.sourceforge.pmd.lang.dfa.pathfinder;
+ 
+ import net.sourceforge.pmd.lang.dfa.DataFlowNode;
+ 
++import javax.swing.tree.DefaultMutableTreeNode;
++
+ public class PathElement {
+ 
+     public int currentChild;
+@@ -24,4 +26,10 @@ public class PathElement {
+     public boolean isPseudoPathElement() {
+         return pseudoRef != null;
+     }
++
++    void addNode(DefaultMutableTreeNode level) {
++        DefaultMutableTreeNode node = new DefaultMutableTreeNode();
++        node.setUserObject(this);
++        level.add(node);
++    }
+ }

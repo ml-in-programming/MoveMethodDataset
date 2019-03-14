@@ -1,0 +1,80 @@
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTFormalParameters.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTFormalParameters.java
+index 57cc052..9af4fd9 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTFormalParameters.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTFormalParameters.java
+@@ -5,6 +5,7 @@
+ 
+ package net.sourceforge.pmd.lang.java.ast;
+ 
++import java.util.ArrayList;
+ import java.util.Iterator;
+ import java.util.List;
+ 
+@@ -37,4 +38,18 @@ public class ASTFormalParameters extends AbstractJavaNode implements Iterable<AS
+     public Iterator<ASTFormalParameter> iterator() {
+         return new NodeChildrenIterator<>(this, ASTFormalParameter.class);
+     }
++
++    public ASTFormalParameter[] getArrays() {
++        final List<ASTFormalParameter> l = findChildrenOfType(ASTFormalParameter.class);
++        if (l != null && !l.isEmpty()) {
++            List<ASTFormalParameter> l2 = new ArrayList<>();
++            for (ASTFormalParameter fp : l) {
++                if (fp.isArray() || fp.isVarargs()) {
++                    l2.add(fp);
++                }
++            }
++            return l2.toArray(new ASTFormalParameter[0]);
++        }
++        return new ASTFormalParameter[0];
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/ArrayIsStoredDirectlyRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/ArrayIsStoredDirectlyRule.java
+index cccdf3a..3008b9b 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/ArrayIsStoredDirectlyRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/ArrayIsStoredDirectlyRule.java
+@@ -4,7 +4,6 @@
+ 
+ package net.sourceforge.pmd.lang.java.rule.bestpractices;
+ 
+-import java.util.ArrayList;
+ import java.util.List;
+ 
+ import net.sourceforge.pmd.lang.ast.Node;
+@@ -43,7 +42,7 @@ public class ArrayIsStoredDirectlyRule extends AbstractSunSecureRule {
+ 
+     @Override
+     public Object visit(ASTConstructorDeclaration node, Object data) {
+-        ASTFormalParameter[] arrs = getArrays(node.getParameters());
++        ASTFormalParameter[] arrs = node.getParameters().getArrays();
+         // TODO check if one of these arrays is stored in a non local
+         // variable
+         List<ASTBlockStatement> bs = node.findDescendantsOfType(ASTBlockStatement.class);
+@@ -54,7 +53,7 @@ public class ArrayIsStoredDirectlyRule extends AbstractSunSecureRule {
+     @Override
+     public Object visit(ASTMethodDeclaration node, Object data) {
+         final ASTFormalParameters params = node.getFirstDescendantOfType(ASTFormalParameters.class);
+-        ASTFormalParameter[] arrs = getArrays(params);
++        ASTFormalParameter[] arrs = params.getArrays();
+         checkAll(data, arrs, node.findDescendantsOfType(ASTBlockStatement.class));
+         return data;
+     }
+@@ -147,18 +146,4 @@ public class ArrayIsStoredDirectlyRule extends AbstractSunSecureRule {
+         return false;
+     }
+ 
+-    private ASTFormalParameter[] getArrays(ASTFormalParameters params) {
+-        final List<ASTFormalParameter> l = params.findChildrenOfType(ASTFormalParameter.class);
+-        if (l != null && !l.isEmpty()) {
+-            List<ASTFormalParameter> l2 = new ArrayList<>();
+-            for (ASTFormalParameter fp : l) {
+-                if (fp.isArray() || fp.isVarargs()) {
+-                    l2.add(fp);
+-                }
+-            }
+-            return l2.toArray(new ASTFormalParameter[0]);
+-        }
+-        return new ASTFormalParameter[0];
+-    }
+-
+ }

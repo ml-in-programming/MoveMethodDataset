@@ -1,0 +1,113 @@
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTFieldDeclaration.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTFieldDeclaration.java
+index 8df2589..d0c20e0 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTFieldDeclaration.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTFieldDeclaration.java
+@@ -7,6 +7,7 @@ package net.sourceforge.pmd.lang.java.ast;
+ 
+ import java.util.Iterator;
+ 
++import net.sourceforge.pmd.lang.ast.Node;
+ import net.sourceforge.pmd.lang.ast.SignedNode;
+ import net.sourceforge.pmd.lang.java.multifile.signature.JavaFieldSignature;
+ import net.sourceforge.pmd.lang.java.typeresolution.typedefinition.JavaTypeDefinition;
+@@ -227,4 +228,36 @@ public class ASTFieldDeclaration extends AbstractJavaAccessTypeNode implements D
+     public JavaTypeDefinition getTypeDefinition() {
+         return super.getTypeDefinition();
+     }
++
++    /**
++     * Checks if a FieldDeclaration is a reference type (includes arrays). The
++     * reference information is in the FieldDeclaration for this example:
++     *
++     * <pre>
++     * int[] ia1
++     * </pre>
++     *
++     * and in the VariableDeclarator for this example:
++     *
++     * <pre>
++     * int ia2[];
++     * </pre>
++     *
++     * .
++     *
++     * @param variableDeclarator
++     *            the variable declarator to check.
++     * @return <code>true</code> if the field is a reference. <code>false</code>
++     *         otherwise.
++     */
++    public boolean isRef(ASTVariableDeclarator variableDeclarator) {
++        Node type = jjtGetChild(0).jjtGetChild(0);
++        if (type instanceof ASTReferenceType) {
++            // Reference type, array or otherwise
++            return true;
++        } else {
++            // Primitive array?
++            return ((ASTVariableDeclaratorId) variableDeclarator.jjtGetChild(0)).isArray();
++        }
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/RedundantFieldInitializerRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/RedundantFieldInitializerRule.java
+index 0ed7e19..17f6062 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/RedundantFieldInitializerRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/RedundantFieldInitializerRule.java
+@@ -12,9 +12,7 @@ import net.sourceforge.pmd.lang.java.ast.ASTFieldDeclaration;
+ import net.sourceforge.pmd.lang.java.ast.ASTLiteral;
+ import net.sourceforge.pmd.lang.java.ast.ASTNullLiteral;
+ import net.sourceforge.pmd.lang.java.ast.ASTPrimaryExpression;
+-import net.sourceforge.pmd.lang.java.ast.ASTReferenceType;
+ import net.sourceforge.pmd.lang.java.ast.ASTVariableDeclarator;
+-import net.sourceforge.pmd.lang.java.ast.ASTVariableDeclaratorId;
+ import net.sourceforge.pmd.lang.java.rule.AbstractJavaRule;
+ 
+ /**
+@@ -61,7 +59,7 @@ public class RedundantFieldInitializerRule extends AbstractJavaRule {
+                     final Node primaryPrefix = primaryExpression.jjtGetChild(0);
+                     if (primaryPrefix.jjtGetNumChildren() == 1 && primaryPrefix.jjtGetChild(0) instanceof ASTLiteral) {
+                         final ASTLiteral literal = (ASTLiteral) primaryPrefix.jjtGetChild(0);
+-                        if (isRef(fieldDeclaration, variableDeclarator)) {
++                        if (fieldDeclaration.isRef(variableDeclarator)) {
+                             // Reference type
+                             if (literal.jjtGetNumChildren() == 1 && literal.jjtGetChild(0) instanceof ASTNullLiteral) {
+                                 addViolation(data, variableDeclarator);
+@@ -106,40 +104,6 @@ public class RedundantFieldInitializerRule extends AbstractJavaRule {
+         return data;
+     }
+ 
+-    /**
+-     * Checks if a FieldDeclaration is a reference type (includes arrays). The
+-     * reference information is in the FieldDeclaration for this example:
+-     *
+-     * <pre>
+-     * int[] ia1
+-     * </pre>
+-     *
+-     * and in the VariableDeclarator for this example:
+-     *
+-     * <pre>
+-     * int ia2[];
+-     * </pre>
+-     *
+-     * .
+-     *
+-     * @param fieldDeclaration
+-     *            the field to check.
+-     * @param variableDeclarator
+-     *            the variable declarator to check.
+-     * @return <code>true</code> if the field is a reference. <code>false</code>
+-     *         otherwise.
+-     */
+-    private boolean isRef(ASTFieldDeclaration fieldDeclaration, ASTVariableDeclarator variableDeclarator) {
+-        Node type = fieldDeclaration.jjtGetChild(0).jjtGetChild(0);
+-        if (type instanceof ASTReferenceType) {
+-            // Reference type, array or otherwise
+-            return true;
+-        } else {
+-            // Primitive array?
+-            return ((ASTVariableDeclaratorId) variableDeclarator.jjtGetChild(0)).isArray();
+-        }
+-    }
+-
+     private void addViolation(Object data, ASTVariableDeclarator variableDeclarator) {
+         super.addViolation(data, variableDeclarator, variableDeclarator.jjtGetChild(0).getImage());
+     }

@@ -1,0 +1,43 @@
+diff --git a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTSoqlExpression.java b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTSoqlExpression.java
+index b05e5dc..e88bce5 100644
+--- a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTSoqlExpression.java
++++ b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTSoqlExpression.java
+@@ -16,4 +16,8 @@ public class ASTSoqlExpression extends AbstractApexNode<SoqlExpression> {
+     public Object jjtAccept(ApexParserVisitor visitor, Object data) {
+         return visitor.visit(this, data);
+     }
++
++    public boolean parentNotReturn() {
++        return !(jjtGetParent() instanceof ASTReturnStatement);
++    }
+ }
+diff --git a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/performance/AvoidSoqlInLoopsRule.java b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/performance/AvoidSoqlInLoopsRule.java
+index e6dbb26..4d26ee6 100644
+--- a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/performance/AvoidSoqlInLoopsRule.java
++++ b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/performance/AvoidSoqlInLoopsRule.java
+@@ -7,7 +7,6 @@ package net.sourceforge.pmd.lang.apex.rule.performance;
+ import net.sourceforge.pmd.lang.apex.ast.ASTDoLoopStatement;
+ import net.sourceforge.pmd.lang.apex.ast.ASTForEachStatement;
+ import net.sourceforge.pmd.lang.apex.ast.ASTForLoopStatement;
+-import net.sourceforge.pmd.lang.apex.ast.ASTReturnStatement;
+ import net.sourceforge.pmd.lang.apex.ast.ASTSoqlExpression;
+ import net.sourceforge.pmd.lang.apex.ast.ASTWhileLoopStatement;
+ import net.sourceforge.pmd.lang.apex.rule.AbstractApexRule;
+@@ -25,16 +24,12 @@ public class AvoidSoqlInLoopsRule extends AbstractApexRule {
+ 
+     @Override
+     public Object visit(ASTSoqlExpression node, Object data) {
+-        if (insideLoop(node) && parentNotReturn(node) && parentNotForEach(node)) {
++        if (insideLoop(node) && node.parentNotReturn() && parentNotForEach(node)) {
+             addViolation(data, node);
+         }
+         return data;
+     }
+ 
+-    private boolean parentNotReturn(ASTSoqlExpression node) {
+-        return !(node.jjtGetParent() instanceof ASTReturnStatement);
+-    }
+-
+     private boolean parentNotForEach(ASTSoqlExpression node) {
+         return !(node.jjtGetParent() instanceof ASTForEachStatement);
+     }
