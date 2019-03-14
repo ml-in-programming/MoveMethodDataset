@@ -1,0 +1,3 @@
+[submodule "cayenne/cayenne"]
+	path = cayenne/cayenne
+	url = https://github.com/apache/cayenne.git
