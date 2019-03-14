@@ -7,3 +7,6 @@
 [submodule "megamek/megamek"]
 	path = megamek/megamek
 	url = https://github.com/MegaMek/megamek.git
+[submodule "pmd/pmd"]
+	path = pmd/pmd
+	url = https://github.com/pmd/pmd.git
