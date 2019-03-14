@@ -6,8 +6,8 @@ index 5b56df36d..119d1c2b5
 +++ b/maven-core/src/main/java/org/apache/maven/execution/MavenSession.java
 @@ -438,5 +438,10 @@ public Object lookup( String role, String roleHint )
          return container.lookupMap( role );
-     }
- 
+     }   
+     
 +    public boolean projectIsNotPresent()
 +    {
 +        return !getRequest().isProjectPresent();
