@@ -1,0 +1,110 @@
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/CreateCallbackMethodAction.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/CreateCallbackMethodAction.java
+old mode 100644
+new mode 100755
+index dc4c28674..df5dc45d4
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/CreateCallbackMethodAction.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/CreateCallbackMethodAction.java
+@@ -21,10 +21,8 @@ package org.apache.cayenne.modeler.action;
+ import org.apache.cayenne.dbsync.naming.NameBuilder;
+ import org.apache.cayenne.map.CallbackMap;
+ import org.apache.cayenne.map.LifecycleEvent;
+-import org.apache.cayenne.map.event.MapEvent;
+ import org.apache.cayenne.modeler.Application;
+ import org.apache.cayenne.modeler.editor.CallbackType;
+-import org.apache.cayenne.modeler.event.CallbackMethodEvent;
+ import org.apache.cayenne.modeler.undo.CreateCallbackMethodUndoableEdit;
+ import org.apache.cayenne.modeler.util.CayenneAction;
+ import org.apache.cayenne.util.Util;
+@@ -91,27 +89,13 @@ public class CreateCallbackMethodAction extends CayenneAction {
+                 .baseName(toMethodName(callbackType.getType()))
+                 .name();
+ 
+-        createCallbackMethod(callbackType, methodName);
++        callbackType.createCallbackMethod(methodName, this);
+         application.getUndoManager().addEdit(
+                 new CreateCallbackMethodUndoableEdit(
+                         callbackType,
+                         methodName));
+     }
+ 
+-    public void createCallbackMethod(
+-            CallbackType callbackType,
+-            String methodName) {
+-        getCallbackMap().getCallbackDescriptor(callbackType.getType()).addCallbackMethod(methodName);
+-
+-        CallbackMethodEvent ce = new CallbackMethodEvent(
+-                this,
+-                null,
+-                methodName,
+-                MapEvent.ADD);
+-
+-        getProjectController().fireCallbackMethodEvent(ce);
+-    }
+-
+     private String toMethodName(LifecycleEvent event) {
+         return "on" + Util.underscoredToJava(event.name(), true);
+     }
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/CallbackType.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/CallbackType.java
+old mode 100644
+new mode 100755
+index 790b98ad5..3fb0d2b6e
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/CallbackType.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/CallbackType.java
+@@ -19,6 +19,9 @@
+ package org.apache.cayenne.modeler.editor;
+ 
+ import org.apache.cayenne.map.LifecycleEvent;
++import org.apache.cayenne.map.event.MapEvent;
++import org.apache.cayenne.modeler.action.CreateCallbackMethodAction;
++import org.apache.cayenne.modeler.event.CallbackMethodEvent;
+ import org.apache.cayenne.util.Util;
+ 
+ import java.io.Serializable;
+@@ -101,4 +104,17 @@ public class CallbackType implements Serializable {
+     public int hashCode() {
+         return type.hashCode();
+     }
++
++    public void createCallbackMethod(
++            String methodName, CreateCallbackMethodAction createCallbackMethodAction) {
++        createCallbackMethodAction.getCallbackMap().getCallbackDescriptor(getType()).addCallbackMethod(methodName);
++
++        CallbackMethodEvent ce = new CallbackMethodEvent(
++                createCallbackMethodAction,
++                null,
++                methodName,
++                MapEvent.ADD);
++
++        createCallbackMethodAction.getProjectController().fireCallbackMethodEvent(ce);
++    }
+ }
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/undo/CreateCallbackMethodUndoableEdit.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/undo/CreateCallbackMethodUndoableEdit.java
+old mode 100644
+new mode 100755
+index 3287bd3c7..45db67f01
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/undo/CreateCallbackMethodUndoableEdit.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/undo/CreateCallbackMethodUndoableEdit.java
+@@ -39,7 +39,7 @@ public class CreateCallbackMethodUndoableEdit extends CayenneUndoableEdit {
+     public void redo() throws CannotRedoException {
+         CreateCallbackMethodAction action = actionManager
+                 .getAction(CreateCallbackMethodAction.class);
+-        action.createCallbackMethod(callbackType, methodName);
++        callbackType.createCallbackMethod(methodName, action);
+     }
+ 
+     @Override
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/undo/RemoveCallbackMethodUndoableEdit.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/undo/RemoveCallbackMethodUndoableEdit.java
+old mode 100644
+new mode 100755
+index 257aa2380..c3526df6e
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/undo/RemoveCallbackMethodUndoableEdit.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/undo/RemoveCallbackMethodUndoableEdit.java
+@@ -56,7 +56,7 @@ public class RemoveCallbackMethodUndoableEdit extends CayenneUndoableEdit {
+     	CreateCallbackMethodAction action = actionManager
+                 .getAction(CreateCallbackMethodAction.class);
+         for (ObjCallbackMethod method : methods) {
+-            action.createCallbackMethod(callbackType, method.getName());
++            callbackType.createCallbackMethod(method.getName(), action);
+         }
+     }
+ }

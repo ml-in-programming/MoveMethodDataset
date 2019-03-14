@@ -1,0 +1,70 @@
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/CayenneModelerController.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/CayenneModelerController.java
+old mode 100644
+new mode 100755
+index 3c1549b02..5c6e1d0b4
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/CayenneModelerController.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/CayenneModelerController.java
+@@ -27,11 +27,14 @@ import org.apache.cayenne.modeler.editor.DbImportController;
+ import org.apache.cayenne.modeler.init.platform.PlatformInitializer;
+ import org.apache.cayenne.modeler.pref.ComponentGeometry;
+ import org.apache.cayenne.modeler.pref.FSPath;
++import org.apache.cayenne.modeler.util.CayenneAction;
+ import org.apache.cayenne.modeler.util.CayenneController;
+ import org.apache.cayenne.modeler.util.FileFilters;
+ import org.apache.cayenne.modeler.util.state.ProjectStateUtil;
+ import org.apache.cayenne.project.Project;
++import org.apache.cayenne.project.ProjectLoader;
+ import org.apache.cayenne.project.validation.ProjectValidator;
++import org.apache.cayenne.resource.Resource;
+ import org.apache.cayenne.validation.ValidationFailure;
+ import org.apache.cayenne.validation.ValidationResult;
+ 
+@@ -305,6 +308,12 @@ public class CayenneModelerController extends CayenneController {
+         return dbImportController;
+     }
+ 
++    public Project openProjectResourse(Resource resource, CayenneAction cayenneAction) {
++        Project project = cayenneAction.getApplication().getInjector().getInstance(ProjectLoader.class).loadProject(resource);
++        projectOpenedAction(project);
++        return project;
++    }
++
+     class ExpireThread extends Thread {
+ 
+         int seconds;
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/OpenProjectAction.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/OpenProjectAction.java
+old mode 100644
+new mode 100755
+index 4f9271d4d..b41ba9466
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/OpenProjectAction.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/OpenProjectAction.java
+@@ -22,8 +22,6 @@ package org.apache.cayenne.modeler.action;
+ import org.apache.cayenne.modeler.Application;
+ import org.apache.cayenne.modeler.CayenneModelerController;
+ import org.apache.cayenne.modeler.dialog.ErrorDebugDialog;
+-import org.apache.cayenne.project.Project;
+-import org.apache.cayenne.project.ProjectLoader;
+ import org.apache.cayenne.project.upgrade.UpgradeMetaData;
+ import org.apache.cayenne.project.upgrade.UpgradeService;
+ import org.apache.cayenne.resource.Resource;
+@@ -172,19 +170,13 @@ public class OpenProjectAction extends ProjectAction {
+                     break;
+             }
+ 
+-            openProjectResourse(rootSource, controller);
++            controller.openProjectResourse(rootSource);
+         } catch (Exception ex) {
+             logObj.warn("Error loading project file.", ex);
+             ErrorDebugDialog.guiWarning(ex, "Error loading project");
+         }
+     }
+ 
+-    private Project openProjectResourse(Resource resource, CayenneModelerController controller) {
+-        Project project = getApplication().getInjector().getInstance(ProjectLoader.class).loadProject(resource);
+-        controller.projectOpenedAction(project);
+-        return project;
+-    }
+-
+     private boolean processUpgrades() {
+         // need an upgrade
+         int returnCode = JOptionPane.showConfirmDialog(

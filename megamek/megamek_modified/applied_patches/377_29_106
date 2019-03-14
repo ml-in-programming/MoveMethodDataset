@@ -1,0 +1,49 @@
+diff --git a/megamek/src/megamek/client/bot/ChatProcessor.java b/megamek/src/megamek/client/bot/ChatProcessor.java
+index c33ddad..21ddd1c 100644
+--- a/megamek/src/megamek/client/bot/ChatProcessor.java
++++ b/megamek/src/megamek/client/bot/ChatProcessor.java
+@@ -266,7 +266,7 @@ public class ChatProcessor {
+                 princess.sendChat(msg);
+                 return;
+             }
+-            princess.setVerbosity(newLevel);
++            newLevel.setVerbosity(princess);
+             msg = "Verbosity set to " + princess.getVerbosity().toString();
+             princess.log(getClass(), METHOD_NAME, LogLevel.DEBUG, msg);
+             princess.sendChat(msg);
+diff --git a/megamek/src/megamek/client/bot/princess/Princess.java b/megamek/src/megamek/client/bot/princess/Princess.java
+index 060b06b..257080c 100644
+--- a/megamek/src/megamek/client/bot/princess/Princess.java
++++ b/megamek/src/megamek/client/bot/princess/Princess.java
+@@ -156,10 +156,6 @@ public class Princess extends BotClient {
+         this.logger = logger;
+     }
+ 
+-    public void setVerbosity(final LogLevel level) {
+-        getBehaviorSettings().setVerbosity(level);
+-    }
+-
+     public LogLevel getVerbosity() {
+         return getBehaviorSettings().getVerbosity();
+     }
+diff --git a/megamek/src/megamek/common/logging/LogLevel.java b/megamek/src/megamek/common/logging/LogLevel.java
+index f090449..310e429 100644
+--- a/megamek/src/megamek/common/logging/LogLevel.java
++++ b/megamek/src/megamek/common/logging/LogLevel.java
+@@ -13,6 +13,7 @@
+  */
+ package megamek.common.logging;
+ 
++import megamek.client.bot.princess.Princess;
+ import megamek.common.annotations.Nullable;
+ import org.apache.log4j.Level;
+ 
+@@ -89,4 +90,7 @@ public enum LogLevel {
+         }
+         return null;
+     }
+-}
++
++    public void setVerbosity(Princess princess) {
++        princess.getBehaviorSettings().setVerbosity(this);
++    }}

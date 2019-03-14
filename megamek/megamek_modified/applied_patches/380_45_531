@@ -1,0 +1,88 @@
+diff --git a/megamek/src/megamek/client/bot/princess/FireControl.java b/megamek/src/megamek/client/bot/princess/FireControl.java
+index a106426..4d66fc1 100644
+--- a/megamek/src/megamek/client/bot/princess/FireControl.java
++++ b/megamek/src/megamek/client/bot/princess/FireControl.java
+@@ -1992,7 +1992,7 @@ public class FireControl {
+ 
+                 // If this attack produces heat and is not already included in the plan, check its utility.
+                 if ((0 <= leftoverHeatCapacity) &&
+-                    !bestPlans[leftoverHeatCapacity].containsWeapon(weaponFireInfo.getWeapon())) {
++                    !weaponFireInfo.getWeapon().containsWeapon(bestPlans[leftoverHeatCapacity])) {
+ 
+                     // make sure to pass along arm flip state from the alpha strike, if any
+                     final FiringPlan testPlan = new FiringPlan(target, alphaStrike.getFlipArms());
+diff --git a/megamek/src/megamek/client/bot/princess/FiringPlan.java b/megamek/src/megamek/client/bot/princess/FiringPlan.java
+index 1aa64f4..a3ea064 100644
+--- a/megamek/src/megamek/client/bot/princess/FiringPlan.java
++++ b/megamek/src/megamek/client/bot/princess/FiringPlan.java
+@@ -113,21 +113,6 @@ public class FiringPlan extends ArrayList<WeaponFireInfo> implements
+     }
+ 
+     /**
+-     * Searches the list of weapons contained in this plan to see if the given weapon is part of it.
+-     *
+-     * @param weapon The weapon being searched for.
+-     * @return TRUE if the given weapon is part of this plan.
+-     */
+-    synchronized boolean containsWeapon(Mounted weapon) {
+-        for (WeaponFireInfo weaponFireInfo : this) {
+-            if (weaponFireInfo.getWeapon() == weapon) {
+-                return true;
+-            }
+-        }
+-        return false;
+-    }
+-
+-    /**
+      * Builds a {@link Vector} of all the actions, {@link EntityAction}, that make up this firing plan.
+      *
+      * @return The list of actions as a vector.
+diff --git a/megamek/src/megamek/common/Mounted.java b/megamek/src/megamek/common/Mounted.java
+index 79afe8a..a9e64e9 100644
+--- a/megamek/src/megamek/common/Mounted.java
++++ b/megamek/src/megamek/common/Mounted.java
+@@ -27,6 +27,8 @@ import java.util.List;
+ import java.util.Set;
+ import java.util.Vector;
+ 
++import megamek.client.bot.princess.FiringPlan;
++import megamek.client.bot.princess.WeaponFireInfo;
+ import megamek.common.actions.WeaponAttackAction;
+ import megamek.common.options.OptionsConstants;
+ import megamek.common.options.WeaponQuirks;
+@@ -1919,4 +1921,18 @@ public class Mounted implements Serializable, RoundUpdated, PhaseUpdated {
+         }
+     }
+ 
++    /**
++     * Searches the list of weapons contained in this plan to see if the given weapon is part of it.
++     *
++     *
++     * @param weaponFireInfos@return TRUE if the given weapon is part of this plan.
++     */
++    public synchronized boolean containsWeapon(FiringPlan weaponFireInfos) {
++        for (WeaponFireInfo weaponFireInfo : weaponFireInfos) {
++            if (weaponFireInfo.getWeapon() == this) {
++                return true;
++            }
++        }
++        return false;
++    }
+ }
+diff --git a/megamek/unittests/megamek/client/bot/princess/FiringPlanTest.java b/megamek/unittests/megamek/client/bot/princess/FiringPlanTest.java
+index db03471..7137ebd 100644
+--- a/megamek/unittests/megamek/client/bot/princess/FiringPlanTest.java
++++ b/megamek/unittests/megamek/client/bot/princess/FiringPlanTest.java
+@@ -140,10 +140,10 @@ public class FiringPlanTest {
+     public void testContainsWeapon() {
+ 
+         // Test a weapon that is in the plan.
+-        Assert.assertTrue(testFiringPlan.containsWeapon(mockPPC));
++        Assert.assertTrue(mockPPC.containsWeapon(testFiringPlan));
+ 
+         // Test a weapon that is not in the plan.
+-        Assert.assertFalse(testFiringPlan.containsWeapon(Mockito.mock(Mounted.class)));
++        Assert.assertFalse(Mockito.mock(Mounted.class).containsWeapon(testFiringPlan));
+     }
+ 
+     @Test

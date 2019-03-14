@@ -51,7 +51,7 @@ index 63015f9..f7da355 100644
      public static enum WeaponSortOrder {
          DEFAULT("DEFAULT"),
 diff --git a/megamek/src/megamek/common/actions/AbstractAttackAction.java b/megamek/src/megamek/common/actions/AbstractAttackAction.java
-index 81d5437..40e1f48 100644
+index 81d5437..7c0de3d 100644
 --- a/megamek/src/megamek/common/actions/AbstractAttackAction.java
 +++ b/megamek/src/megamek/common/actions/AbstractAttackAction.java
 @@ -28,7 +28,6 @@ import megamek.common.PlanetaryConditions;
@@ -67,7 +67,7 @@ index 81d5437..40e1f48 100644
                          SearchlightAttackAction saa = 
                                  (SearchlightAttackAction) a;
 -                        if (saa.willIlluminate(game, te)) {
-+                        if (te.willIlluminate(game, saa)) {
++                        if (te.willIlluminate(game, saa, null)) {
                              illuminated = true;
                              break;
                          }

@@ -1,0 +1,64 @@
+diff --git a/megamek/src/megamek/client/Client.java b/megamek/src/megamek/client/Client.java
+index cac35f6..f6e54ad 100644
+--- a/megamek/src/megamek/client/Client.java
++++ b/megamek/src/megamek/client/Client.java
+@@ -159,6 +159,16 @@ public class Client implements IClientCommandHandler {
+ 
+     ConnectionHandler packetUpdate;
+ 
++    public void deleteAllUnits() {
++        ArrayList<Entity> currentUnits = getGame().getPlayerEntities(
++                getLocalPlayer(), false);
++        ArrayList<Integer> ids = new ArrayList<Integer>(currentUnits.size());
++        for (Entity e : currentUnits){
++            ids.add(e.getId());
++        }
++        sendDeleteEntities(ids);
++    }
++
+     private class ConnectionHandler implements Runnable {
+ 
+         boolean shouldStop = false;
+diff --git a/megamek/src/megamek/client/ui/swing/ChatLounge.java b/megamek/src/megamek/client/ui/swing/ChatLounge.java
+index 1dbba3a..0f9566f 100644
+--- a/megamek/src/megamek/client/ui/swing/ChatLounge.java
++++ b/megamek/src/megamek/client/ui/swing/ChatLounge.java
+@@ -2724,7 +2724,7 @@ public class ChatLounge extends AbstractPhaseDisplay
+                         Messages.getString("ChatLounge.SelectBotOrPlayer")); //$NON-NLS-1$ //$NON-NLS-2$
+                 return;
+             }
+-            clientgui.deleteAllUnits(c);
++            c.deleteAllUnits();
+         } else if (ev.getSource().equals(butOptions)) {
+             // Make sure the game options dialog is editable.
+             if (!clientgui.getGameOptionsDialog().isEditable()) {
+diff --git a/megamek/src/megamek/client/ui/swing/ClientGUI.java b/megamek/src/megamek/client/ui/swing/ClientGUI.java
+index 22e240b..5bbd918 100644
+--- a/megamek/src/megamek/client/ui/swing/ClientGUI.java
++++ b/megamek/src/megamek/client/ui/swing/ClientGUI.java
+@@ -711,7 +711,7 @@ public class ClientGUI extends JPanel implements WindowListener, BoardViewListen
+             ignoreHotKeys = false;
+         }
+         if ("fileUnitsClear".equalsIgnoreCase(event.getActionCommand())) { //$NON-NLS-1$
+-            deleteAllUnits(client);
++            client.deleteAllUnits();
+         }
+         if ("fileUnitsReinforce".equalsIgnoreCase(event.getActionCommand())) { //$NON-NLS-1$
+             ignoreHotKeys = true;
+@@ -1552,16 +1552,6 @@ public class ClientGUI extends JPanel implements WindowListener, BoardViewListen
+         }
+     }
+ 
+-    public void deleteAllUnits(Client c) {
+-        ArrayList<Entity> currentUnits = c.getGame().getPlayerEntities(
+-                c.getLocalPlayer(), false);
+-        ArrayList<Integer> ids = new ArrayList<Integer>(currentUnits.size());
+-        for (Entity e : currentUnits){
+-            ids.add(e.getId());
+-        }
+-        c.sendDeleteEntities(ids);
+-    }
+-
+     /**
+      * Allow the player to save a list of entities to a MegaMek Unit List file.
+      * A "Save As" dialog will be displayed that allows the user to select the

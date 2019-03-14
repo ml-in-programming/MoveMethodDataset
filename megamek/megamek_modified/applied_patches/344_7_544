@@ -1,0 +1,119 @@
+diff --git a/megamek/src/megamek/client/ui/swing/boardview/StepSprite.java b/megamek/src/megamek/client/ui/swing/boardview/StepSprite.java
+index 5e88c9b..0656a1f 100644
+--- a/megamek/src/megamek/client/ui/swing/boardview/StepSprite.java
++++ b/megamek/src/megamek/client/ui/swing/boardview/StepSprite.java
+@@ -136,7 +136,7 @@ class StepSprite extends Sprite {
+             drawActiveVectors(step, stepPos, graph);
+         }
+ 
+-        drawConditions(step, stepPos, graph, col);
++        step.drawConditions(stepPos, graph, col);
+ 
+         Point offsetCostPos;
+         // draw arrows and cost for the step
+@@ -490,42 +490,6 @@ class StepSprite extends Sprite {
+         tempImage.flush();
+     }
+ 
+-    /**
+-     * draw conditions separate from the step, This allows me to keep
+-     * conditions on the Aero even when that step is erased (as per advanced
+-     * movement). For now, just evading and rolling. eventually loading and
+-     * unloading as well
+-     */
+-    private void drawConditions(MoveStep step, Point stepPos,
+-            Graphics graph, Color col) {
+-
+-        if (step.isEvading()) {
+-            String evade = Messages.getString("BoardView1.Evade"); //$NON-NLS-1$
+-            graph.setFont(new Font("SansSerif", Font.PLAIN, 12)); //$NON-NLS-1$
+-            int evadeX = (stepPos.x + 42)
+-                    - (graph.getFontMetrics(graph.getFont()).stringWidth(
+-                            evade) / 2);
+-            graph.setColor(Color.darkGray);
+-            graph.drawString(evade, evadeX, stepPos.y + 64);
+-            graph.setColor(col);
+-            graph.drawString(evade, evadeX - 1, stepPos.y + 63);
+-        }
+-
+-        if (step.isRolled()) {
+-            // Announce roll
+-            String roll = Messages.getString("BoardView1.Roll"); //$NON-NLS-1$
+-            graph.setFont(new Font("SansSerif", Font.PLAIN, 12)); //$NON-NLS-1$
+-            int rollX = (stepPos.x + 42)
+-                    - (graph.getFontMetrics(graph.getFont()).stringWidth(
+-                            roll) / 2);
+-            graph.setColor(Color.darkGray);
+-            graph.drawString(roll, rollX, stepPos.y + 18);
+-            graph.setColor(col);
+-            graph.drawString(roll, rollX - 1, stepPos.y + 17);
+-        }
+-
+-    }
+-
+     private void drawActiveVectors(MoveStep step, Point stepPos,
+             Graphics graph) {
+ 
+diff --git a/megamek/src/megamek/common/MoveStep.java b/megamek/src/megamek/common/MoveStep.java
+index 7b561b4..96d8ecf 100644
+--- a/megamek/src/megamek/common/MoveStep.java
++++ b/megamek/src/megamek/common/MoveStep.java
+@@ -22,12 +22,14 @@
+  */
+ package megamek.common;
+ 
++import java.awt.*;
+ import java.io.Serializable;
+ import java.util.ArrayList;
+ import java.util.Iterator;
+ import java.util.TreeMap;
+ import java.util.Vector;
+ 
++import megamek.client.ui.Messages;
+ import megamek.common.MovePath.MoveStepType;
+ import megamek.common.options.OptionsConstants;
+ 
+@@ -3977,4 +3979,43 @@ public class MoveStep implements Serializable {
+         }
+         return entity instanceof Mech;
+     }
++
++    /**
++     * draw conditions separate from the step, This allows me to keep
++     * conditions on the Aero even when that step is erased (as per advanced
++     * movement). For now, just evading and rolling. eventually loading and
++     * unloading as well
++     * @param stepPos
++     * @param graph
++     * @param col
++     */
++    public void drawConditions(Point stepPos,
++                               Graphics graph, Color col) {
++
++        if (isEvading()) {
++            String evade = megamek.client.ui.Messages.getString("BoardView1.Evade"); //$NON-NLS-1$
++            graph.setFont(new Font("SansSerif", Font.PLAIN, 12)); //$NON-NLS-1$
++            int evadeX = (stepPos.x + 42)
++                    - (graph.getFontMetrics(graph.getFont()).stringWidth(
++                            evade) / 2);
++            graph.setColor(Color.darkGray);
++            graph.drawString(evade, evadeX, stepPos.y + 64);
++            graph.setColor(col);
++            graph.drawString(evade, evadeX - 1, stepPos.y + 63);
++        }
++
++        if (isRolled()) {
++            // Announce roll
++            String roll = Messages.getString("BoardView1.Roll"); //$NON-NLS-1$
++            graph.setFont(new Font("SansSerif", Font.PLAIN, 12)); //$NON-NLS-1$
++            int rollX = (stepPos.x + 42)
++                    - (graph.getFontMetrics(graph.getFont()).stringWidth(
++                            roll) / 2);
++            graph.setColor(Color.darkGray);
++            graph.drawString(roll, rollX, stepPos.y + 18);
++            graph.setColor(col);
++            graph.drawString(roll, rollX - 1, stepPos.y + 17);
++        }
++
++    }
+ }

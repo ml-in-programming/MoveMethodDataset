@@ -1,0 +1,79 @@
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/dbimport/MoveImportNodeAction.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/dbimport/MoveImportNodeAction.java
+old mode 100644
+new mode 100755
+index cf8f44e30..4642bf41e
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/dbimport/MoveImportNodeAction.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/dbimport/MoveImportNodeAction.java
+@@ -100,14 +100,14 @@ public class MoveImportNodeAction extends CayenneAction {
+         } else {
+             selectedElement = foundNode;
+         }
+-        if ((nodeClassesIsSameTypes(sourceElement, selectedElement))
++        if ((sourceElement.nodeClassesIsSameTypes(selectedElement))
+                 && (sourceElement.getSimpleNodeName().equals(selectedElement.getSimpleNodeName()))) {
+             return false;
+         }
+         int childCount = selectedElement.getChildCount();
+         for (int i = 0; i < childCount; i++) {
+             DbImportTreeNode child = (DbImportTreeNode) selectedElement.getChildAt(i);
+-            if ((nodeClassesIsSameTypes(sourceElement, child))
++            if ((sourceElement.nodeClassesIsSameTypes(child))
+                 && (sourceElement.getSimpleNodeName().equals(child.getSimpleNodeName()))) {
+                 return false;
+             }
+@@ -205,25 +205,6 @@ public class MoveImportNodeAction extends CayenneAction {
+         }
+     }
+ 
+-    private boolean nodeClassesIsSameTypes(DbImportTreeNode sourceElement, DbImportTreeNode selectedElement) {
+-        if (sourceElement.getUserObject().getClass() == selectedElement.getUserObject().getClass()) {
+-            return true;
+-        }
+-        if (sourceElement.getUserObject().getClass() == IncludeTable.class) {
+-            if ((selectedElement.getUserObject().getClass() == IncludeTable.class)
+-                || (selectedElement.getUserObject().getClass() == ExcludeTable.class)) {
+-                return true;
+-            }
+-        }
+-        if (sourceElement.getUserObject().getClass() == IncludeProcedure.class) {
+-            if ((selectedElement.getUserObject().getClass() == IncludeProcedure.class)
+-                    || (selectedElement.getUserObject().getClass() == ExcludeProcedure.class)) {
+-                return true;
+-            }
+-        }
+-        return false;
+-    }
+-
+     public void setSourceTree(DbImportTree sourceTree) {
+         this.sourceTree = sourceTree;
+     }
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/load/DbImportTreeNode.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/load/DbImportTreeNode.java
+old mode 100644
+new mode 100755
+index 98cc33861..ff92d1602
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/load/DbImportTreeNode.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/load/DbImportTreeNode.java
+@@ -210,4 +210,23 @@ public class DbImportTreeNode extends DefaultMutableTreeNode {
+     public void setLoaded(boolean loaded) {
+         isLoaded = loaded;
+     }
++
++    public boolean nodeClassesIsSameTypes(DbImportTreeNode selectedElement) {
++        if (getUserObject().getClass() == selectedElement.getUserObject().getClass()) {
++            return true;
++        }
++        if (getUserObject().getClass() == IncludeTable.class) {
++            if ((selectedElement.getUserObject().getClass() == IncludeTable.class)
++                || (selectedElement.getUserObject().getClass() == ExcludeTable.class)) {
++                return true;
++            }
++        }
++        if (getUserObject().getClass() == IncludeProcedure.class) {
++            if ((selectedElement.getUserObject().getClass() == IncludeProcedure.class)
++                    || (selectedElement.getUserObject().getClass() == ExcludeProcedure.class)) {
++                return true;
++            }
++        }
++        return false;
++    }
+ }

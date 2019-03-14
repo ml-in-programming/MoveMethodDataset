@@ -1,0 +1,86 @@
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/InNode.java b/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/InNode.java
+old mode 100644
+new mode 100755
+index fd0890343..2523504ba
+--- a/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/InNode.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/InNode.java
+@@ -62,4 +62,10 @@ public class InNode extends Node {
+         return not;
+     }
+ 
++    public InNode newSliceNode(Node arg, ValueNode valueNode, Object slice) {
++        InNode nextNode = new InNode(isNot());
++        nextNode.addChild(arg.deepCopy());
++        nextNode.addChild(new ValueNode(slice, valueNode.isArray(), valueNode.getAttribute()));
++        return nextNode;
++    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/dba/oracle/OracleSQLTreeProcessor.java b/cayenne-server/src/main/java/org/apache/cayenne/dba/oracle/OracleSQLTreeProcessor.java
+old mode 100644
+new mode 100755
+index ba84579db..8e7e5d22f
+--- a/cayenne-server/src/main/java/org/apache/cayenne/dba/oracle/OracleSQLTreeProcessor.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/dba/oracle/OracleSQLTreeProcessor.java
+@@ -108,39 +108,39 @@ public class OracleSQLTreeProcessor extends BaseSQLTreeProcessor {
+         // need to slice for batches of 1000 values
+         if(value instanceof Object[]) {
+             for(Object[] slice : ArrayUtil.sliceArray((Object[])value, ORACLE_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(child.newSliceNode(arg, valueNode, slice));
+             }
+         } else if(value instanceof int[]) {
+             for(int[] slice : ArrayUtil.sliceArray((int[])value, ORACLE_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(child.newSliceNode(arg, valueNode, slice));
+             }
+         } else if(value instanceof long[]) {
+             for(long[] slice : ArrayUtil.sliceArray((long[])value, ORACLE_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(child.newSliceNode(arg, valueNode, slice));
+             }
+         } else if(value instanceof float[]) {
+             for(float[] slice : ArrayUtil.sliceArray((float[])value, ORACLE_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(child.newSliceNode(arg, valueNode, slice));
+             }
+         } else if(value instanceof double[]) {
+             for(double[] slice : ArrayUtil.sliceArray((double[])value, ORACLE_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(child.newSliceNode(arg, valueNode, slice));
+             }
+         } else if(value instanceof short[]) {
+             for(short[] slice : ArrayUtil.sliceArray((short[])value, ORACLE_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(child.newSliceNode(arg, valueNode, slice));
+             }
+         } else if(value instanceof char[]) {
+             for(char[] slice : ArrayUtil.sliceArray((char[])value, ORACLE_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(child.newSliceNode(arg, valueNode, slice));
+             }
+         } else if(value instanceof boolean[]) {
+             for(boolean[] slice : ArrayUtil.sliceArray((boolean[])value, ORACLE_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(child.newSliceNode(arg, valueNode, slice));
+             }
+         } else if(value instanceof byte[]) {
+             for(byte[] slice : ArrayUtil.sliceArray((byte[])value, ORACLE_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(child.newSliceNode(arg, valueNode, slice));
+             }
+         }
+ 
+@@ -155,13 +155,6 @@ public class OracleSQLTreeProcessor extends BaseSQLTreeProcessor {
+         parent.replaceChild(index, exp.build());
+     }
+ 
+-    private InNode newSliceNode(InNode child, Node arg, ValueNode valueNode, Object slice) {
+-        InNode nextNode = new InNode(child.isNot());
+-        nextNode.addChild(arg.deepCopy());
+-        nextNode.addChild(new ValueNode(slice, valueNode.isArray(), valueNode.getAttribute()));
+-        return nextNode;
+-    }
+-
+     @Override
+     protected void onFunctionNode(Node parent, FunctionNode child, int index) {
+         String functionName = child.getFunctionName();

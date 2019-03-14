@@ -2,10 +2,11 @@ diff --git a/megamek/src/megamek/client/ratgenerator/AbstractUnitRecord.java b/m
 index d93ec09..0d5c461 100644
 --- a/megamek/src/megamek/client/ratgenerator/AbstractUnitRecord.java
 +++ b/megamek/src/megamek/client/ratgenerator/AbstractUnitRecord.java
-@@ -40,31 +40,6 @@ public class AbstractUnitRecord {
+@@ -39,31 +39,6 @@ public class AbstractUnitRecord {
+ 		clan = false;
  		includedFactions = new HashSet<String>();
  	}
- 
+-	
 -	/**
 -	 * Adjusts availability rating for the first couple years after introduction.
 -	 * 
@@ -30,10 +31,9 @@ index d93ec09..0d5c461 100644
 -		}
 -		return retVal;
 -	}
--
+ 
  	public String getChassis() {
  		return chassis;
- 	}
 diff --git a/megamek/src/megamek/client/ratgenerator/AvailabilityRating.java b/megamek/src/megamek/client/ratgenerator/AvailabilityRating.java
 index f384127..4320a33 100644
 --- a/megamek/src/megamek/client/ratgenerator/AvailabilityRating.java
@@ -68,7 +68,7 @@ index f384127..4320a33 100644
 +    }
  }
 diff --git a/megamek/src/megamek/client/ratgenerator/RATGenerator.java b/megamek/src/megamek/client/ratgenerator/RATGenerator.java
-index 1e369b5..1dcbe2d 100644
+index 1e369b5..fd26219 100644
 --- a/megamek/src/megamek/client/ratgenerator/RATGenerator.java
 +++ b/megamek/src/megamek/client/ratgenerator/RATGenerator.java
 @@ -375,9 +375,9 @@ public class RATGenerator {
@@ -76,10 +76,10 @@ index 1e369b5..1dcbe2d 100644
  				continue;
  			}
 -			double cAv = cRec.calcAvailability(ar, ratingLevel, numRatingLevels, early);
-+			double cAv = ar.calcAvailability(ratingLevel, numRatingLevels, early);
++			double cAv = ar.calcAvailability(ratingLevel, numRatingLevels, early, null);
  			cAv = interpolate(cAv,
 -					cRec.calcAvailability(ar, ratingLevel, numRatingLevels, late),
-+					ar.calcAvailability(ratingLevel, numRatingLevels, late),
++					ar.calcAvailability(ratingLevel, numRatingLevels, late, null),
  					Math.max(early, cRec.getIntroYear()), late, year);
  			if (cAv > 0) {
  				double totalModelWeight = cRec.totalModelWeight(early,
@@ -88,10 +88,10 @@ index 1e369b5..1dcbe2d 100644
  						continue;
  					}
 -					double mAv = mRec.calcAvailability(ar, ratingLevel, numRatingLevels, early);
-+					double mAv = ar.calcAvailability(ratingLevel, numRatingLevels, early);
++					double mAv = ar.calcAvailability(ratingLevel, numRatingLevels, early, null);
  					mAv = interpolate(mAv,
 -							mRec.calcAvailability(ar, ratingLevel, numRatingLevels, late),
-+							ar.calcAvailability(ratingLevel, numRatingLevels, late),
++							ar.calcAvailability(ratingLevel, numRatingLevels, late, null),
  							Math.max(early, mRec.getIntroYear()), late, year);
  					Double adjMAv = MissionRole.adjustAvailabilityByRole(mAv, roles, mRec, year, roleStrictness);
  					if (adjMAv != null) {

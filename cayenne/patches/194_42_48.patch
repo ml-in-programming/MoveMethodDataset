@@ -1,0 +1,85 @@
+diff --git a/cayenne-cgen/src/main/java/org/apache/cayenne/gen/ClassGenerationAction.java b/cayenne-cgen/src/main/java/org/apache/cayenne/gen/ClassGenerationAction.java
+old mode 100644
+new mode 100755
+index e149b3464..a143923e4
+--- a/cayenne-cgen/src/main/java/org/apache/cayenne/gen/ClassGenerationAction.java
++++ b/cayenne-cgen/src/main/java/org/apache/cayenne/gen/ClassGenerationAction.java
+@@ -103,32 +103,7 @@ public class ClassGenerationAction {
+ 		}
+ 	}
+ 
+-	public String customTemplateName(TemplateType type) {
+-		switch (type) {
+-			case ENTITY_SINGLE_CLASS:
+-				return cgenConfiguration.getTemplate();
+-			case ENTITY_SUBCLASS:
+-				return cgenConfiguration.getTemplate();
+-			case ENTITY_SUPERCLASS:
+-				return cgenConfiguration.getSuperTemplate();
+-			case EMBEDDABLE_SINGLE_CLASS:
+-				return cgenConfiguration.getEmbeddableTemplate();
+-			case EMBEDDABLE_SUBCLASS:
+-				return cgenConfiguration.getEmbeddableTemplate();
+-			case EMBEDDABLE_SUPERCLASS:
+-				return cgenConfiguration.getEmbeddableSuperTemplate();
+-			case DATAMAP_SINGLE_CLASS:
+-				return cgenConfiguration.getQueryTemplate();
+-			case DATAMAP_SUPERCLASS:
+-				return cgenConfiguration.getQuerySuperTemplate();
+-			case DATAMAP_SUBCLASS:
+-				return cgenConfiguration.getQueryTemplate();
+-			default:
+-				throw new IllegalArgumentException("Invalid template type: " + type);
+-		}
+-	}
+-
+-    /**
++	/**
+      * VelocityContext initialization method called once per artifact.
+      */
+     public void resetContextForArtifact(Artifact artifact) {
+@@ -269,7 +244,7 @@ public class ClassGenerationAction {
+ 
+ 	private Template getTemplate(TemplateType type) {
+ 
+-		String templateName = customTemplateName(type);
++		String templateName = type.customTemplateName(this);
+ 		if (templateName == null) {
+ 			templateName = defaultTemplateName(type);
+ 		}
+diff --git a/cayenne-cgen/src/main/java/org/apache/cayenne/gen/TemplateType.java b/cayenne-cgen/src/main/java/org/apache/cayenne/gen/TemplateType.java
+old mode 100644
+new mode 100755
+index 109627ed9..f5cda7f55
+--- a/cayenne-cgen/src/main/java/org/apache/cayenne/gen/TemplateType.java
++++ b/cayenne-cgen/src/main/java/org/apache/cayenne/gen/TemplateType.java
+@@ -52,4 +52,28 @@ public enum TemplateType {
+     public boolean isSuperclass() {
+         return superclass;
+     }
+-}
++
++    public String customTemplateName(ClassGenerationAction classGenerationAction) {
++        switch (this) {
++            case ENTITY_SINGLE_CLASS:
++                return classGenerationAction.cgenConfiguration.getTemplate();
++            case ENTITY_SUBCLASS:
++                return classGenerationAction.cgenConfiguration.getTemplate();
++            case ENTITY_SUPERCLASS:
++                return classGenerationAction.cgenConfiguration.getSuperTemplate();
++            case EMBEDDABLE_SINGLE_CLASS:
++                return classGenerationAction.cgenConfiguration.getEmbeddableTemplate();
++            case EMBEDDABLE_SUBCLASS:
++                return classGenerationAction.cgenConfiguration.getEmbeddableTemplate();
++            case EMBEDDABLE_SUPERCLASS:
++                return classGenerationAction.cgenConfiguration.getEmbeddableSuperTemplate();
++            case DATAMAP_SINGLE_CLASS:
++                return classGenerationAction.cgenConfiguration.getQueryTemplate();
++            case DATAMAP_SUPERCLASS:
++                return classGenerationAction.cgenConfiguration.getQuerySuperTemplate();
++            case DATAMAP_SUBCLASS:
++                return classGenerationAction.cgenConfiguration.getQueryTemplate();
++            default:
++                throw new IllegalArgumentException("Invalid template type: " + this);
++        }
++    }}

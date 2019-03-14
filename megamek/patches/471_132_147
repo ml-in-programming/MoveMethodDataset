@@ -44,22 +44,20 @@ index 7873826..86b623e 100644
          CHASSIS, ENGINE, ARMOR, JUMPJET, COMMUNICATIONS, TARGETING;
  
 diff --git a/megamek/src/megamek/common/templates/AeroTROView.java b/megamek/src/megamek/common/templates/AeroTROView.java
-index 5a1cb38..acf7b37 100644
+index 5a1cb38..410d3f5 100644
 --- a/megamek/src/megamek/common/templates/AeroTROView.java
 +++ b/megamek/src/megamek/common/templates/AeroTROView.java
-@@ -106,8 +106,8 @@ public class AeroTROView extends TROView {
+@@ -106,7 +106,7 @@ public class AeroTROView extends TROView {
  
      private void addFluff() {
          addMechVeeAeroFluff(aero);
 -        setModelData("frameDesc", formatSystemFluff(EntityFluff.System.CHASSIS, aero.getFluff(),
--                () -> Messages.getString("TROView.Unknown")));
 +        setModelData("frameDesc", aero.getFluff().formatSystemFluff(EntityFluff.System.CHASSIS,
-+                () -> Messages.getString("TROView.Unknown"), AeroTROView.this));
+                 () -> Messages.getString("TROView.Unknown")));
      }
  
-     private static final int[][] AERO_ARMOR_LOCS = { { Aero.LOC_NOSE }, { Aero.LOC_RWING, Aero.LOC_LWING },
 diff --git a/megamek/src/megamek/common/templates/MechTROView.java b/megamek/src/megamek/common/templates/MechTROView.java
-index f362bbb..a25123f 100644
+index f362bbb..63ad383 100644
 --- a/megamek/src/megamek/common/templates/MechTROView.java
 +++ b/megamek/src/megamek/common/templates/MechTROView.java
 @@ -141,8 +141,8 @@ public class MechTROView extends TROView {
@@ -68,13 +66,13 @@ index f362bbb..a25123f 100644
          setModelData("chassisDesc",
 -                formatSystemFluff(EntityFluff.System.CHASSIS, mech.getFluff(), () -> formatChassisDesc()));
 -        setModelData("jjDesc", formatSystemFluff(EntityFluff.System.JUMPJET, mech.getFluff(), () -> formatJJDesc()));
-+                mech.getFluff().formatSystemFluff(EntityFluff.System.CHASSIS, () -> formatChassisDesc(), MechTROView.this));
-+        setModelData("jjDesc", mech.getFluff().formatSystemFluff(EntityFluff.System.JUMPJET, () -> formatJJDesc(), MechTROView.this));
++                mech.getFluff().formatSystemFluff(EntityFluff.System.CHASSIS, () -> formatChassisDesc()));
++        setModelData("jjDesc", mech.getFluff().formatSystemFluff(EntityFluff.System.JUMPJET, () -> formatJJDesc()));
          setModelData("jumpCapacity", mech.getJumpMP() * 30);
      }
  
 diff --git a/megamek/src/megamek/common/templates/ProtomechTROView.java b/megamek/src/megamek/common/templates/ProtomechTROView.java
-index 213801f..686bd0a 100644
+index 213801f..6da3107 100644
 --- a/megamek/src/megamek/common/templates/ProtomechTROView.java
 +++ b/megamek/src/megamek/common/templates/ProtomechTROView.java
 @@ -99,10 +99,10 @@ public class ProtomechTROView extends TROView {
@@ -82,11 +80,11 @@ index 213801f..686bd0a 100644
          addMechVeeAeroFluff(proto);
          if (proto.getOriginalJumpMP() > 0) {
 -            setModelData("chassisDesc", formatSystemFluff(EntityFluff.System.CHASSIS, proto.getFluff(), () -> ""));
-+            setModelData("chassisDesc", proto.getFluff().formatSystemFluff(EntityFluff.System.CHASSIS, () -> "", ProtomechTROView.this));
++            setModelData("chassisDesc", proto.getFluff().formatSystemFluff(EntityFluff.System.CHASSIS, () -> ""));
          }
          if (!proto.isGlider()) {
 -            setModelData("jjDesc", formatSystemFluff(EntityFluff.System.JUMPJET, proto.getFluff(), () -> ""));
-+            setModelData("jjDesc", proto.getFluff().formatSystemFluff(EntityFluff.System.JUMPJET, () -> "", ProtomechTROView.this));
++            setModelData("jjDesc", proto.getFluff().formatSystemFluff(EntityFluff.System.JUMPJET, () -> ""));
              setModelData("jumpCapacity", proto.getJumpMP() * 30);
          }
          if (proto.isGlider()) {
@@ -161,17 +159,15 @@ index 9ff45d9..c0b5a2a 100644
      }
  
 diff --git a/megamek/src/megamek/common/templates/VehicleTROView.java b/megamek/src/megamek/common/templates/VehicleTROView.java
-index 08afc2e..a6b33de 100644
+index 08afc2e..009b62f 100644
 --- a/megamek/src/megamek/common/templates/VehicleTROView.java
 +++ b/megamek/src/megamek/common/templates/VehicleTROView.java
-@@ -114,8 +114,8 @@ public class VehicleTROView extends TROView {
+@@ -114,7 +114,7 @@ public class VehicleTROView extends TROView {
      private void addFluff() {
          addMechVeeAeroFluff(tank);
          if (tank.getJumpMP() > 0) {
 -            setModelData("jjDesc", formatSystemFluff(EntityFluff.System.JUMPJET, tank.getFluff(),
--                    () -> Messages.getString("TROView.jjVehicle")));
 +            setModelData("jjDesc", tank.getFluff().formatSystemFluff(EntityFluff.System.JUMPJET,
-+                    () -> Messages.getString("TROView.jjVehicle"), VehicleTROView.this));
+                     () -> Messages.getString("TROView.jjVehicle")));
              setModelData("jumpCapacity", tank.getJumpMP() * 30);
          }
-     }

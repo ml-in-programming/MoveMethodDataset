@@ -1,0 +1,68 @@
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/access/translator/procedure/ProcedureTranslator.java b/cayenne-server/src/main/java/org/apache/cayenne/access/translator/procedure/ProcedureTranslator.java
+old mode 100644
+new mode 100755
+index 100e52809..83b8d73d5
+--- a/cayenne-server/src/main/java/org/apache/cayenne/access/translator/procedure/ProcedureTranslator.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/access/translator/procedure/ProcedureTranslator.java
+@@ -192,7 +192,7 @@ public class ProcedureTranslator {
+ 				// !Stored procedure parameter can be both in and out
+ 				// at the same time
+ 				if (param.isOutParam()) {
+-					setOutParam(stmt, param, i + 1);
++					param.setOutParam(stmt, i + 1);
+ 				}
+ 
+ 				if (param.isInParameter()) {
+@@ -238,17 +238,4 @@ public class ProcedureTranslator {
+ 		adapter.bindParameter(stmt, binding);
+ 	}
+ 
+-	/**
+-	 * Sets a single OUT parameter of the CallableStatement.
+-	 */
+-	protected void setOutParam(CallableStatement stmt, ProcedureParameter param, int pos)
+-			throws Exception {
+-
+-		int precision = param.getPrecision();
+-		if (precision >= 0) {
+-			stmt.registerOutParameter(pos, param.getType(), precision);
+-		} else {
+-			stmt.registerOutParameter(pos, param.getType());
+-		}
+-	}
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/map/ProcedureParameter.java b/cayenne-server/src/main/java/org/apache/cayenne/map/ProcedureParameter.java
+old mode 100644
+new mode 100755
+index b9fb55a86..9d02b27c6
+--- a/cayenne-server/src/main/java/org/apache/cayenne/map/ProcedureParameter.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/map/ProcedureParameter.java
+@@ -20,6 +20,7 @@
+ package org.apache.cayenne.map;
+ 
+ import java.io.Serializable;
++import java.sql.CallableStatement;
+ 
+ import org.apache.cayenne.configuration.ConfigurationNode;
+ import org.apache.cayenne.configuration.ConfigurationNodeVisitor;
+@@ -190,4 +191,20 @@ public class ProcedureParameter implements ConfigurationNode, CayenneMapEntry,
+     public void setProcedure(Procedure procedure) {
+         this.procedure = procedure;
+     }
++
++    /**
++     * Sets a single OUT parameter of the CallableStatement.
++     * @param stmt
++     * @param pos
++     */
++    public void setOutParam(CallableStatement stmt, int pos)
++            throws Exception {
++
++        int precision = getPrecision();
++        if (precision >= 0) {
++            stmt.registerOutParameter(pos, getType(), precision);
++        } else {
++            stmt.registerOutParameter(pos, getType());
++        }
++    }
+ }

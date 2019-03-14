@@ -1,0 +1,119 @@
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/ObjAttributeTableModel.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/ObjAttributeTableModel.java
+old mode 100644
+new mode 100755
+index 61fb98bb0..9abdb3f8f
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/ObjAttributeTableModel.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/ObjAttributeTableModel.java
+@@ -19,9 +19,7 @@
+ 
+ package org.apache.cayenne.modeler.editor;
+ 
+-import org.apache.cayenne.CayenneRuntimeException;
+ import org.apache.cayenne.configuration.DataChannelDescriptor;
+-import org.apache.cayenne.dba.TypesMapping;
+ import org.apache.cayenne.map.Attribute;
+ import org.apache.cayenne.map.DbAttribute;
+ import org.apache.cayenne.map.DbEntity;
+@@ -183,7 +181,7 @@ public class ObjAttributeTableModel extends CayenneTableModel<ObjAttributeWrappe
+             case DB_ATTRIBUTE:
+                 return getDBAttribute(attribute, dbAttribute);
+             case DB_ATTRIBUTE_TYPE:
+-                return getDBAttributeType(attribute, dbAttribute);
++                return attribute.getDBAttributeType(dbAttribute);
+             case COMMENT:
+                 return getComment(attribute.getValue());
+             default:
+@@ -206,31 +204,6 @@ public class ObjAttributeTableModel extends CayenneTableModel<ObjAttributeWrappe
+         return dbAttribute.getName();
+     }
+ 
+-    private String getDBAttributeType(ObjAttributeWrapper attribute, DbAttribute dbAttribute) {
+-        int type;
+-        if (dbAttribute == null) {
+-            if (!(attribute.getValue() instanceof EmbeddedAttribute)) {
+-                try {
+-                    type = TypesMapping.getSqlTypeByJava(attribute.getJavaClass());
+-                    // have to catch the exception here to make sure that
+-                    // exceptional situations
+-                    // (class doesn't exist, for example) don't prevent the gui
+-                    // from properly updating.
+-                }
+-                catch (CayenneRuntimeException cre) {
+-                    return null;
+-                }
+-            }
+-            else {
+-                return null;
+-            }
+-        }
+-        else {
+-            type = dbAttribute.getType();
+-        }
+-        return TypesMapping.getSqlNameByType(type);
+-    }
+-
+     public CellEditorForAttributeTable setCellEditor(
+             Collection<String> nameAttr,
+             CayenneTable table) {
+@@ -463,9 +436,9 @@ public class ObjAttributeTableModel extends CayenneTableModel<ObjAttributeWrappe
+                     valToCompare2 = getDBAttribute(o2, o2.getDbAttribute());
+                     break;
+                 case DB_ATTRIBUTE_TYPE:
+-                    valToCompare1 = getDBAttributeType(o1, o1
++                    valToCompare1 = o1.getDBAttributeType(o1
+                             .getDbAttribute());
+-                    valToCompare2 = getDBAttributeType(o2, o2
++                    valToCompare2 = o2.getDBAttributeType(o2
+                             .getDbAttribute());
+                     break;
+                 default:
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/wrapper/ObjAttributeWrapper.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/wrapper/ObjAttributeWrapper.java
+old mode 100644
+new mode 100755
+index bf5530ab5..de0d14347
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/wrapper/ObjAttributeWrapper.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/wrapper/ObjAttributeWrapper.java
+@@ -20,11 +20,10 @@ package org.apache.cayenne.modeler.editor.wrapper;
+ 
+ import java.util.List;
+ 
++import org.apache.cayenne.CayenneRuntimeException;
++import org.apache.cayenne.dba.TypesMapping;
+ import org.apache.cayenne.exp.ExpressionException;
+-import org.apache.cayenne.map.DbAttribute;
+-import org.apache.cayenne.map.Entity;
+-import org.apache.cayenne.map.ObjAttribute;
+-import org.apache.cayenne.map.ObjEntity;
++import org.apache.cayenne.map.*;
+ import org.apache.cayenne.modeler.editor.validation.ObjAttributeWrapperValidator;
+ import org.apache.cayenne.modeler.util.ProjectUtil;
+ import org.apache.cayenne.validation.ValidationFailure;
+@@ -163,4 +162,28 @@ public class ObjAttributeWrapper implements Wrapper<ObjAttribute> {
+         return objAttribute.getDbAttributePath();
+     }
+ 
++    public String getDBAttributeType(DbAttribute dbAttribute) {
++        int type;
++        if (dbAttribute == null) {
++            if (!(getValue() instanceof EmbeddedAttribute)) {
++                try {
++                    type = TypesMapping.getSqlTypeByJava(getJavaClass());
++                    // have to catch the exception here to make sure that
++                    // exceptional situations
++                    // (class doesn't exist, for example) don't prevent the gui
++                    // from properly updating.
++                }
++                catch (CayenneRuntimeException cre) {
++                    return null;
++                }
++            }
++            else {
++                return null;
++            }
++        }
++        else {
++            type = dbAttribute.getType();
++        }
++        return TypesMapping.getSqlNameByType(type);
++    }
+ }

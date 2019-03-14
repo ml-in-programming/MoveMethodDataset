@@ -1,0 +1,77 @@
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/FunctionNode.java b/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/FunctionNode.java
+old mode 100644
+new mode 100755
+index 3673ed0f7..259d8b562
+--- a/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/FunctionNode.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/FunctionNode.java
+@@ -128,4 +128,24 @@ public class FunctionNode extends Node {
+         // has alias and not in result node
+         return alias != null && notInResultNode();
+     }
++
++    public Node getReplacementForFunction() {
++        switch (getFunctionName()) {
++            case "SUBSTRING":
++                return new FunctionNode("SUBSTR", getAlias(), true);
++            case "DAY_OF_MONTH":
++                return new FunctionNode("DAY", getAlias(), true);
++            case "DAY_OF_WEEK":
++                return new FunctionNode("DAYOFWEEK", getAlias(), true);
++            case "DAY_OF_YEAR":
++                return new FunctionNode("DAYOFYEAR", getAlias(), true);
++            case "CURRENT_DATE":
++            case "CURRENT_TIME":
++            case "CURRENT_TIMESTAMP":
++                return new FunctionNode(getFunctionName(), getAlias(), false);
++            case "CONCAT":
++                return new OpExpressionNode("||");
++        }
++        return null;
++    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/dba/db2/DB2SQLTreeProcessor.java b/cayenne-server/src/main/java/org/apache/cayenne/dba/db2/DB2SQLTreeProcessor.java
+old mode 100644
+new mode 100755
+index 7b31a2c25..a5e300123
+--- a/cayenne-server/src/main/java/org/apache/cayenne/dba/db2/DB2SQLTreeProcessor.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/dba/db2/DB2SQLTreeProcessor.java
+@@ -20,7 +20,6 @@
+ package org.apache.cayenne.dba.db2;
+ 
+ import org.apache.cayenne.access.sqlbuilder.sqltree.ColumnNode;
+-import org.apache.cayenne.access.sqlbuilder.sqltree.OpExpressionNode;
+ import org.apache.cayenne.access.sqlbuilder.sqltree.FunctionNode;
+ import org.apache.cayenne.access.sqlbuilder.sqltree.LimitOffsetNode;
+ import org.apache.cayenne.access.sqlbuilder.sqltree.Node;
+@@ -56,30 +55,10 @@ public class DB2SQLTreeProcessor extends BaseSQLTreeProcessor {
+ 
+     @Override
+     protected void onFunctionNode(Node parent, FunctionNode child, int index) {
+-        Node replacement = getReplacementForFunction(child);
++        Node replacement = child.getReplacementForFunction();
+         if(replacement != null) {
+             replaceChild(parent, index, replacement);
+         }
+     }
+ 
+-    private Node getReplacementForFunction(FunctionNode child) {
+-        switch (child.getFunctionName()) {
+-            case "SUBSTRING":
+-                return new FunctionNode("SUBSTR", child.getAlias(), true);
+-            case "DAY_OF_MONTH":
+-                return new FunctionNode("DAY", child.getAlias(), true);
+-            case "DAY_OF_WEEK":
+-                return new FunctionNode("DAYOFWEEK", child.getAlias(), true);
+-            case "DAY_OF_YEAR":
+-                return new FunctionNode("DAYOFYEAR", child.getAlias(), true);
+-            case "CURRENT_DATE":
+-            case "CURRENT_TIME":
+-            case "CURRENT_TIMESTAMP":
+-                return new FunctionNode(child.getFunctionName(), child.getAlias(), false);
+-            case "CONCAT":
+-                return new OpExpressionNode("||");
+-        }
+-        return null;
+-    }
+-
+ }

@@ -1,0 +1,123 @@
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/DataRow.java b/cayenne-server/src/main/java/org/apache/cayenne/DataRow.java
+old mode 100644
+new mode 100755
+index ed1cf57e6..07c81f043
+--- a/cayenne-server/src/main/java/org/apache/cayenne/DataRow.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/DataRow.java
+@@ -23,7 +23,6 @@ import java.util.HashMap;
+ import java.util.Map;
+ import java.util.concurrent.atomic.AtomicLong;
+ 
+-import org.apache.cayenne.map.DbRelationship;
+ import org.apache.cayenne.util.ToStringBuilder;
+ import org.apache.cayenne.util.Util;
+ 
+@@ -114,21 +113,6 @@ public class DataRow extends HashMap<String, Object> {
+         return diff;
+     }
+ 
+-    /**
+-     * Returns an ObjectId of an object on the other side of the to-one relationship, for
+-     * this DataRow representing a source of relationship. Returns null if snapshot FK
+-     * columns indicate a null to-one relationship.
+-     */
+-    public ObjectId createTargetObjectId(String entityName, DbRelationship relationship) {
+-
+-        if (relationship.isToMany()) {
+-            throw new CayenneRuntimeException("Only 'to one' can have a target ObjectId.");
+-        }
+-
+-        Map<String, Object> target = relationship.targetPkSnapshotWithSrcSnapshot(this);
+-        return (target != null) ? ObjectId.of(entityName, target) : null;
+-    }
+-
+     @Override
+     public String toString() {
+         return new ToStringBuilder(this).append("values", super.toString()).append(
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/access/DataDomainQueryAction.java b/cayenne-server/src/main/java/org/apache/cayenne/access/DataDomainQueryAction.java
+old mode 100644
+new mode 100755
+index ad4f3429b..0be9cf9ab
+--- a/cayenne-server/src/main/java/org/apache/cayenne/access/DataDomainQueryAction.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/access/DataDomainQueryAction.java
+@@ -249,7 +249,7 @@ class DataDomainQueryAction implements QueryRouter, OperationObserver {
+                 return !DONE;
+             }
+ 
+-            ObjectId targetId = sourceRow.createTargetObjectId(relationship.getTargetEntityName(), dbRelationship);
++            ObjectId targetId = dbRelationship.createTargetObjectId(relationship.getTargetEntityName(), sourceRow);
+ 
+             // null id means that FK is null...
+             if (targetId == null) {
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/access/DataRowUtils.java b/cayenne-server/src/main/java/org/apache/cayenne/access/DataRowUtils.java
+old mode 100644
+new mode 100755
+index 64b119458..5e868d666
+--- a/cayenne-server/src/main/java/org/apache/cayenne/access/DataRowUtils.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/access/DataRowUtils.java
+@@ -181,9 +181,9 @@ class DataRowUtils {
+                         // must check before creating ObjectId because of partial
+                         // snapshots
+                         if (hasFK(dbRelationship, snapshot)) {
+-                            ObjectId id = snapshot.createTargetObjectId(
++                            ObjectId id = dbRelationship.createTargetObjectId(
+                                     relationship.getTargetEntityName(),
+-                                    dbRelationship);
++                                    snapshot);
+ 
+                             if (diff == null
+                                     || !diff.containsArcSnapshot(relationship.getName())
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/ashwood/AshwoodEntitySorter.java b/cayenne-server/src/main/java/org/apache/cayenne/ashwood/AshwoodEntitySorter.java
+old mode 100644
+new mode 100755
+index 4c1a947c4..3b07ae327
+--- a/cayenne-server/src/main/java/org/apache/cayenne/ashwood/AshwoodEntitySorter.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/ashwood/AshwoodEntitySorter.java
+@@ -307,7 +307,7 @@ public class AshwoodEntitySorter implements EntitySorter {
+ 
+ 		DataRow snapshot = (DataRow) result.get(0);
+ 
+-		ObjectId id = snapshot.createTargetObjectId(targetEntityName, finalRel);
++		ObjectId id = finalRel.createTargetObjectId(targetEntityName, snapshot);
+ 
+ 		// not using 'localObject', looking up in context instead, as within the
+ 		// sorter
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/map/DbRelationship.java b/cayenne-server/src/main/java/org/apache/cayenne/map/DbRelationship.java
+old mode 100644
+new mode 100755
+index ae2ee61fe..16e587702
+--- a/cayenne-server/src/main/java/org/apache/cayenne/map/DbRelationship.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/map/DbRelationship.java
+@@ -20,6 +20,8 @@
+ package org.apache.cayenne.map;
+ 
+ import org.apache.cayenne.CayenneRuntimeException;
++import org.apache.cayenne.DataRow;
++import org.apache.cayenne.ObjectId;
+ import org.apache.cayenne.configuration.ConfigurationNode;
+ import org.apache.cayenne.configuration.ConfigurationNodeVisitor;
+ import org.apache.cayenne.util.Util;
+@@ -492,6 +494,23 @@ public class DbRelationship extends Relationship implements ConfigurationNode {
+         return false;
+     }
+ 
++    /**
++     * Returns an ObjectId of an object on the other side of the to-one relationship, for
++     * this DataRow representing a source of relationship. Returns null if snapshot FK
++     * columns indicate a null to-one relationship.
++     * @param entityName
++     * @param dataRow
++     */
++    public ObjectId createTargetObjectId(String entityName, DataRow dataRow) {
++
++        if (isToMany()) {
++            throw new CayenneRuntimeException("Only 'to one' can have a target ObjectId.");
++        }
++
++        Map<String, Object> target = targetPkSnapshotWithSrcSnapshot(dataRow);
++        return (target != null) ? ObjectId.of(entityName, target) : null;
++    }
++
+     // a join used for comparison
+     static final class TestJoin extends DbJoin {
+ 

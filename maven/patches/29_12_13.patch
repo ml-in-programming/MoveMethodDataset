@@ -17,6 +17,7 @@ index 83edd2b70..7080abcba
          }
          return false;
      }
+-}
 +
 +    //----------------------------------------------------------------------------
 +    public MetadataTreeNode getClasspathTree(MetadataResolutionResult metadataResolutionResult)
@@ -26,7 +27,7 @@ index 83edd2b70..7080abcba
 +        if ( cpc == null )
 +        {
 +            return null;
-         }
++        }
 +
 +        return cpc.getClasspathAsTree();
 +    }}

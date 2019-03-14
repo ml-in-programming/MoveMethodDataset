@@ -1,0 +1,119 @@
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/swing/BindingBase.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/swing/BindingBase.java
+old mode 100644
+new mode 100755
+index 7402940b5..71e5f0fe4
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/swing/BindingBase.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/swing/BindingBase.java
+@@ -186,4 +186,13 @@ public abstract class BindingBase implements ObjectBinding {
+         throw new BindingException("Evaluation failed in context: " + context, root);
+     }
+ 
++    /**
++     * Configures binding with factory default settings.
++     * @param bindingFactory
++     */
++    protected ObjectBinding prepareBinding(BindingFactory bindingFactory) {
++        setUsingNullForEmptyStrings(bindingFactory.isUsingNullForEmptyStrings());
++        setCheckingForValueChange(bindingFactory.isCheckingForValueChange());
++        return this;
++    }
+ }
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/swing/BindingFactory.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/swing/BindingFactory.java
+old mode 100644
+new mode 100755
+index b967c5a21..1b072bb5f
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/swing/BindingFactory.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/swing/BindingFactory.java
+@@ -55,7 +55,7 @@ public class BindingFactory {
+                 columnClass,
+                 editableState,
+                 sampleLongValues);
+-        return prepareBinding(binding);
++        return binding.prepareBinding(this);
+     }
+ 
+     public ObjectBinding bindToProperty(
+@@ -63,7 +63,7 @@ public class BindingFactory {
+             String property,
+             String boundProperty) {
+         PropertyBinding binding = new PropertyBinding(component, property, boundProperty);
+-        return prepareBinding(binding);
++        return binding.prepareBinding(this);
+     }
+ 
+     /**
+@@ -72,7 +72,7 @@ public class BindingFactory {
+      */
+     public ObjectBinding bindToStateChange(AbstractButton button, String property) {
+         ItemEventBinding binding = new ItemEventBinding(button, property);
+-        return prepareBinding(binding);
++        return binding.prepareBinding(this);
+     }
+ 
+     /**
+@@ -81,7 +81,7 @@ public class BindingFactory {
+      */
+     public ObjectBinding bindToAction(AbstractButton button, String action) {
+         ActionBinding binding = new ActionBinding(button, action);
+-        return prepareBinding(binding);
++        return binding.prepareBinding(this);
+     }
+ 
+     /**
+@@ -91,7 +91,7 @@ public class BindingFactory {
+      */
+     public ObjectBinding bindToAction(Component component, String action) {
+         BeanActionBinding binding = new BeanActionBinding(component, action);
+-        return prepareBinding(binding);
++        return binding.prepareBinding(this);
+     }
+ 
+     public ObjectBinding bindToAction(
+@@ -99,7 +99,7 @@ public class BindingFactory {
+             String action,
+             String boundExpression) {
+         ActionBinding binding = new ActionBinding(component, action, boundExpression);
+-        return prepareBinding(binding);
++        return binding.prepareBinding(this);
+     }
+ 
+     public ObjectBinding bindToComboSelection(
+@@ -110,12 +110,12 @@ public class BindingFactory {
+                 component,
+                 property,
+                 noSelectionValue);
+-        return prepareBinding(binding);
++        return binding.prepareBinding(this);
+     }
+ 
+     public ObjectBinding bindToTextArea(JTextArea component, String property) {
+         TextBinding binding = new TextBinding(component, property);
+-        return prepareBinding(binding);
++        return binding.prepareBinding(this);
+     }
+ 
+     /**
+@@ -123,21 +123,12 @@ public class BindingFactory {
+      */
+     public ObjectBinding bindToTextField(JTextField component, String property) {
+         TextBinding binding = new TextBinding(component, property);
+-        return prepareBinding(binding);
++        return binding.prepareBinding(this);
+     }
+ 
+     public ObjectBinding bindToCheckBox(JCheckBox component, String property) {
+         CheckBoxBinding binding = new CheckBoxBinding(component, property);
+-        return prepareBinding(binding);
+-    }
+-
+-    /**
+-     * Configures binding with factory default settings.
+-     */
+-    protected ObjectBinding prepareBinding(BindingBase binding) {
+-        binding.setUsingNullForEmptyStrings(isUsingNullForEmptyStrings());
+-        binding.setCheckingForValueChange(isCheckingForValueChange());
+-        return binding;
++        return binding.prepareBinding(this);
+     }
+ 
+     public boolean isCheckingForValueChange() {

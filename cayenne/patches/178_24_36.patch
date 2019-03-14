@@ -1,0 +1,91 @@
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/dbimport/MoveImportNodeAction.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/dbimport/MoveImportNodeAction.java
+old mode 100644
+new mode 100755
+index cf8f44e30..aa1466244
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/dbimport/MoveImportNodeAction.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/dbimport/MoveImportNodeAction.java
+@@ -129,14 +129,14 @@ public class MoveImportNodeAction extends CayenneAction {
+                 for (TreePath path : paths) {
+                     DbImportTreeNode selectedElement = (DbImportTreeNode) path.getLastPathComponent();
+                     DbImportTreeNode previousNode;
+-                    DbImportTreeNode foundNode = targetTree.findNodeByParentsChain(
+-                            targetTree.getRootNode(), selectedElement, 0
++                    DbImportTreeNode foundNode = targetTree.getRootNode().findNodeByParentsChain(
++                            selectedElement, 0
+                     );
+                     // If parent nodes from db schema doesn't exist, create it
+                     if (foundNode == null) {
+                         for (int i = selectedElement.getParents().size() - 2; i >= 0; i--) {
+                             DbImportTreeNode insertedNode = selectedElement.getParents().get(i);
+-                            previousNode = targetTree.findNodeByParentsChain(targetTree.getRootNode(), insertedNode, 0);
++                            previousNode = targetTree.getRootNode().findNodeByParentsChain(insertedNode, 0);
+                             if (previousNode == null) {
+                                 previousNode = targetTree.getRootNode();
+                             }
+@@ -155,7 +155,7 @@ public class MoveImportNodeAction extends CayenneAction {
+                         }
+                     }
+                     // Again find node where we insert our node
+-                    foundNode = targetTree.findNodeByParentsChain(targetTree.getRootNode(), selectedElement, 0);
++                    foundNode = targetTree.getRootNode().findNodeByParentsChain(selectedElement, 0);
+                     if (!moveInverted) {
+                         action = panel.getActionByNodeType(selectedElement.getUserObject().getClass());
+                     } else {
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/load/DbImportTreeNode.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/load/DbImportTreeNode.java
+old mode 100644
+new mode 100755
+index 98cc33861..a19afd377
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/load/DbImportTreeNode.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/load/DbImportTreeNode.java
+@@ -210,4 +210,21 @@ public class DbImportTreeNode extends DefaultMutableTreeNode {
+     public void setLoaded(boolean loaded) {
+         isLoaded = loaded;
+     }
++
++    public DbImportTreeNode findNodeByParentsChain(DbImportTreeNode movedNode, int depth) {
++        String parentName = ((DbImportTreeNode) movedNode.getParent()).getSimpleNodeName();
++        if ((parentsIsEqual(((DbImportTreeNode) movedNode.getParent())))
++                && (getSimpleNodeName().equals(parentName))
++                && ((isCatalog()) || (isSchema()) || (isIncludeTable()))) {
++            return this;
++        }
++        for (int i = 0; i < getChildCount(); i++) {
++            DbImportTreeNode childNode = (DbImportTreeNode) getChildAt(i);
++            DbImportTreeNode node = childNode.findNodeByParentsChain(movedNode, depth++);
++            if (node != null) {
++                return node;
++            }
++        }
++        return null;
++    }
+ }
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/dbimport/DbImportTree.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/dbimport/DbImportTree.java
+old mode 100644
+new mode 100755
+index 141c948a4..bc0f3eeea
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/dbimport/DbImportTree.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/dbimport/DbImportTree.java
+@@ -145,23 +145,6 @@ public class DbImportTree extends JTree {
+         return null;
+     }
+ 
+-    public DbImportTreeNode findNodeByParentsChain(DbImportTreeNode rootNode, DbImportTreeNode movedNode, int depth) {
+-        String parentName = ((DbImportTreeNode) movedNode.getParent()).getSimpleNodeName();
+-        if ((rootNode.parentsIsEqual(((DbImportTreeNode) movedNode.getParent())))
+-                && (rootNode.getSimpleNodeName().equals(parentName))
+-                && ((rootNode.isCatalog()) || (rootNode.isSchema()) || (rootNode.isIncludeTable()))) {
+-            return rootNode;
+-        }
+-        for (int i = 0; i < rootNode.getChildCount(); i++) {
+-            DbImportTreeNode childNode = (DbImportTreeNode) rootNode.getChildAt(i);
+-            DbImportTreeNode node = findNodeByParentsChain(childNode, movedNode, depth++);
+-            if (node != null) {
+-                return node;
+-            }
+-        }
+-        return null;
+-    }
+-
+     public DbImportTreeNode findNode(DbImportTreeNode rootNode, DbImportTreeNode movedNode, int depth) {
+         String parentName = movedNode.getSimpleNodeName();
+         if ((rootNode.parentsIsEqual(movedNode))

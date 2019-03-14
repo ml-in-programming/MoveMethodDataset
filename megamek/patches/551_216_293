@@ -54,7 +54,7 @@ index f0358eb..be5811f 100644
 +    }
  }
 diff --git a/megamek/src/megamek/common/TripodMech.java b/megamek/src/megamek/common/TripodMech.java
-index a3f5b4d..ce8802c 100644
+index a3f5b4d..e27c2a8 100644
 --- a/megamek/src/megamek/common/TripodMech.java
 +++ b/megamek/src/megamek/common/TripodMech.java
 @@ -902,50 +902,12 @@ public class TripodMech extends Mech {
@@ -62,7 +62,7 @@ index a3f5b4d..ce8802c 100644
  
          if (roll.getValue() != TargetRoll.CHECK_FALSE) {
 -            addStandingPenalties(roll);
-+            roll.addStandingPenalties();
++            roll.addStandingPenalties(null);
          }
  
          return roll;

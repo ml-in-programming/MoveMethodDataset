@@ -1,0 +1,114 @@
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/access/HierarchicalObjectResolver.java b/cayenne-server/src/main/java/org/apache/cayenne/access/HierarchicalObjectResolver.java
+old mode 100644
+new mode 100755
+index 201f304ef..2c90dcfa6
+--- a/cayenne-server/src/main/java/org/apache/cayenne/access/HierarchicalObjectResolver.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/access/HierarchicalObjectResolver.java
+@@ -22,8 +22,6 @@ package org.apache.cayenne.access;
+ import org.apache.cayenne.CayenneRuntimeException;
+ import org.apache.cayenne.DataRow;
+ import org.apache.cayenne.Persistent;
+-import org.apache.cayenne.exp.Expression;
+-import org.apache.cayenne.exp.ExpressionFactory;
+ import org.apache.cayenne.map.DbJoin;
+ import org.apache.cayenne.map.DbRelationship;
+ import org.apache.cayenne.map.ObjRelationship;
+@@ -155,7 +153,7 @@ class HierarchicalObjectResolver {
+                 if (currentQuery == null
+                         || (maxIdQualifierSize > 0 && qualifiersCount + joins.size() > maxIdQualifierSize)) {
+ 
+-                    createDisjointByIdPrefetchQualifier(pathPrefix, currentQuery, joins, values);
++                    currentQuery.createDisjointByIdPrefetchQualifier(pathPrefix, joins, values);
+ 
+                     currentQuery = new PrefetchSelectQuery<>(node.getPath(), relationship);
+                     currentQuery.setFetchingDataRows(true);
+@@ -175,7 +173,7 @@ class HierarchicalObjectResolver {
+                 }
+             }
+             // add final part of values
+-            createDisjointByIdPrefetchQualifier(pathPrefix, currentQuery, joins, values);
++            currentQuery.createDisjointByIdPrefetchQualifier(pathPrefix, joins, values);
+ 
+             PrefetchTreeNode jointSubtree = node.cloneJointSubtree();
+ 
+@@ -203,30 +201,6 @@ class HierarchicalObjectResolver {
+             return true;
+         }
+ 
+-        private void createDisjointByIdPrefetchQualifier(String pathPrefix, PrefetchSelectQuery currentQuery,
+-                                                         List<DbJoin> joins, Set<List<Object>> values) {
+-            Expression allJoinsQualifier;
+-            if(currentQuery != null) {
+-                Expression[] qualifiers = new Expression[values.size()];
+-                int i = 0;
+-                for(List<Object> joinValues : values) {
+-                    allJoinsQualifier = null;
+-                    for(int j=0; j<joins.size(); j++) {
+-                        Expression joinQualifier = ExpressionFactory
+-                                .matchDbExp(pathPrefix + joins.get(j).getTargetName(), joinValues.get(j));
+-                        if (allJoinsQualifier == null) {
+-                            allJoinsQualifier = joinQualifier;
+-                        } else {
+-                            allJoinsQualifier = allJoinsQualifier.andExp(joinQualifier);
+-                        }
+-                    }
+-                    qualifiers[i++] = allJoinsQualifier;
+-                }
+-
+-                currentQuery.orQualifier(ExpressionFactory.joinExp(Expression.OR, qualifiers));
+-            }
+-        }
+-
+         @Override
+         public boolean startPhantomPrefetch(PrefetchTreeNode node) {
+             return true;
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/query/PrefetchSelectQuery.java b/cayenne-server/src/main/java/org/apache/cayenne/query/PrefetchSelectQuery.java
+old mode 100644
+new mode 100755
+index 812354d0c..073063a66
+--- a/cayenne-server/src/main/java/org/apache/cayenne/query/PrefetchSelectQuery.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/query/PrefetchSelectQuery.java
+@@ -19,10 +19,11 @@
+ 
+ package org.apache.cayenne.query;
+ 
+-import java.util.Collection;
+-import java.util.Collections;
+-import java.util.HashSet;
++import java.util.*;
+ 
++import org.apache.cayenne.exp.Expression;
++import org.apache.cayenne.exp.ExpressionFactory;
++import org.apache.cayenne.map.DbJoin;
+ import org.apache.cayenne.map.EntityResolver;
+ import org.apache.cayenne.map.ObjRelationship;
+ import org.apache.cayenne.util.Util;
+@@ -152,4 +153,28 @@ public class PrefetchSelectQuery<T> extends SelectQuery<T> {
+ 
+         return resultPaths;
+     }
++
++    public void createDisjointByIdPrefetchQualifier(String pathPrefix,
++                                                    List<DbJoin> joins, Set<List<Object>> values) {
++        Expression allJoinsQualifier;
++        if(this != null) {
++            Expression[] qualifiers = new Expression[values.size()];
++            int i = 0;
++            for(List<Object> joinValues : values) {
++                allJoinsQualifier = null;
++                for(int j=0; j<joins.size(); j++) {
++                    Expression joinQualifier = ExpressionFactory
++                            .matchDbExp(pathPrefix + joins.get(j).getTargetName(), joinValues.get(j));
++                    if (allJoinsQualifier == null) {
++                        allJoinsQualifier = joinQualifier;
++                    } else {
++                        allJoinsQualifier = allJoinsQualifier.andExp(joinQualifier);
++                    }
++                }
++                qualifiers[i++] = allJoinsQualifier;
++            }
++
++            orQualifier(ExpressionFactory.joinExp(Expression.OR, qualifiers));
++        }
++    }
+ }
