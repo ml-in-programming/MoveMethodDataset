@@ -1,0 +1,57 @@
+diff --git a/maven-compat/src/main/java/org/apache/maven/artifact/ArtifactScopeEnum.java b/maven-compat/src/main/java/org/apache/maven/artifact/ArtifactScopeEnum.java
+old mode 100644
+new mode 100755
+index 83edd2b70..7080abcba
+--- a/maven-compat/src/main/java/org/apache/maven/artifact/ArtifactScopeEnum.java
++++ b/maven-compat/src/main/java/org/apache/maven/artifact/ArtifactScopeEnum.java
+@@ -19,6 +19,8 @@
+  * under the License.
+  */
+ 
++import org.apache.maven.repository.metadata.*;
++
+ /**
+  * Type safe reincarnation of Artifact scope. Also supplies the {@code DEFAULT_SCOPE} as well
+  * as convenience method to deal with scope relationships.
+@@ -128,4 +130,16 @@ public boolean encloses( ArtifactScopeEnum scope )
+         }
+         return false;
+     }
++
++    //----------------------------------------------------------------------------
++    public MetadataTreeNode getClasspathTree(MetadataResolutionResult metadataResolutionResult)
++        throws MetadataGraphTransformationException, MetadataResolutionException
++    {
++        ClasspathContainer cpc = metadataResolutionResult.getClasspath(this);
++        if ( cpc == null )
++        {
++            return null;
+         }
++
++        return cpc.getClasspathAsTree();
++    }}
+diff --git a/maven-compat/src/main/java/org/apache/maven/repository/metadata/MetadataResolutionResult.java b/maven-compat/src/main/java/org/apache/maven/repository/metadata/MetadataResolutionResult.java
+old mode 100644
+new mode 100755
+index 74a342773..49e689e5e
+--- a/maven-compat/src/main/java/org/apache/maven/repository/metadata/MetadataResolutionResult.java
++++ b/maven-compat/src/main/java/org/apache/maven/repository/metadata/MetadataResolutionResult.java
+@@ -151,18 +151,6 @@ public ClasspathContainer getClasspath( ArtifactScopeEnum scope )
+         return classpathTransformation.transform( dirtyGraph, scope, false );
+     }
+ 
+-    //----------------------------------------------------------------------------
+-    public MetadataTreeNode getClasspathTree( ArtifactScopeEnum scope )
+-        throws MetadataGraphTransformationException, MetadataResolutionException
+-    {
+-        ClasspathContainer cpc = getClasspath( scope );
+-        if ( cpc == null )
+-        {
+-            return null;
+-        }
+-
+-        return cpc.getClasspathAsTree();
+-    }
+     //----------------------------------------------------------------------------
+     //----------------------------------------------------------------------------
+ }

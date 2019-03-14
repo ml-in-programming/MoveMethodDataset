@@ -1,0 +1,54 @@
+diff --git a/maven-embedder/src/main/java/org/apache/maven/cli/CliRequest.java b/maven-embedder/src/main/java/org/apache/maven/cli/CliRequest.java
+old mode 100644
+new mode 100755
+index 34937e8f7..e437c75ab
+--- a/maven-embedder/src/main/java/org/apache/maven/cli/CliRequest.java
++++ b/maven-embedder/src/main/java/org/apache/maven/cli/CliRequest.java
+@@ -120,4 +120,14 @@ public void setUserProperties( Properties properties )
+     {
+         this.userProperties.putAll( properties );      
+     }
++
++    void repository()
++        throws Exception
++    {
++        if ( commandLine.hasOption( CLIManager.LEGACY_LOCAL_REPOSITORY ) || Boolean.getBoolean(
++            "maven.legacyLocalRepo" ) )
++        {
++            request.setUseLegacyLocalRepository( true );
++        }
++    }
+ }
+\ No newline at end of file
+diff --git a/maven-embedder/src/main/java/org/apache/maven/cli/MavenCli.java b/maven-embedder/src/main/java/org/apache/maven/cli/MavenCli.java
+old mode 100644
+new mode 100755
+index b99783d7a..fa493273a
+--- a/maven-embedder/src/main/java/org/apache/maven/cli/MavenCli.java
++++ b/maven-embedder/src/main/java/org/apache/maven/cli/MavenCli.java
+@@ -284,7 +284,7 @@ public int doMain( CliRequest cliRequest )
+             toolchains( cliRequest );
+             populateRequest( cliRequest );
+             encryption( cliRequest );
+-            repository( cliRequest );
++            cliRequest.repository();
+             return execute( cliRequest );
+         }
+         catch ( ExitException e )
+@@ -936,16 +936,6 @@ else if ( cliRequest.commandLine.hasOption( CLIManager.ENCRYPT_PASSWORD ) )
+         }
+     }
+ 
+-    private void repository( CliRequest cliRequest )
+-        throws Exception
+-    {
+-        if ( cliRequest.commandLine.hasOption( CLIManager.LEGACY_LOCAL_REPOSITORY ) || Boolean.getBoolean(
+-            "maven.legacyLocalRepo" ) )
+-        {
+-            cliRequest.request.setUseLegacyLocalRepository( true );
+-        }
+-    }
+-
+     private int execute( CliRequest cliRequest )
+         throws MavenExecutionRequestPopulationException
+     {

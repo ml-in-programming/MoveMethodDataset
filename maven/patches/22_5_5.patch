@@ -1,0 +1,78 @@
+diff --git a/maven-core/src/main/java/org/apache/maven/lifecycle/internal/DefaultLifecycleMappingDelegate.java b/maven-core/src/main/java/org/apache/maven/lifecycle/internal/DefaultLifecycleMappingDelegate.java
+old mode 100644
+new mode 100755
+index 1ddee0592..df4a6f9bd
+--- a/maven-core/src/main/java/org/apache/maven/lifecycle/internal/DefaultLifecycleMappingDelegate.java
++++ b/maven-core/src/main/java/org/apache/maven/lifecycle/internal/DefaultLifecycleMappingDelegate.java
+@@ -103,7 +103,7 @@
+                         {
+                             MojoExecution mojoExecution = new MojoExecution( plugin, goal, execution.getId() );
+                             mojoExecution.setLifecyclePhase( execution.getPhase() );
+-                            addMojoExecution( phaseBindings, mojoExecution, execution.getPriority() );
++                            mojoExecution.addMojoExecution( phaseBindings, execution.getPriority() );
+                         }
+                     }
+                 }
+@@ -121,7 +121,7 @@
+                         {
+                             MojoExecution mojoExecution = new MojoExecution( mojoDescriptor, execution.getId() );
+                             mojoExecution.setLifecyclePhase( mojoDescriptor.getPhase() );
+-                            addMojoExecution( phaseBindings, mojoExecution, execution.getPriority() );
++                            mojoExecution.addMojoExecution( phaseBindings, execution.getPriority() );
+                         }
+                     }
+                 }
+@@ -146,18 +146,4 @@
+ 
+     }
+ 
+-    private void addMojoExecution( Map<Integer, List<MojoExecution>> phaseBindings, MojoExecution mojoExecution,
+-                                   int priority )
+-    {
+-        List<MojoExecution> mojoExecutions = phaseBindings.get( priority );
+-
+-        if ( mojoExecutions == null )
+-        {
+-            mojoExecutions = new ArrayList<>();
+-            phaseBindings.put( priority, mojoExecutions );
+-        }
+-
+-        mojoExecutions.add( mojoExecution );
+-    }
+-
+ }
+diff --git a/maven-core/src/main/java/org/apache/maven/plugin/MojoExecution.java b/maven-core/src/main/java/org/apache/maven/plugin/MojoExecution.java
+old mode 100644
+new mode 100755
+index fa72c1866..76cfadde7
+--- a/maven-core/src/main/java/org/apache/maven/plugin/MojoExecution.java
++++ b/maven-core/src/main/java/org/apache/maven/plugin/MojoExecution.java
+@@ -19,6 +19,7 @@
+  * under the License.
+  */
+ 
++import java.util.ArrayList;
+ import java.util.LinkedHashMap;
+ import java.util.List;
+ import java.util.Map;
+@@ -43,6 +44,20 @@
+ 
+     private Xpp3Dom configuration;
+ 
++    public void addMojoExecution(Map<Integer, List<MojoExecution>> phaseBindings,
++                                 int priority)
++    {
++        List<MojoExecution> mojoExecutions = phaseBindings.get( priority );
++
++        if ( mojoExecutions == null )
++        {
++            mojoExecutions = new ArrayList<>();
++            phaseBindings.put( priority, mojoExecutions );
++        }
++
++        mojoExecutions.add(this);
++    }
++
+     /**
+      * Describes the source of an execution.
+      */

@@ -1,0 +1,55 @@
+diff --git a/maven-core/src/main/java/org/apache/maven/lifecycle/internal/LifecycleModuleBuilder.java b/maven-core/src/main/java/org/apache/maven/lifecycle/internal/LifecycleModuleBuilder.java
+old mode 100644
+new mode 100755
+index 548fe6c8f..3f9003254
+--- a/maven-core/src/main/java/org/apache/maven/lifecycle/internal/LifecycleModuleBuilder.java
++++ b/maven-core/src/main/java/org/apache/maven/lifecycle/internal/LifecycleModuleBuilder.java
+@@ -95,7 +95,7 @@ public void buildProject( MavenSession session, MavenSession rootSession, Reacto
+         try
+         {
+ 
+-            if ( reactorContext.getReactorBuildStatus().isHaltedOrBlacklisted( currentProject ) )
++            if ( currentProject.isHaltedOrBlacklisted(reactorContext.getReactorBuildStatus()) )
+             {
+                 eventCatapult.fire( ExecutionEvent.Type.ProjectSkipped, session, null );
+                 return;
+diff --git a/maven-core/src/main/java/org/apache/maven/lifecycle/internal/ReactorBuildStatus.java b/maven-core/src/main/java/org/apache/maven/lifecycle/internal/ReactorBuildStatus.java
+old mode 100644
+new mode 100755
+index 2e2c3fd44..b76ab6f97
+--- a/maven-core/src/main/java/org/apache/maven/lifecycle/internal/ReactorBuildStatus.java
++++ b/maven-core/src/main/java/org/apache/maven/lifecycle/internal/ReactorBuildStatus.java
+@@ -72,9 +72,4 @@ public boolean isHalted()
+         return halted;
+     }
+ 
+-    public boolean isHaltedOrBlacklisted( MavenProject mavenProject )
+-    {
+-        return isBlackListed( mavenProject ) || isHalted();
+-    }
+-
+ }
+diff --git a/maven-core/src/main/java/org/apache/maven/project/MavenProject.java b/maven-core/src/main/java/org/apache/maven/project/MavenProject.java
+old mode 100644
+new mode 100755
+index fd7ab40dd..6ab2540a5
+--- a/maven-core/src/main/java/org/apache/maven/project/MavenProject.java
++++ b/maven-core/src/main/java/org/apache/maven/project/MavenProject.java
+@@ -40,6 +40,7 @@
+ import org.apache.maven.artifact.factory.ArtifactFactory;
+ import org.apache.maven.artifact.repository.ArtifactRepository;
+ import org.apache.maven.artifact.resolver.filter.ArtifactFilter;
++import org.apache.maven.lifecycle.internal.ReactorBuildStatus;
+ import org.apache.maven.model.Build;
+ import org.apache.maven.model.CiManagement;
+ import org.apache.maven.model.Contributor;
+@@ -1973,4 +1974,9 @@ public void setProjectBuildingRequest( ProjectBuildingRequest projectBuildingReq
+     {
+         this.projectBuilderConfiguration = projectBuildingRequest;
+     }
++
++    public boolean isHaltedOrBlacklisted(ReactorBuildStatus reactorBuildStatus)
++    {
++        return reactorBuildStatus.isBlackListed(this) || reactorBuildStatus.isHalted();
++    }
+ }
