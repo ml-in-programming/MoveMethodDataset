@@ -1,0 +1,112 @@
+#building block data file
+<BlockVersion>
+1
+</BlockVersion>
+
+##Write the version number just in case...
+<Version>
+MAM0
+</Version>
+
+<UnitType>
+Aero
+</UnitType>
+
+<Name>
+Chippewa
+</Name>
+
+<Model>
+CHP-W10
+</Model>
+
+<year>
+2953
+</year>
+
+<originalBuildYear>
+2953
+</originalBuildYear>
+
+<type>
+IS Level 2
+</type>
+
+<motion_type>
+Aerodyne
+</motion_type>
+
+<transporters>
+</transporters>
+
+<SafeThrust>
+5
+</SafeThrust>
+
+<cockpit_type>
+0
+</cockpit_type>
+
+<heatsinks>
+25
+</heatsinks>
+
+<sink_type>
+0
+</sink_type>
+
+<fuel>
+400
+</fuel>
+
+<engine_type>
+0
+</engine_type>
+
+<armor>
+86
+58
+58
+78
+</armor>
+
+<Nose Equipment>
+LRM 15
+LRM 15
+SRM 6
+Medium Laser
+Medium Laser
+</Nose Equipment>
+
+<Left Wing Equipment>
+Large Laser
+</Left Wing Equipment>
+
+<Right Wing Equipment>
+Large Laser
+</Right Wing Equipment>
+
+<Aft Equipment>
+Small Laser
+Small Laser
+</Aft Equipment>
+
+<Wings Equipment>
+</Wings Equipment>
+
+<Fuselage Equipment>
+IS Ammo LRM-15
+IS Ammo LRM-15
+IS Ammo LRM-15
+IS Ammo LRM-15
+IS Ammo SRM-6
+</Fuselage Equipment>
+
+<source>
+TRO 3039 - Succession Wars
+</source>
+
+<tonnage>
+90.0
+</tonnage>
+

@@ -1,0 +1,155 @@
+Version:1.1
+Archangel
+C-ANG-O (Berith)
+
+Config:Biped Omnimech
+TechBase:Inner Sphere
+Era:3072
+Source:Starterbook: Wolf & Blake - Jihad
+Rules Level:4
+
+Mass:100
+Engine:300 Compact Engine(IS)
+Structure:IS Endo Steel
+Myomer:Standard
+Cockpit:Small Cockpit
+Gyro:Compact Gyro
+
+Heat Sinks:19 Double
+Base Chassis Heat Sinks:12
+Walk MP:3
+Jump MP:0
+
+Armor:Standard(Inner Sphere)
+LA Armor:34
+RA Armor:34
+LT Armor:32
+RT Armor:32
+CT Armor:46
+HD Armor:9
+LL Armor:42
+RL Armor:42
+RTL Armor:10
+RTR Armor:10
+RTC Armor:16
+
+Weapons:5
+Light PPC, Left Arm
+Light PPC, Left Arm
+Heavy PPC, Right Arm
+Medium VSP Laser, Center Torso
+Snub-Nose PPC, Head
+
+Left Arm:
+Shoulder
+Upper Arm Actuator
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+Light PPC (omnipod)
+Light PPC (omnipod)
+PPC Capacitor (omnipod)
+Light PPC (omnipod)
+Light PPC (omnipod)
+PPC Capacitor (omnipod)
+-Empty-
+
+Right Arm:
+Shoulder
+Upper Arm Actuator
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+Heavy PPC (omnipod)
+Heavy PPC (omnipod)
+Heavy PPC (omnipod)
+Heavy PPC (omnipod)
+PPC Capacitor (omnipod)
+-Empty-
+-Empty-
+
+Left Torso:
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+-Empty-
+
+Right Torso:
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+-Empty-
+
+Center Torso:
+Fusion Engine
+Fusion Engine
+Fusion Engine
+Gyro
+Gyro
+ISC3iUnit
+ISC3iUnit
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+ISMediumVSPLaser (omnipod)
+ISMediumVSPLaser (omnipod)
+
+Head:
+Life Support
+Sensors
+Cockpit
+Sensors
+ISSNPPC (omnipod)
+ISSNPPC (omnipod)
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Left Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+IS Endo Steel
+IS Endo Steel
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Right Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+IS Endo Steel
+IS Endo Steel
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+

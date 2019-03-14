@@ -1,0 +1,108 @@
+#building block data file
+<BlockVersion>
+1
+</BlockVersion>
+
+##Write the version number just in case...
+<Version>
+MAM0
+</Version>
+
+<UnitType>
+Aero
+</UnitType>
+
+<Name>
+Ahab
+</Name>
+
+<Model>
+AHB-MD
+</Model>
+
+<year>
+3061
+</year>
+
+<originalBuildYear>
+3061
+</originalBuildYear>
+
+<type>
+IS Level 2
+</type>
+
+<motion_type>
+Aerodyne
+</motion_type>
+
+<transporters>
+</transporters>
+
+<SafeThrust>
+5
+</SafeThrust>
+
+<cockpit_type>
+0
+</cockpit_type>
+
+<heatsinks>
+22
+</heatsinks>
+
+<sink_type>
+1
+</sink_type>
+
+<fuel>
+400
+</fuel>
+
+<engine_type>
+0
+</engine_type>
+
+<armor>
+84
+59
+59
+46
+</armor>
+
+<Nose Equipment>
+ISLargePulseLaser
+Medium Laser
+Medium Laser
+ISTargeting Computer
+</Nose Equipment>
+
+<Left Wing Equipment>
+MRM 40
+</Left Wing Equipment>
+
+<Right Wing Equipment>
+MRM 40
+</Right Wing Equipment>
+
+<Aft Equipment>
+</Aft Equipment>
+
+<Wings Equipment>
+</Wings Equipment>
+
+<Fuselage Equipment>
+IS MRM 40 Ammo
+IS MRM 40 Ammo
+IS MRM 40 Ammo
+IS MRM 40 Ammo
+</Fuselage Equipment>
+
+<source>
+TRO 3050u - Clan Invasion
+</source>
+
+<tonnage>
+90.0
+</tonnage>
+

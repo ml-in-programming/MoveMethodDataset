@@ -1,0 +1,154 @@
+Version:1.0
+Shadow Cat
+C
+
+Config:Biped Omnimech
+TechBase:Clan
+Era:3061
+Source:TRO 3058 - Clan Invasion
+Rules Level:2
+
+Mass:45
+Engine:270 XL (Clan) Engine(IS)
+Structure:Clan Endo Steel
+Myomer:Standard
+
+Heat Sinks:10 Double
+Base Chassis Heat Sinks:10
+Walk MP:6
+Jump MP:6
+
+Armor:Ferro-Fibrous(Clan)
+LA Armor:10
+RA Armor:10
+LT Armor:18
+RT Armor:18
+CT Armor:20
+HD Armor:8
+LL Armor:18
+RL Armor:18
+RTL Armor:4
+RTR Armor:4
+RTC Armor:6
+
+Weapons:6
+ATM 6, Left Arm
+ER Medium Laser, Left Arm
+ATM 6, Right Arm
+ER Medium Laser, Right Arm
+ER Medium Laser, Left Torso
+Narc, Right Torso
+
+Left Arm:
+Shoulder
+Upper Arm Actuator
+CLATM6 (omnipod)
+CLATM6 (omnipod)
+CLATM6 (omnipod)
+CLERMediumLaser (omnipod)
+Clan Endo Steel
+Clan Endo Steel
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Right Arm:
+Shoulder
+Upper Arm Actuator
+CLATM6 (omnipod)
+CLATM6 (omnipod)
+CLATM6 (omnipod)
+CLERMediumLaser (omnipod)
+Clan Endo Steel
+Clan Endo Steel
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Left Torso:
+Fusion Engine
+Fusion Engine
+Jump Jet
+CLERMediumLaser (omnipod)
+Clan Ammo ATM-6 (omnipod)
+Clan Ammo ATM-6 ER (omnipod)
+Clan Ammo ATM-6 HE (omnipod)
+Clan Endo Steel
+Clan Ferro-Fibrous
+Clan Ferro-Fibrous
+Clan Ferro-Fibrous
+-Empty-
+
+Right Torso:
+Fusion Engine
+Fusion Engine
+Jump Jet
+CLNarcBeacon (omnipod)
+CLNarc Pods (omnipod)
+CLNarc Pods (omnipod)
+Clan Endo Steel
+Clan Ferro-Fibrous
+Clan Ferro-Fibrous
+Clan Ferro-Fibrous
+Clan Ferro-Fibrous
+-Empty-
+
+Center Torso:
+Fusion Engine
+Fusion Engine
+Fusion Engine
+Gyro
+Gyro
+Gyro
+Gyro
+Fusion Engine
+Fusion Engine
+Fusion Engine
+CLMASC
+CLMASC
+
+Head:
+Life Support
+Sensors
+Cockpit
+Clan Endo Steel
+Sensors
+Life Support
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Left Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+Jump Jet
+Jump Jet
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Right Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+Jump Jet
+Jump Jet
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+

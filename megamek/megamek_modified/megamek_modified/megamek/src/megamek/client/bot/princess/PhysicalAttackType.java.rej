@@ -1,0 +1,26 @@
+--- megamek/src/megamek/client/bot/princess/PhysicalAttackType.java
++++ megamek/src/megamek/client/bot/princess/PhysicalAttackType.java
+@@ -33,4 +38,23 @@ public enum PhysicalAttackType {
+     public boolean isKick() {
+         return LEFT_KICK.equals(this) || RIGHT_KICK.equals(this);
+     }
++
++    /**
++     * Builds a new {@link PhysicalAttackAction} from the given parameters.
++     *
++     * @param shooterId  The ID of the attacking unit.
++     * @param target     The unit being attacked.
++     * @return The resulting {@link PhysicalAttackType}.
++     */
++    protected PhysicalAttackAction buildAction(int shooterId, Targetable target) {
++        if (isPunch()) {
++            int armId = RIGHT_PUNCH == this ? PunchAttackAction.RIGHT : PunchAttackAction.LEFT;
++            return new PunchAttackAction(shooterId, target.getTargetType(), target.getTargetId(), armId, false, false, false);
++        } else if (isKick()) {
++            int legId = RIGHT_KICK == this ? KickAttackAction.RIGHT : KickAttackAction.LEFT;
++            return new KickAttackAction(shooterId, target.getTargetType(), target.getTargetId(), legId);
++        } else {
++            // todo handle other physical attack types.
++            return null;
+         }
++    }}

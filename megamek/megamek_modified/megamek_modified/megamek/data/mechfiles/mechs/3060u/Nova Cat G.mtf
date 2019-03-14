@@ -1,0 +1,160 @@
+Version:1.0
+Nova Cat
+G
+
+Config:Biped Omnimech
+TechBase:Clan
+Era:3072
+Source:TRO 3060
+Rules Level:2
+
+Mass:70
+Engine:280 XL (Clan) Engine(IS)
+Structure:Clan Endo Steel
+Myomer:Standard
+
+Heat Sinks:14 Double
+Base Chassis Heat Sinks:11
+Walk MP:4
+Jump MP:0
+
+Armor:Standard(Clan)
+LA Armor:22
+RA Armor:22
+LT Armor:23
+RT Armor:23
+CT Armor:35
+HD Armor:9
+LL Armor:30
+RL Armor:30
+RTL Armor:7
+RTR Armor:7
+RTC Armor:8
+
+Weapons:12
+LRM 20, Left Arm
+LRM 20, Right Arm
+LRM 20, Right Arm
+ER Large Laser, Left Torso
+AP Gauss Rifle, Left Torso
+AP Gauss Rifle, Left Torso
+AP Gauss Rifle, Left Torso
+AP Gauss Rifle, Left Torso
+AP Gauss Rifle, Right Torso
+AP Gauss Rifle, Right Torso
+AP Gauss Rifle, Right Torso
+AP Gauss Rifle, Right Torso
+
+Left Arm:
+Shoulder
+Upper Arm Actuator
+CLDoubleHeatSink (omnipod)
+CLDoubleHeatSink (omnipod)
+CLLRM20 (omnipod)
+CLLRM20 (omnipod)
+CLLRM20 (omnipod)
+CLLRM20 (omnipod)
+CLArtemisIV (omnipod)
+Clan Ammo LRM-20 (Clan) Artemis-capable (omnipod)
+Clan Ammo LRM-20 (Clan) Artemis-capable (omnipod)
+Clan Ammo LRM-20 (Clan) Artemis-capable (omnipod)
+
+Right Arm:
+Shoulder
+Upper Arm Actuator
+CLLRM20 (omnipod)
+CLLRM20 (omnipod)
+CLLRM20 (omnipod)
+CLLRM20 (omnipod)
+CLArtemisIV (omnipod)
+CLLRM20 (omnipod)
+CLLRM20 (omnipod)
+CLLRM20 (omnipod)
+CLLRM20 (omnipod)
+CLArtemisIV (omnipod)
+
+Left Torso:
+Fusion Engine
+Fusion Engine
+CLERLargeLaser (omnipod)
+CLAPGaussRifle (omnipod)
+CLAPGaussRifle (omnipod)
+CLAPGaussRifle (omnipod)
+CLAPGaussRifle (omnipod)
+CLAPGaussRifle Ammo (omnipod)
+CLTargeting Computer (omnipod)
+CLTargeting Computer (omnipod)
+CLECMSuite (omnipod)
+-Empty-
+
+Right Torso:
+Fusion Engine
+Fusion Engine
+CLDoubleHeatSink (omnipod)
+CLDoubleHeatSink (omnipod)
+CLDoubleHeatSink (omnipod)
+CLDoubleHeatSink (omnipod)
+CLAPGaussRifle (omnipod)
+CLAPGaussRifle (omnipod)
+CLAPGaussRifle (omnipod)
+CLAPGaussRifle (omnipod)
+Clan Ammo LRM-20 (Clan) Artemis-capable (omnipod)
+Clan Ammo LRM-20 (Clan) Artemis-capable (omnipod)
+
+Center Torso:
+Fusion Engine
+Fusion Engine
+Fusion Engine
+Gyro
+Gyro
+Gyro
+Gyro
+Fusion Engine
+Fusion Engine
+Fusion Engine
+Clan Endo Steel
+Clan Endo Steel
+
+Head:
+Life Support
+Sensors
+Cockpit
+Clan Endo Steel
+Sensors
+Life Support
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Left Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+Clan Endo Steel
+Clan Endo Steel
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Right Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+Clan Endo Steel
+Clan Endo Steel
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+

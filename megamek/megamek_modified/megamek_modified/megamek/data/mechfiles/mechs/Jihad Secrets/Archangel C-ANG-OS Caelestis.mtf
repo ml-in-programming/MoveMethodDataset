@@ -1,0 +1,158 @@
+Version:1.1
+Archangel
+C-ANG-OS Caelestis
+
+Config:Biped Omnimech
+TechBase:Mixed (IS Chassis)
+Era:3075
+Rules Level:4
+
+Mass:100
+Engine:300 Compact Engine(IS)
+Structure:IS Endo Steel
+Myomer:Standard
+Cockpit:Small Cockpit
+Gyro:Compact Gyro
+
+Heat Sinks:17 Double
+Base Chassis Heat Sinks:12
+Walk MP:3
+Jump MP:0
+
+Armor:Standard(Inner Sphere)
+LA Armor:34
+RA Armor:34
+LT Armor:32
+RT Armor:32
+CT Armor:46
+HD Armor:9
+LL Armor:42
+RL Armor:42
+RTL Armor:10
+RTR Armor:10
+RTC Armor:16
+
+Weapons:9
+ER Small Laser, Left Arm
+ER Small Laser, Left Arm
+Thunderbolt 10, Right Arm
+Blazer Cannon, Left Torso
+Blazer Cannon, Right Torso
+ER Medium Laser, Center Torso
+ER Medium Laser, Center Torso
+ER Flamer, Head
+ER Flamer, Head
+
+Left Arm:
+Shoulder
+Upper Arm Actuator
+Lower Arm Actuator
+Hand Actuator
+CLERSmallLaser (omnipod)
+CLERSmallLaser (omnipod)
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+-Empty-
+-Empty-
+-Empty-
+
+Right Arm:
+Shoulder
+Upper Arm Actuator
+Lower Arm Actuator
+Hand Actuator
+Thunderbolt 10 (omnipod)
+Thunderbolt 10 (omnipod)
+IS Ammo Thunderbolt-10 (omnipod)
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+-Empty-
+-Empty-
+
+Left Torso:
+Blazer Cannon (omnipod)
+Blazer Cannon (omnipod)
+Blazer Cannon (omnipod)
+Blazer Cannon (omnipod)
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+
+Right Torso:
+Blazer Cannon (omnipod)
+Blazer Cannon (omnipod)
+Blazer Cannon (omnipod)
+Blazer Cannon (omnipod)
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+
+Center Torso:
+Fusion Engine
+Fusion Engine
+Fusion Engine
+Gyro
+Gyro
+ISC3iUnit
+ISC3iUnit
+CLERMediumLaser (omnipod)
+CLERMediumLaser (omnipod)
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+ISDoubleHeatSink (omnipod)
+
+Head:
+Life Support
+Sensors
+Cockpit
+Sensors
+ER Flamer (omnipod)
+ER Flamer (omnipod)
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Left Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+IS Endo Steel
+IS Endo Steel
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Right Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+IS Endo Steel
+IS Endo Steel
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+

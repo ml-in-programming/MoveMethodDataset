@@ -1,0 +1,112 @@
+#building block data file
+<BlockVersion>
+1
+</BlockVersion>
+
+##Write the version number just in case...
+<Version>
+MAM0
+</Version>
+
+<UnitType>
+Aero
+</UnitType>
+
+<Name>
+Lucifer
+</Name>
+
+<Model>
+LCF-X30
+</Model>
+
+<year>
+3074
+</year>
+
+<originalBuildYear>
+3074
+</originalBuildYear>
+
+<type>
+IS Level 4
+</type>
+
+<motion_type>
+Aerodyne
+</motion_type>
+
+<transporters>
+</transporters>
+
+<SafeThrust>
+5
+</SafeThrust>
+
+<cockpit_type>
+0
+</cockpit_type>
+
+<heatsinks>
+13
+</heatsinks>
+
+<sink_type>
+1
+</sink_type>
+
+<fuel>
+400
+</fuel>
+
+<engine_type>
+2
+</engine_type>
+
+<armor_type>
+19
+</armor_type>
+
+<armor_tech>
+-1
+</armor_tech>
+
+<armor>
+130
+82
+82
+82
+</armor>
+
+<Nose Equipment>
+Binary Laser (Blazer) Cannon
+</Nose Equipment>
+
+<Left Wing Equipment>
+Extended LRM 10
+</Left Wing Equipment>
+
+<Right Wing Equipment>
+Extended LRM 10
+</Right Wing Equipment>
+
+<Aft Equipment>
+ISMediumXPulseLaser
+</Aft Equipment>
+
+<Wings Equipment>
+</Wings Equipment>
+
+<Fuselage Equipment>
+IS Ammo Extended LRM-10
+IS Ammo Extended LRM-10
+</Fuselage Equipment>
+
+<source>
+XTRO Mercenaries - Jihad
+</source>
+
+<tonnage>
+65.0
+</tonnage>
+

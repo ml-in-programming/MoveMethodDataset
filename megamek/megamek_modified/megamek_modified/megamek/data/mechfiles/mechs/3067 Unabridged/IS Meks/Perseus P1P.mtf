@@ -1,0 +1,158 @@
+Version:1.0
+Perseus
+P1P
+
+Config:Biped Omnimech
+TechBase:Inner Sphere
+Era:3078
+Source:3067 Unabridged
+Rules Level:2
+
+Mass:75
+Engine:300 XL Engine(IS)
+Structure:IS Endo Steel
+Myomer:Standard
+
+Heat Sinks:12 Double
+Base Chassis Heat Sinks:12
+Walk MP:4
+Jump MP:0
+
+Armor:Standard(Inner Sphere)
+LA Armor:21
+RA Armor:21
+LT Armor:24
+RT Armor:24
+CT Armor:36
+HD Armor:9
+LL Armor:32
+RL Armor:32
+RTL Armor:8
+RTR Armor:8
+RTC Armor:9
+
+Weapons:10
+ER Small Laser, Left Leg
+ER Small Laser, Left Leg
+ER Small Laser, Right Leg
+ER Small Laser, Right Leg
+MRM 20, Left Arm
+PPC, Left Arm
+Medium Laser, Left Arm
+Rotary AC/5, Right Arm
+Streak SRM 4, Center Torso
+TAG, Head
+
+Left Arm:
+Shoulder
+Upper Arm Actuator
+MRM 20 (omnipod)
+MRM 20 (omnipod)
+MRM 20 (omnipod)
+PPC (omnipod)
+PPC (omnipod)
+PPC (omnipod)
+Medium Laser (omnipod)
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+
+Right Arm:
+Shoulder
+Upper Arm Actuator
+ISRotaryAC5 (omnipod)
+ISRotaryAC5 (omnipod)
+ISRotaryAC5 (omnipod)
+ISRotaryAC5 (omnipod)
+ISRotaryAC5 (omnipod)
+ISRotaryAC5 (omnipod)
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+-Empty-
+
+Left Torso:
+Fusion Engine
+Fusion Engine
+Fusion Engine
+IS MRM 20 Ammo (omnipod)
+IS MRM 20 Ammo (omnipod)
+ISGuardianECMSuite (omnipod)
+ISGuardianECMSuite (omnipod)
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+ISCASE (omnipod)
+
+Right Torso:
+Fusion Engine
+Fusion Engine
+Fusion Engine
+ISRotaryAC5 Ammo (omnipod)
+ISRotaryAC5 Ammo (omnipod)
+ISRotaryAC5 Ammo (omnipod)
+IS Streak SRM 4 Ammo (omnipod)
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+ISCASE (omnipod)
+
+Center Torso:
+Fusion Engine
+Fusion Engine
+Fusion Engine
+Gyro
+Gyro
+Gyro
+Gyro
+Fusion Engine
+Fusion Engine
+Fusion Engine
+ISStreakSRM4 (omnipod)
+-Empty-
+
+Head:
+Life Support
+Sensors
+Cockpit
+ISTAG (omnipod)
+Sensors
+Life Support
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Left Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+ISERSmallLaser (omnipod)
+ISERSmallLaser (omnipod)
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Right Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+ISERSmallLaser (omnipod)
+ISERSmallLaser (omnipod)
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+

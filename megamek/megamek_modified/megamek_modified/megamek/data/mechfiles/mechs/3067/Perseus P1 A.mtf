@@ -1,0 +1,154 @@
+Version:1.0
+Perseus
+P1A
+
+Config:Biped Omnimech
+TechBase:Inner Sphere
+Era:3058
+Source:TRO 3067
+Rules Level:2
+
+Mass:75
+Engine:300 XL Engine(IS)
+Structure:IS Endo Steel
+Myomer:Standard
+
+Heat Sinks:12 Double
+Base Chassis Heat Sinks:12
+Walk MP:4
+Jump MP:0
+
+Armor:Standard(Inner Sphere)
+LA Armor:21
+RA Armor:21
+LT Armor:24
+RT Armor:24
+CT Armor:36
+HD Armor:9
+LL Armor:32
+RL Armor:32
+RTL Armor:8
+RTR Armor:8
+RTC Armor:9
+
+Weapons:6
+TAG, Right Leg
+LRM 20, Left Arm
+LRM 20, Right Arm
+SRM 6, Right Torso
+Medium Pulse Laser, Center Torso
+Medium Pulse Laser, Center Torso
+
+Left Arm:
+Shoulder
+Upper Arm Actuator
+Lower Arm Actuator
+LRM 20 (omnipod)
+LRM 20 (omnipod)
+LRM 20 (omnipod)
+LRM 20 (omnipod)
+LRM 20 (omnipod)
+ISArtemisIV (omnipod)
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+
+Right Arm:
+Shoulder
+Upper Arm Actuator
+Lower Arm Actuator
+LRM 20 (omnipod)
+LRM 20 (omnipod)
+LRM 20 (omnipod)
+LRM 20 (omnipod)
+LRM 20 (omnipod)
+ISArtemisIV (omnipod)
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+
+Left Torso:
+Fusion Engine
+Fusion Engine
+Fusion Engine
+IS Ammo LRM-20 Artemis-capable (omnipod)
+IS Ammo LRM-20 Artemis-capable (omnipod)
+IS Ammo LRM-20 Artemis-capable (omnipod)
+IS Ammo LRM-20 Artemis-capable (omnipod)
+ISCASE (omnipod)
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+
+Right Torso:
+Fusion Engine
+Fusion Engine
+Fusion Engine
+SRM 6 (omnipod)
+SRM 6 (omnipod)
+ISArtemisIV (omnipod)
+IS Ammo SRM-6 Artemis-capable (omnipod)
+ISCASE (omnipod)
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+
+Center Torso:
+Fusion Engine
+Fusion Engine
+Fusion Engine
+Gyro
+Gyro
+Gyro
+Gyro
+Fusion Engine
+Fusion Engine
+Fusion Engine
+ISMediumPulseLaser (omnipod)
+ISMediumPulseLaser (omnipod)
+
+Head:
+Life Support
+Sensors
+Cockpit
+-Empty-
+Sensors
+Life Support
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Left Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+ISGuardianECMSuite (omnipod)
+ISGuardianECMSuite (omnipod)
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Right Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+ISTAG (omnipod)
+IS Ammo SRM-6 Artemis-capable (omnipod)
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+

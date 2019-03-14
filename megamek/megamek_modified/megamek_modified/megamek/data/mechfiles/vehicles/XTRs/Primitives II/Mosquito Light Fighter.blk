@@ -1,0 +1,106 @@
+#building block data file
+<BlockVersion>
+1
+</BlockVersion>
+
+##Write the version number just in case...
+<Version>
+MAM0
+</Version>
+
+<UnitType>
+ConvFighter
+</UnitType>
+
+<Name>
+Mosquito Light Fighter
+</Name>
+
+<Model>
+(Standard)
+</Model>
+
+<year>
+2302
+</year>
+
+<originalBuildYear>
+2302
+</originalBuildYear>
+
+<type>
+IS Level 4
+</type>
+
+<motion_type>
+Aerodyne
+</motion_type>
+
+<transporters>
+</transporters>
+
+<SafeThrust>
+6
+</SafeThrust>
+
+<cockpit_type>
+0
+</cockpit_type>
+
+<heatsinks>
+10
+</heatsinks>
+
+<sink_type>
+0
+</sink_type>
+
+<fuel>
+150
+</fuel>
+
+<engine_type>
+1
+</engine_type>
+
+<armor>
+9
+6
+6
+3
+</armor>
+
+<Nose Equipment>
+Advanced Fire Control
+LRM 5
+</Nose Equipment>
+
+<Left Wing Equipment>
+Machine Gun
+External Stores Hardpoint
+</Left Wing Equipment>
+
+<Right Wing Equipment>
+Machine Gun
+External Stores Hardpoint
+</Right Wing Equipment>
+
+<Aft Equipment>
+</Aft Equipment>
+
+<Wings Equipment>
+</Wings Equipment>
+
+<Fuselage Equipment>
+IS Ammo LRM-5
+IS Ammo MG - Full
+</Fuselage Equipment>
+
+<source>
+XTRO Primitives II - Age of War
+</source>
+
+<tonnage>
+20.0
+</tonnage>
+

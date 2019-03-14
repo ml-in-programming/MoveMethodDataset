@@ -1,0 +1,154 @@
+Version:1.1
+Grigori
+C-GRG-O Invictus
+
+Config:Biped Omnimech
+TechBase:Inner Sphere
+Era:3069
+Source:TRO 3075
+Rules Level:2
+
+Mass:60
+Engine:240 Light Engine(IS)
+Structure:IS Standard
+Myomer:Standard
+Cockpit:Small Cockpit
+Gyro:XL Gyro
+
+Heat Sinks:10 Double
+Base Chassis Heat Sinks:9
+Walk MP:4
+Jump MP:0
+
+Armor:Light Ferro-Fibrous(Inner Sphere)
+LA Armor:19
+RA Armor:19
+LT Armor:20
+RT Armor:20
+CT Armor:26
+HD Armor:9
+LL Armor:26
+RL Armor:26
+RTL Armor:6
+RTR Armor:6
+RTC Armor:9
+
+Weapons:4
+MRM 20, Right Arm
+LRM 15, Left Torso
+Streak SRM 4, Left Torso
+Light PPC, Head
+
+Left Arm:
+Shoulder
+Upper Arm Actuator
+Lower Arm Actuator
+Hand Actuator
+ISDoubleHeatSink
+ISDoubleHeatSink
+ISDoubleHeatSink
+Retractable Blade (omnipod)
+Retractable Blade (omnipod)
+Retractable Blade (omnipod)
+Retractable Blade (omnipod)
+-Empty-
+
+Right Arm:
+Shoulder
+Upper Arm Actuator
+Lower Arm Actuator
+MRM 20 (omnipod)
+MRM 20 (omnipod)
+MRM 20 (omnipod)
+IS Light Ferro-Fibrous
+IS Light Ferro-Fibrous
+IS Light Ferro-Fibrous
+-Empty-
+-Empty-
+-Empty-
+
+Left Torso:
+Fusion Engine
+Fusion Engine
+LRM 15 (omnipod)
+LRM 15 (omnipod)
+LRM 15 (omnipod)
+ISStreakSRM4 (omnipod)
+ISC3iUnit
+ISC3iUnit
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Right Torso:
+Fusion Engine
+Fusion Engine
+IS MRM 20 Ammo (omnipod)
+IS Ammo LRM-15 (omnipod)
+IS Ammo LRM-15 (omnipod)
+IS Streak SRM 4 Ammo (omnipod)
+ISCASE (omnipod)
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Center Torso:
+Fusion Engine
+Fusion Engine
+Fusion Engine
+Gyro
+Gyro
+Gyro
+Gyro
+Gyro
+Gyro
+Fusion Engine
+Fusion Engine
+Fusion Engine
+
+Head:
+Life Support
+Sensors
+Cockpit
+Sensors
+Light PPC (omnipod)
+Light PPC (omnipod)
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Left Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+IS Light Ferro-Fibrous
+IS Light Ferro-Fibrous
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Right Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+IS Light Ferro-Fibrous
+IS Light Ferro-Fibrous
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+

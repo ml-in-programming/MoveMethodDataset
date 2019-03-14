@@ -1,0 +1,156 @@
+Version:1.0
+Savage Coyote
+J
+
+Config:Biped Omnimech
+TechBase:Clan
+Era:3073
+Source:3067 Unabridged
+Rules Level:2
+
+Mass:85
+Engine:255 XL (Clan) Engine(IS)
+Structure:IS Standard
+Myomer:Standard
+
+Heat Sinks:19 Double
+Base Chassis Heat Sinks:10
+Walk MP:3
+Jump MP:5
+
+Armor:Standard(Clan)
+LA Armor:25
+RA Armor:25
+LT Armor:26
+RT Armor:26
+CT Armor:34
+HD Armor:9
+LL Armor:30
+RL Armor:30
+RTL Armor:10
+RTR Armor:10
+RTC Armor:15
+
+Weapons:8
+Large Pulse Laser, Left Arm
+ER Large Laser, Left Arm
+ER Large Laser, Left Arm
+LB 10-X AC, Right Arm
+Small Pulse Laser, Left Torso
+Small Pulse Laser, Left Torso
+Small Pulse Laser, Right Torso
+Small Pulse Laser, Right Torso
+
+Left Arm:
+Shoulder
+Upper Arm Actuator
+CLDoubleHeatSink (omnipod)
+CLDoubleHeatSink (omnipod)
+CLDoubleHeatSink (omnipod)
+CLDoubleHeatSink (omnipod)
+CLLargePulseLaser (omnipod)
+CLLargePulseLaser (omnipod)
+CLERLargeLaser (omnipod)
+CLERLargeLaser (omnipod)
+-Empty-
+-Empty-
+
+Right Arm:
+Shoulder
+Upper Arm Actuator
+CLDoubleHeatSink (omnipod)
+CLDoubleHeatSink (omnipod)
+CLLBXAC10 (omnipod)
+CLLBXAC10 (omnipod)
+CLLBXAC10 (omnipod)
+CLLBXAC10 (omnipod)
+CLLBXAC10 (omnipod)
+Clan LB 10-X AC Ammo (omnipod)
+Clan LB 10-X Cluster Ammo (omnipod)
+-Empty-
+
+Left Torso:
+Fusion Engine
+Fusion Engine
+CLDoubleHeatSink
+CLDoubleHeatSink
+CLDoubleHeatSink (omnipod)
+CLDoubleHeatSink (omnipod)
+Clan Improved Jump Jet (omnipod)
+Clan Improved Jump Jet (omnipod)
+Clan Improved Jump Jet (omnipod)
+Clan Improved Jump Jet (omnipod)
+CLSmallPulseLaser (omnipod)
+CLSmallPulseLaser (omnipod)
+
+Right Torso:
+Fusion Engine
+Fusion Engine
+CLDoubleHeatSink
+CLDoubleHeatSink
+CLDoubleHeatSink (omnipod)
+CLDoubleHeatSink (omnipod)
+Clan Improved Jump Jet (omnipod)
+Clan Improved Jump Jet (omnipod)
+Clan Improved Jump Jet (omnipod)
+Clan Improved Jump Jet (omnipod)
+CLSmallPulseLaser (omnipod)
+CLSmallPulseLaser (omnipod)
+
+Center Torso:
+Fusion Engine
+Fusion Engine
+Fusion Engine
+Gyro
+Gyro
+Gyro
+Gyro
+Fusion Engine
+Fusion Engine
+Fusion Engine
+Clan Improved Jump Jet (omnipod)
+Clan Improved Jump Jet (omnipod)
+
+Head:
+Life Support
+Sensors
+Cockpit
+-Empty-
+Sensors
+Life Support
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Left Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+CLDoubleHeatSink
+CLDoubleHeatSink
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Right Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+CLDoubleHeatSink
+CLDoubleHeatSink
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+

@@ -1,0 +1,153 @@
+Version:1.0
+Perseus
+P1E
+
+Config:Biped Omnimech
+TechBase:Inner Sphere
+Era:3072
+Rules Level:3
+
+Mass:75
+Engine:300 XL Engine(IS)
+Structure:IS Endo Steel
+Myomer:Standard
+
+Heat Sinks:12 Double
+Base Chassis Heat Sinks:12
+Walk MP:4
+Jump MP:0
+
+Armor:Standard(Inner Sphere)
+LA Armor:21
+RA Armor:21
+LT Armor:24
+RT Armor:24
+CT Armor:36
+HD Armor:9
+LL Armor:32
+RL Armor:32
+RTL Armor:8
+RTR Armor:8
+RTC Armor:9
+
+Weapons:6
+Large VSP Laser, Left Arm
+Medium VSP Laser, Left Arm
+Gauss Rifle, Right Arm
+ER Medium Laser, Left Torso
+SRM 6 (I-OS), Center Torso
+ER Small Laser, Head
+
+Left Arm:
+Shoulder
+Upper Arm Actuator
+Lower Arm Actuator
+ISLargeVSPLaser (omnipod)
+ISLargeVSPLaser (omnipod)
+ISLargeVSPLaser (omnipod)
+ISLargeVSPLaser (omnipod)
+ISMediumVSPLaser (omnipod)
+ISMediumVSPLaser (omnipod)
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+
+Right Arm:
+Shoulder
+Upper Arm Actuator
+ISGaussRifle (omnipod)
+ISGaussRifle (omnipod)
+ISGaussRifle (omnipod)
+ISGaussRifle (omnipod)
+ISGaussRifle (omnipod)
+ISGaussRifle (omnipod)
+ISGaussRifle (omnipod)
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+
+Left Torso:
+Fusion Engine
+Fusion Engine
+Fusion Engine
+ISERMediumLaser (R) (omnipod)
+BeagleActiveProbe (omnipod)
+BeagleActiveProbe (omnipod)
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+-Empty-
+-Empty-
+
+Right Torso:
+Fusion Engine
+Fusion Engine
+Fusion Engine
+IS Gauss Ammo (omnipod)
+IS Gauss Ammo (omnipod)
+Communications Equipment (1 ton) (omnipod)
+Communications Equipment (1 ton) (omnipod)
+Communications Equipment (1 ton) (omnipod)
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+
+Center Torso:
+Fusion Engine
+Fusion Engine
+Fusion Engine
+Gyro
+Gyro
+Gyro
+Gyro
+Fusion Engine
+Fusion Engine
+Fusion Engine
+ISSRM6IOS (omnipod)
+ISSRM6IOS (omnipod)
+
+Head:
+Life Support
+Sensors
+Cockpit
+ISERSmallLaser (omnipod)
+Sensors
+Life Support
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Left Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Right Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+

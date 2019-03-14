@@ -1,0 +1,116 @@
+#building block data file
+<BlockVersion>
+1
+</BlockVersion>
+
+##Write the version number just in case...
+<Version>
+MAM0
+</Version>
+
+<UnitType>
+Aero
+</UnitType>
+
+<Name>
+Cutlass
+</Name>
+
+<Model>
+CUT-01D
+</Model>
+
+<year>
+3102
+</year>
+
+<originalBuildYear>
+3102
+</originalBuildYear>
+
+<type>
+IS Level 3
+</type>
+
+<motion_type>
+Aerodyne
+</motion_type>
+
+<transporters>
+</transporters>
+
+<SafeThrust>
+7
+</SafeThrust>
+
+<cockpit_type>
+0
+</cockpit_type>
+
+<heatsinks>
+12
+</heatsinks>
+
+<sink_type>
+1
+</sink_type>
+
+<fuel>
+400
+</fuel>
+
+<engine_type>
+2
+</engine_type>
+
+<armor_type>
+3
+</armor_type>
+
+<armor_tech>
+-1
+</armor_tech>
+
+<armor>
+71
+54
+54
+53
+</armor>
+
+<Nose Equipment>
+ISGaussRifle
+ISERLargeLaser
+ISGuardianECMSuite
+BeagleActiveProbe
+</Nose Equipment>
+
+<Left Wing Equipment>
+ISERMediumLaser
+ISERMediumLaser
+</Left Wing Equipment>
+
+<Right Wing Equipment>
+ISERMediumLaser
+ISERMediumLaser
+</Right Wing Equipment>
+
+<Aft Equipment>
+</Aft Equipment>
+
+<Wings Equipment>
+</Wings Equipment>
+
+<Fuselage Equipment>
+IS Gauss Ammo
+IS Gauss Ammo
+</Fuselage Equipment>
+
+<source>
+TRO 3145 Federated Suns - Late Republic
+</source>
+
+<tonnage>
+70.0
+</tonnage>
+

@@ -1,0 +1,159 @@
+Version:1.0
+Deimos
+E
+
+Config:Biped Omnimech
+TechBase:Mixed (Clan Chassis)
+Era:3140
+Source:RS 3145 NTNU - Dark Ages
+Rules Level:3
+
+Mass:85
+Engine:255 XL (Clan) Engine
+Structure:Clan Endo Steel
+Myomer:Standard
+
+Heat Sinks:16 Double
+Base Chassis Heat Sinks:10
+Walk MP:3
+Jump MP:0
+
+Armor:Standard(Clan)
+LA Armor:24
+RA Armor:24
+LT Armor:28
+RT Armor:28
+CT Armor:36
+HD Armor:9
+LL Armor:28
+RL Armor:28
+RTL Armor:8
+RTR Armor:8
+RTC Armor:11
+
+Weapons:11
+Large Pulse Laser, Left Arm
+Large Pulse Laser, Left Arm
+ER Large Laser, Left Arm
+ER PPC, Right Arm
+Streak SRM 4, Left Torso
+Streak SRM 4, Left Torso
+ER Medium Laser, Left Torso
+Streak SRM 4, Right Torso
+Streak SRM 4, Right Torso
+ER Medium Laser, Right Torso
+AMS, Head
+
+Left Arm:
+Shoulder
+Upper Arm Actuator
+CLDoubleHeatSink (omnipod)
+CLDoubleHeatSink (omnipod)
+CLLargePulseLaser (omnipod)
+CLLargePulseLaser (omnipod)
+CLLargePulseLaser (omnipod)
+CLLargePulseLaser (omnipod)
+CLERLargeLaser (omnipod)
+Clan Endo Steel
+Clan Endo Steel
+Clan Endo Steel
+
+Right Arm:
+Shoulder
+Upper Arm Actuator
+CLERPPC (omnipod)
+CLERPPC (omnipod)
+CLTargeting Computer (omnipod)
+CLTargeting Computer (omnipod)
+CLTargeting Computer (omnipod)
+CLTargeting Computer (omnipod)
+CLTargeting Computer (omnipod)
+Clan Endo Steel
+Clan Endo Steel
+Clan Endo Steel
+
+Left Torso:
+Fusion Engine
+Fusion Engine
+CLDoubleHeatSink
+CLDoubleHeatSink
+CLDoubleHeatSink
+CLDoubleHeatSink
+CLDoubleHeatSink (omnipod)
+CLDoubleHeatSink (omnipod)
+CLStreakSRM4 (omnipod)
+CLStreakSRM4 (omnipod)
+CLERMediumLaser
+IS Streak SRM 4 Ammo (omnipod)
+
+Right Torso:
+Fusion Engine
+Fusion Engine
+CLStreakSRM4 (omnipod)
+CLStreakSRM4 (omnipod)
+CLERMediumLaser
+Radical Heat Sink System (omnipod)
+Radical Heat Sink System (omnipod)
+Radical Heat Sink System (omnipod)
+CLMASC
+CLMASC
+CLMASC
+Clan Endo Steel
+
+Center Torso:
+Fusion Engine
+Fusion Engine
+Fusion Engine
+Gyro
+Gyro
+Gyro
+Gyro
+Fusion Engine
+Fusion Engine
+Fusion Engine
+CL Super Charger (omnipod)
+CLAMS Ammo
+
+Head:
+Life Support
+Sensors
+Cockpit
+CLAntiMissileSystem
+Sensors
+Life Support
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Left Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+CLDoubleHeatSink
+CLDoubleHeatSink
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Right Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+CLDoubleHeatSink
+CLDoubleHeatSink
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+

@@ -1,0 +1,110 @@
+#building block data file
+<BlockVersion>
+1
+</BlockVersion>
+
+##Write the version number just in case...
+<Version>
+MAM0
+</Version>
+
+<UnitType>
+Aero
+</UnitType>
+
+<Name>
+Stuka
+</Name>
+
+<Model>
+STU-K5
+</Model>
+
+<year>
+2571
+</year>
+
+<originalBuildYear>
+2571
+</originalBuildYear>
+
+<type>
+IS Level 2
+</type>
+
+<motion_type>
+Aerodyne
+</motion_type>
+
+<transporters>
+</transporters>
+
+<SafeThrust>
+5
+</SafeThrust>
+
+<cockpit_type>
+0
+</cockpit_type>
+
+<heatsinks>
+30
+</heatsinks>
+
+<sink_type>
+0
+</sink_type>
+
+<fuel>
+400
+</fuel>
+
+<engine_type>
+0
+</engine_type>
+
+<armor>
+84
+54
+54
+48
+</armor>
+
+<Nose Equipment>
+LRM 20
+Medium Laser
+SRM 4
+</Nose Equipment>
+
+<Left Wing Equipment>
+Large Laser
+Large Laser
+</Left Wing Equipment>
+
+<Right Wing Equipment>
+Large Laser
+Large Laser
+</Right Wing Equipment>
+
+<Aft Equipment>
+Medium Laser
+Medium Laser
+</Aft Equipment>
+
+<Wings Equipment>
+</Wings Equipment>
+
+<Fuselage Equipment>
+IS Ammo LRM-20
+IS Ammo LRM-20
+IS Ammo SRM-4
+</Fuselage Equipment>
+
+<source>
+TRO 3039 - Star League
+</source>
+
+<tonnage>
+100.0
+</tonnage>
+

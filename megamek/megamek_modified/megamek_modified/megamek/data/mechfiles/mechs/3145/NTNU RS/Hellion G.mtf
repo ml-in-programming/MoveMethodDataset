@@ -1,0 +1,153 @@
+Version:1.0
+Hellion
+G
+
+Config:Biped Omnimech
+TechBase:Mixed (Clan Chassis)
+Era:3119
+Source:RS 3145 NTNU - Late Republic
+Rules Level:3
+
+Mass:30
+Engine:210 XL (Clan) Engine
+Structure:Clan Endo Steel
+Myomer:Standard
+
+Heat Sinks:11 Double
+Base Chassis Heat Sinks:8
+Walk MP:7
+Jump MP:0
+
+Armor:Ferro-Fibrous(Clan)
+LA Armor:10
+RA Armor:10
+LT Armor:10
+RT Armor:10
+CT Armor:15
+HD Armor:9
+LL Armor:14
+RL Armor:14
+RTL Armor:4
+RTR Armor:4
+RTC Armor:5
+
+Weapons:5
+Improved Heavy Medium Laser, Left Arm
+Improved Heavy Medium Laser, Right Arm
+Improved Heavy Medium Laser, Right Arm
+TSEMP One-Shot, Left Torso
+LRM 10, Right Torso
+
+Left Arm:
+Shoulder
+Upper Arm Actuator
+Lower Arm Actuator
+Hand Actuator
+CLImprovedMediumHeavyLaser (omnipod)
+CLImprovedMediumHeavyLaser (omnipod)
+Clan Ferro-Fibrous
+Clan Ferro-Fibrous
+Clan Ferro-Fibrous
+Clan Ferro-Fibrous
+Clan Ferro-Fibrous
+-Empty-
+
+Right Arm:
+Shoulder
+Upper Arm Actuator
+Lower Arm Actuator
+Hand Actuator
+CLImprovedMediumHeavyLaser (omnipod)
+CLImprovedMediumHeavyLaser (omnipod)
+CLImprovedMediumHeavyLaser (omnipod)
+CLImprovedMediumHeavyLaser (omnipod)
+Clan Endo Steel
+Clan Endo Steel
+Clan Ferro-Fibrous
+Clan Ferro-Fibrous
+
+Left Torso:
+Fusion Engine
+Fusion Engine
+TSEMP One-Shot (omnipod)
+TSEMP One-Shot (omnipod)
+TSEMP One-Shot (omnipod)
+Clan Endo Steel
+Clan Endo Steel
+Clan Endo Steel
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Right Torso:
+Fusion Engine
+Fusion Engine
+CLLRM10 (omnipod)
+Clan Ammo LRM-10 (omnipod)
+CLMASC
+Clan Endo Steel
+Clan Endo Steel
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Center Torso:
+Fusion Engine
+Fusion Engine
+Fusion Engine
+Gyro
+Gyro
+Gyro
+Gyro
+Fusion Engine
+Fusion Engine
+Fusion Engine
+CLDoubleHeatSink (omnipod)
+CLDoubleHeatSink (omnipod)
+
+Head:
+Life Support
+Sensors
+Cockpit
+-Empty-
+Sensors
+Life Support
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Left Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+CLDoubleHeatSink
+CLDoubleHeatSink
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Right Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+CLDoubleHeatSink
+CLDoubleHeatSink
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+

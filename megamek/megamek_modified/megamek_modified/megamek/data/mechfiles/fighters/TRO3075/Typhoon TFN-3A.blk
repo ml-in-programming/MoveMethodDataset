@@ -1,0 +1,103 @@
+#building block data file
+<BlockVersion>
+1
+</BlockVersion>
+
+##Write the version number just in case...
+<Version>
+MAM0
+</Version>
+
+<UnitType>
+Aero
+</UnitType>
+
+<Name>
+Typhoon
+</Name>
+
+<Model>
+TFN-3A
+</Model>
+
+<year>
+2469
+</year>
+
+<originalBuildYear>
+2469
+</originalBuildYear>
+
+<type>
+IS Level 2
+</type>
+
+<motion_type>
+Aerodyne
+</motion_type>
+
+<transporters>
+</transporters>
+
+<SafeThrust>
+5
+</SafeThrust>
+
+<cockpit_type>
+0
+</cockpit_type>
+
+<heatsinks>
+20
+</heatsinks>
+
+<sink_type>
+0
+</sink_type>
+
+<fuel>
+400
+</fuel>
+
+<engine_type>
+0
+</engine_type>
+
+<armor>
+45
+34
+34
+23
+</armor>
+
+<Nose Equipment>
+LRM 15
+</Nose Equipment>
+
+<Left Wing Equipment>
+Autocannon/10
+PPC
+</Left Wing Equipment>
+
+<Right Wing Equipment>
+Autocannon/10
+PPC
+</Right Wing Equipment>
+
+<Aft Equipment>
+</Aft Equipment>
+
+<Wings Equipment>
+</Wings Equipment>
+
+<Fuselage Equipment>
+IS Ammo LRM-15
+IS Ammo LRM-15
+IS Ammo AC/10
+IS Ammo AC/10
+</Fuselage Equipment>
+
+<tonnage>
+90.0
+</tonnage>
+

@@ -1,0 +1,155 @@
+Version:1.0
+Mad Cat (Timber Wolf)
+D
+
+Config:Biped Omnimech
+TechBase:Clan
+Era:2945
+Source:TRO 3050 - Succession Wars
+Rules Level:2
+
+Mass:75
+Engine:375 XL (Clan) Engine(IS)
+Structure:Clan Endo Steel
+Myomer:Standard
+
+Heat Sinks:15 Double
+Base Chassis Heat Sinks:15
+Walk MP:5
+Jump MP:0
+
+Armor:Ferro-Fibrous(Clan)
+LA Armor:24
+RA Armor:24
+LT Armor:25
+RT Armor:25
+CT Armor:36
+HD Armor:9
+LL Armor:32
+RL Armor:32
+RTL Armor:7
+RTR Armor:7
+RTC Armor:9
+
+Weapons:7
+ER PPC, Left Arm
+ER PPC, Right Arm
+Streak SRM 6, Left Torso
+Streak SRM 6, Left Torso
+Streak SRM 6, Right Torso
+Streak SRM 6, Right Torso
+ER Small Laser, Center Torso
+
+Left Arm:
+Shoulder
+Upper Arm Actuator
+CLERPPC (omnipod)
+CLERPPC (omnipod)
+Clan Ferro-Fibrous
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Right Arm:
+Shoulder
+Upper Arm Actuator
+CLERPPC (omnipod)
+CLERPPC (omnipod)
+Clan Ferro-Fibrous
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Left Torso:
+Fusion Engine
+Fusion Engine
+CLStreakSRM6 (omnipod)
+CLStreakSRM6 (omnipod)
+CLStreakSRM6 (R) (omnipod)
+CLStreakSRM6 (R) (omnipod)
+Clan Streak SRM 6 Ammo (omnipod)
+Clan Endo Steel
+Clan Ferro-Fibrous
+Clan Ferro-Fibrous
+-Empty-
+-Empty-
+
+Right Torso:
+Fusion Engine
+Fusion Engine
+CLStreakSRM6 (omnipod)
+CLStreakSRM6 (omnipod)
+CLStreakSRM6 (R) (omnipod)
+CLStreakSRM6 (R) (omnipod)
+Clan Streak SRM 6 Ammo (omnipod)
+Clan Streak SRM 6 Ammo (omnipod)
+Clan Endo Steel
+Clan Ferro-Fibrous
+Clan Ferro-Fibrous
+-Empty-
+
+Center Torso:
+Fusion Engine
+Fusion Engine
+Fusion Engine
+Gyro
+Gyro
+Gyro
+Gyro
+Fusion Engine
+Fusion Engine
+Fusion Engine
+CLERSmallLaser (omnipod)
+Clan Endo Steel
+
+Head:
+Life Support
+Sensors
+Cockpit
+Clan Ferro-Fibrous
+Sensors
+Life Support
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Left Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+Clan Endo Steel
+Clan Endo Steel
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Right Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+Clan Endo Steel
+Clan Endo Steel
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+

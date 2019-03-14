@@ -1,0 +1,71 @@
+--- megamek/src/megamek/server/ScenarioLoader.java
++++ megamek/src/megamek/server/ScenarioLoader.java
+@@ -131,68 +126,6 @@ public class ScenarioLoader {
+         }
+     }
+ 
+-    // TODO: legal/valid ammo type handling and game options, since they are set at this point
+-    private AmmoType getValidAmmoType(IGame game, Mounted mounted, String ammoString) {
+-        final Entity e = mounted.getEntity();
+-        final int year = game.getOptions().intOption(OptionsConstants.ALLOWED_YEAR); //$NON-NLS-1$
+-        final EquipmentType currentAmmoType = mounted.getType();
+-        final Mounted currentWeapon = mounted.getLinkedBy();
+-        final EquipmentType currentWeaponType = (null != currentWeapon) ? currentWeapon.getType() : null;
+-        final EquipmentType newAmmoType = EquipmentType.get(ammoString);
+-        if(null == newAmmoType) {
+-            System.err.println(String.format("Ammo type '%s' not found", ammoString)); //$NON-NLS-1$
+-            return null;
+-        }
+-        if(!(newAmmoType instanceof AmmoType)) {
+-            System.err.println(String.format("Equipment %s is not an ammo type", newAmmoType.getName())); //$NON-NLS-1$
+-            return null;
+-        }
+-        if(!newAmmoType.isLegal(year,
+-            SimpleTechLevel.getGameTechLevel(game),
+-            e.isClan(), e.isMixedTech())) {
+-            System.out.println(String.format("Ammo %s (TL %d) is not legal for year %d (TL %d)", //$NON-NLS-1$
+-                newAmmoType.getName(), newAmmoType.getTechLevel(year), year,
+-                TechConstants.getGameTechLevel(game, e.isClan())));
+-            return null;
+-        }
+-        if(e.isClan() && !game.getOptions().booleanOption(OptionsConstants.ALLOWED_CLAN_IGNORE_EQ_LIMITS)) { //$NON-NLS-1$
+-            // Check for clan weapon restrictions
+-            final long muniType = ((AmmoType) newAmmoType).getMunitionType() & ~AmmoType.M_INCENDIARY_LRM;
+-            if((muniType == AmmoType.M_SEMIGUIDED)
+-                || (muniType == AmmoType.M_SWARM_I)
+-                || (muniType == AmmoType.M_THUNDER_AUGMENTED)
+-                || (muniType == AmmoType.M_THUNDER_INFERNO)
+-                || (muniType == AmmoType.M_THUNDER_VIBRABOMB)
+-                || (muniType == AmmoType.M_THUNDER_ACTIVE)
+-                || (muniType == AmmoType.M_INFERNO_IV)
+-                || (muniType == AmmoType.M_VIBRABOMB_IV)
+-                || (muniType == AmmoType.M_LISTEN_KILL)
+-                || (muniType == AmmoType.M_ANTI_TSM)
+-                || (muniType == AmmoType.M_DEAD_FIRE) 
+-                || (muniType == AmmoType.M_MINE_CLEARANCE)) {
+-                System.out.println(String.format("Ammo type %s not allowed by Clan rules", //$NON-NLS-1$
+-                    newAmmoType.getName()));
+-                return null;
+-            }
+-        }
+-        if(AmmoType.canDeliverMinefield((AmmoType) newAmmoType)
+-            && !game.getOptions().booleanOption(OptionsConstants.ADVANCED_MINEFIELDS)) { //$NON-NLS-1$
+-            System.out.println(String.format("Minefield-creating ammo type %s forbidden by game rules", //$NON-NLS-1$
+-                newAmmoType.getName()));
+-            return null;
+-        }
+-        int weaponAmmoType = (currentWeaponType instanceof WeaponType) ? ((WeaponType) currentWeaponType).getAmmoType() : 0;
+-        if((((AmmoType) newAmmoType).getRackSize() == ((AmmoType) currentAmmoType).getRackSize())
+-            && (newAmmoType.hasFlag(AmmoType.F_BATTLEARMOR) == currentAmmoType.hasFlag(AmmoType.F_BATTLEARMOR))
+-            && (newAmmoType.hasFlag(AmmoType.F_ENCUMBERING) == currentAmmoType.hasFlag(AmmoType.F_ENCUMBERING))
+-            && (newAmmoType.getTonnage(e) == currentAmmoType.getTonnage(e))
+-            && (((AmmoType) newAmmoType).getAmmoType() == weaponAmmoType)) {
+-            return (AmmoType) newAmmoType;
+-        } else {
+-            return null;
+-        }
+-    }
+-
+     /**
+      * The damage procedures are built into a server object, so we delay dealing
+      * the random damage until a server is made available to us.

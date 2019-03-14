@@ -1,0 +1,155 @@
+Version:1.0
+Perseus
+P1D
+
+Config:Biped Omnimech
+TechBase:Inner Sphere
+Era:3058
+Source:TRO 3067
+Rules Level:2
+
+Mass:75
+Engine:300 XL Engine(IS)
+Structure:IS Endo Steel
+Myomer:Standard
+
+Heat Sinks:12 Double
+Base Chassis Heat Sinks:12
+Walk MP:4
+Jump MP:0
+
+Armor:Standard(Inner Sphere)
+LA Armor:21
+RA Armor:21
+LT Armor:24
+RT Armor:24
+CT Armor:36
+HD Armor:9
+LL Armor:32
+RL Armor:32
+RTL Armor:8
+RTR Armor:8
+RTC Armor:9
+
+Weapons:7
+LRM 20, Left Arm
+LB 10-X AC, Right Arm
+ER Medium Laser, Right Arm
+ER Medium Laser, Left Torso
+ER Medium Laser, Left Torso
+SRM 6, Right Torso
+ER Small Laser, Head
+
+Left Arm:
+Shoulder
+Upper Arm Actuator
+LRM 20 (omnipod)
+LRM 20 (omnipod)
+LRM 20 (omnipod)
+LRM 20 (omnipod)
+LRM 20 (omnipod)
+ISArtemisIV (omnipod)
+IS Ammo LRM-20 Artemis-capable (omnipod)
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+
+Right Arm:
+Shoulder
+Upper Arm Actuator
+ISLBXAC10 (omnipod)
+ISLBXAC10 (omnipod)
+ISLBXAC10 (omnipod)
+ISLBXAC10 (omnipod)
+ISLBXAC10 (omnipod)
+ISLBXAC10 (omnipod)
+ISERMediumLaser (omnipod)
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+
+Left Torso:
+Fusion Engine
+Fusion Engine
+Fusion Engine
+ISERMediumLaser (omnipod)
+ISERMediumLaser (omnipod)
+IS Ammo LRM-20 Artemis-capable (omnipod)
+IS Ammo LRM-20 Artemis-capable (omnipod)
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+-Empty-
+
+Right Torso:
+Fusion Engine
+Fusion Engine
+Fusion Engine
+SRM 6 (omnipod)
+SRM 6 (omnipod)
+ISArtemisIV (omnipod)
+IS LB 10-X AC Ammo (omnipod)
+IS LB 10-X Cluster Ammo (omnipod)
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+IS Endo Steel
+
+Center Torso:
+Fusion Engine
+Fusion Engine
+Fusion Engine
+Gyro
+Gyro
+Gyro
+Gyro
+Fusion Engine
+Fusion Engine
+Fusion Engine
+IS Ammo SRM-6 Artemis-capable (omnipod)
+IS Ammo SRM-6 Artemis-capable (omnipod)
+
+Head:
+Life Support
+Sensors
+Cockpit
+ISERSmallLaser (omnipod)
+Sensors
+Life Support
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Left Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+ISGuardianECMSuite (omnipod)
+ISGuardianECMSuite (omnipod)
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Right Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+BeagleActiveProbe (omnipod)
+BeagleActiveProbe (omnipod)
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+

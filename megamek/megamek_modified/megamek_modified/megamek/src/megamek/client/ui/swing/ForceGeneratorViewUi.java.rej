@@ -1,0 +1,20 @@
+--- megamek/src/megamek/client/ui/swing/ForceGeneratorViewUi.java
++++ megamek/src/megamek/client/ui/swing/ForceGeneratorViewUi.java
+@@ -602,17 +602,6 @@ public class ForceGeneratorViewUi {
+             fireTableDataChanged();
+         }
+ 
+-        public void addEntities(ForceDescriptor fd) {
+-            if (fd.isElement()) {
+-                if (fd.getEntity() != null) {
+-                    addEntity(fd.getEntity());
+-                }
+-            }
+-            fd.getSubforces().stream().forEach(sf -> addEntities(sf));
+-            fd.getAttached().stream().forEach(sf -> addEntities(sf));
+-            
+-        }
+-        
+ 		public List<Entity> allEntities() {
+             return entities;
+         }

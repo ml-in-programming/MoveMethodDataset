@@ -1,0 +1,163 @@
+Version:1.0
+Thorn
+THE-S
+
+Config:Biped
+TechBase:Inner Sphere
+Era:3035
+Source:TRO 3039 - Succession Wars
+Rules Level:1
+
+Mass:20
+Engine:120 Fusion Engine(IS)
+Structure:IS Standard
+Myomer:Standard
+
+Heat Sinks:10 Single
+Walk MP:6
+Jump MP:0
+
+Armor:Standard(Inner Sphere)
+LA Armor:6
+RA Armor:6
+LT Armor:6
+RT Armor:6
+CT Armor:8
+HD Armor:8
+LL Armor:7
+RL Armor:7
+RTL Armor:3
+RTR Armor:3
+RTC Armor:4
+
+Weapons:3
+Medium Laser, Left Arm
+LRM 5, Right Arm
+Medium Laser, Head
+
+Left Arm:
+Shoulder
+Upper Arm Actuator
+Lower Arm Actuator
+Hand Actuator
+Medium Laser
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Right Arm:
+Shoulder
+Upper Arm Actuator
+LRM 5
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Left Torso:
+Heat Sink
+Heat Sink
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Right Torso:
+Heat Sink
+Heat Sink
+IS Ammo LRM-5
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Center Torso:
+Fusion Engine
+Fusion Engine
+Fusion Engine
+Gyro
+Gyro
+Gyro
+Gyro
+Fusion Engine
+Fusion Engine
+Fusion Engine
+Heat Sink
+Heat Sink
+
+Head:
+Life Support
+Sensors
+Cockpit
+Medium Laser
+Sensors
+Life Support
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Left Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Right Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+overview: One of the older Terran Hegemony and later Star League light mechs the Thorn originally made it's debut in the late twenty fourth century.  According to survivng records from the period the Thorn was the first to mount Endo Steel II internal structure.  This allowed the design to save significant weight in it's chasis at the expense of increased bulk taking up what would otherwise be valuable space for additional equipment.
+capabilities: Reviews of the Thorn have always been mixed.  Hefty firepower for a design of the mass range won it many supporters but many commanders and mechwarriors found the lack of jump jets a significant drawback when the Thorn was forced into roles it was ill suited for.  This was compounded with only modest ground mobility for a unit of the Thorn's mass.  During the height of the Star League where there were enough mechs to fill the roles that the Thorn was poorly suited to this drawback was largely overlooked.
+deployment: Best suited to being a reasonably mobile firesupport design the Thorn was often teamed with Hussars during the Star League era.
+manufacturer:Ford Military Limited
+primaryFactory:Terra
+systemmodel:CHASSIS:Chariot Type II
+systemmanufacturer:ENGINE:GM
+systemmodel:ENGINE:120
+systemmanufacturer:ARMOR:Durallex
+systemmanufacturer:COMMUNICATIONS:Olmstead
+systemmodel:COMMUNICATIONS:30
+systemmanufacturer:TARGETING:Omicron
+systemmodel:TARGETING:VII
+

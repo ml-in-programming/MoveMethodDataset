@@ -1,0 +1,34 @@
+--- megamek/src/megamek/client/ratgenerator/AbstractUnitRecord.java
++++ megamek/src/megamek/client/ratgenerator/AbstractUnitRecord.java
+@@ -40,31 +40,6 @@ public class AbstractUnitRecord {
+ 		includedFactions = new HashSet<String>();
+ 	}
+ 
+-	/**
+-	 * Adjusts availability rating for the first couple years after introduction.
+-	 * 
+-	 * @param ar The AvailabilityRecord for the chassis or model.
+-	 * @param rating The force equipment rating.
+-	 * @param ratingLevels The number of equipment rating levels used by the faction.
+-	 * @param year The game year
+-	 * @return The adjusted availability rating.
+-	 */
+-	public int calcAvailability(AvailabilityRating ar,
+-			int rating, int ratingLevels, int year) {
+-		int retVal = ar.adjustForRating(rating, ratingLevels);
+-		
+-		if (introYear == year) {
+-			retVal -= 2;
+-		}
+-		if (introYear == year + 1) {
+-			retVal -= 1;
+-		}
+-		if (retVal < 0) {
+-			return 0;
+-		}
+-		return retVal;
+-	}
+-
+ 	public String getChassis() {
+ 		return chassis;
+ 	}

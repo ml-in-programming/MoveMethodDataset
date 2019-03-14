@@ -1,0 +1,156 @@
+Version:1.0
+Savage Coyote
+C
+
+Config:Biped Omnimech
+TechBase:Clan
+Era:3064
+Source:TRO 3067
+Rules Level:2
+
+Mass:85
+Engine:255 XL (Clan) Engine(IS)
+Structure:IS Standard
+Myomer:Standard
+
+Heat Sinks:20 Double
+Base Chassis Heat Sinks:10
+Walk MP:3
+Jump MP:3
+
+Armor:Standard(Clan)
+LA Armor:25
+RA Armor:25
+LT Armor:26
+RT Armor:26
+CT Armor:34
+HD Armor:9
+LL Armor:30
+RL Armor:30
+RTL Armor:10
+RTR Armor:10
+RTC Armor:15
+
+Weapons:8
+ER Large Laser, Left Arm
+ER Medium Laser, Left Arm
+ER Large Laser, Right Arm
+ER Medium Laser, Right Arm
+ATM 9, Left Torso
+ER PPC, Left Torso
+ATM 9, Right Torso
+ER Medium Laser, Center Torso
+
+Left Arm:
+Shoulder
+Upper Arm Actuator
+CLDoubleHeatSink (omnipod)
+CLDoubleHeatSink (omnipod)
+CLDoubleHeatSink (omnipod)
+CLDoubleHeatSink (omnipod)
+CLDoubleHeatSink (omnipod)
+CLDoubleHeatSink (omnipod)
+CLDoubleHeatSink (omnipod)
+CLDoubleHeatSink (omnipod)
+CLERLargeLaser (omnipod)
+CLERMediumLaser (omnipod)
+
+Right Arm:
+Shoulder
+Upper Arm Actuator
+CLDoubleHeatSink (omnipod)
+CLDoubleHeatSink (omnipod)
+CLDoubleHeatSink (omnipod)
+CLDoubleHeatSink (omnipod)
+CLTargeting Computer (omnipod)
+CLTargeting Computer (omnipod)
+CLTargeting Computer (omnipod)
+CLTargeting Computer (omnipod)
+CLERLargeLaser (omnipod)
+CLERMediumLaser (omnipod)
+
+Left Torso:
+Fusion Engine
+Fusion Engine
+CLDoubleHeatSink
+CLDoubleHeatSink
+Jump Jet (omnipod)
+CLATM9 (omnipod)
+CLATM9 (omnipod)
+CLATM9 (omnipod)
+CLATM9 (omnipod)
+CLERPPC (omnipod)
+CLERPPC (omnipod)
+Clan Ammo ATM-9 (omnipod)
+
+Right Torso:
+Fusion Engine
+Fusion Engine
+CLDoubleHeatSink
+CLDoubleHeatSink
+Jump Jet (omnipod)
+CLATM9 (omnipod)
+CLATM9 (omnipod)
+CLATM9 (omnipod)
+CLATM9 (omnipod)
+Clan Ammo ATM-9 (omnipod)
+Clan Ammo ATM-9 HE (omnipod)
+Clan Ammo ATM-9 HE (omnipod)
+
+Center Torso:
+Fusion Engine
+Fusion Engine
+Fusion Engine
+Gyro
+Gyro
+Gyro
+Gyro
+Fusion Engine
+Fusion Engine
+Fusion Engine
+Jump Jet (omnipod)
+CLERMediumLaser (omnipod)
+
+Head:
+Life Support
+Sensors
+Cockpit
+Clan Ammo ATM-9 ER (omnipod)
+Sensors
+Life Support
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Left Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+CLDoubleHeatSink
+CLDoubleHeatSink
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+Right Leg:
+Hip
+Upper Leg Actuator
+Lower Leg Actuator
+Foot Actuator
+CLDoubleHeatSink
+CLDoubleHeatSink
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+-Empty-
+
+
