@@ -1,0 +1,79 @@
+diff --git a/megamek/src/megamek/client/bot/CEntity.java b/megamek/src/megamek/client/bot/CEntity.java
+index 7586d10..d181f6e 100644
+--- a/megamek/src/megamek/client/bot/CEntity.java
++++ b/megamek/src/megamek/client/bot/CEntity.java
+@@ -1175,23 +1175,6 @@ public class CEntity {
+     }
+ 
+     /**
+-     * find all moves that get into dest
+-     */
+-    public ArrayList<MoveOption> findMoves(Coords dest, Client client) {
+-        ArrayList<MoveOption> result = new ArrayList<MoveOption>();
+-        for (int i = 0; i < 6; i++) {
+-            for (int j = 1; j < 2; j++) {
+-                MoveOption.Key key = new MoveOption.Key(dest, i, j);
+-                MoveOption es = null;
+-                if ((es = getAllMoves(client).get(key)) != null) {
+-                    result.add(es);
+-                }
+-            }
+-        }
+-        return result;
+-    }
+-
+-    /**
+      * Returns an estimate of damage given the range to the target and a
+      * modifier to the to-hit number. An approximation of the original to-hit
+      * odds is extracted from the damage at that range leaving the damage that
+diff --git a/megamek/src/megamek/client/bot/TestBot.java b/megamek/src/megamek/client/bot/TestBot.java
+index 63bace8..f0e2fd6 100644
+--- a/megamek/src/megamek/client/bot/TestBot.java
++++ b/megamek/src/megamek/client/bot/TestBot.java
+@@ -843,7 +843,7 @@ public class TestBot extends BotClient {
+                     Iterator<Coords> ci = coord.iterator();
+                     while (ci.hasNext()) {
+                         Coords test = ci.next();
+-                        List<MoveOption> c = enemy.findMoves(test, this);
++                        List<MoveOption> c = test.findMoves(this, enemy);
+                         if (c.size() != 0) {
+                             to_check.addAll(c);
+                         }
+diff --git a/megamek/src/megamek/common/Coords.java b/megamek/src/megamek/common/Coords.java
+index e78f1a8..7a68ea7 100644
+--- a/megamek/src/megamek/common/Coords.java
++++ b/megamek/src/megamek/common/Coords.java
+@@ -18,6 +18,9 @@ import java.io.Serializable;
+ import java.util.ArrayList;
+ import java.util.List;
+ 
++import megamek.client.Client;
++import megamek.client.bot.CEntity;
++import megamek.client.bot.MoveOption;
+ import megamek.common.util.HashCodeUtil;
+ 
+ /**
+@@ -487,4 +490,23 @@ public class Coords implements Serializable {
+     public final int getY() {
+         return y;
+     }
++
++    /**
++     * find all moves that get into dest
++     * @param client
++     * @param cEntity
++     */
++    public ArrayList<MoveOption> findMoves(Client client, CEntity cEntity) {
++        ArrayList<MoveOption> result = new ArrayList<MoveOption>();
++        for (int i = 0; i < 6; i++) {
++            for (int j = 1; j < 2; j++) {
++                MoveOption.Key key = new MoveOption.Key(this, i, j);
++                MoveOption es = null;
++                if ((es = cEntity.getAllMoves(client).get(key)) != null) {
++                    result.add(es);
++                }
++            }
++        }
++        return result;
++    }
+ }

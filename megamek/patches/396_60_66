@@ -1,0 +1,107 @@
+diff --git a/megamek/src/megamek/client/bot/princess/PhysicalAttackType.java b/megamek/src/megamek/client/bot/princess/PhysicalAttackType.java
+index 4fd923a..1b23358 100644
+--- a/megamek/src/megamek/client/bot/princess/PhysicalAttackType.java
++++ b/megamek/src/megamek/client/bot/princess/PhysicalAttackType.java
+@@ -13,6 +13,11 @@
+  */
+ package megamek.client.bot.princess;
+ 
++import megamek.common.Targetable;
++import megamek.common.actions.KickAttackAction;
++import megamek.common.actions.PhysicalAttackAction;
++import megamek.common.actions.PunchAttackAction;
++
+ /**
+  * @version $Id$
+  * @lastEditBy Deric "Netzilla" Page (deric dot page at usa dot net)
+@@ -28,4 +33,23 @@ public enum PhysicalAttackType {
+     public boolean isKick() {
+         return LEFT_KICK.equals(this) || RIGHT_KICK.equals(this);
+     }
++
++    /**
++     * Builds a new {@link PhysicalAttackAction} from the given parameters.
++     *
++     * @param shooterId  The ID of the attacking unit.
++     * @param target     The unit being attacked.
++     * @return The resulting {@link PhysicalAttackType}.
++     */
++    protected PhysicalAttackAction buildAction(int shooterId, Targetable target) {
++        if (isPunch()) {
++            int armId = RIGHT_PUNCH == this ? PunchAttackAction.RIGHT : PunchAttackAction.LEFT;
++            return new PunchAttackAction(shooterId, target.getTargetType(), target.getTargetId(), armId, false, false, false);
++        } else if (isKick()) {
++            int legId = RIGHT_KICK == this ? KickAttackAction.RIGHT : KickAttackAction.LEFT;
++            return new KickAttackAction(shooterId, target.getTargetType(), target.getTargetId(), legId);
++        } else {
++            // todo handle other physical attack types.
++            return null;
+         }
++    }}
+diff --git a/megamek/src/megamek/client/bot/princess/PhysicalInfo.java b/megamek/src/megamek/client/bot/princess/PhysicalInfo.java
+index e13973a..53238db 100644
+--- a/megamek/src/megamek/client/bot/princess/PhysicalInfo.java
++++ b/megamek/src/megamek/client/bot/princess/PhysicalInfo.java
+@@ -91,27 +91,6 @@ public class PhysicalInfo {
+     }
+ 
+     /**
+-     * Builds a new {@link PhysicalAttackAction} from the given parameters.
+-     *
+-     * @param attackType The {@link PhysicalAttackType} of the attack.
+-     * @param shooterId  The ID of the attacking unit.
+-     * @param target     The unit being attacked.
+-     * @return The resulting {@link PhysicalAttackType}.
+-     */
+-    protected PhysicalAttackAction buildAction(PhysicalAttackType attackType, int shooterId, Targetable target) {
+-        if (attackType.isPunch()) {
+-            int armId = PhysicalAttackType.RIGHT_PUNCH == attackType ? PunchAttackAction.RIGHT : PunchAttackAction.LEFT;
+-            return new PunchAttackAction(shooterId, target.getTargetType(), target.getTargetId(), armId, false, false, false);
+-        } else if (attackType.isKick()) {
+-            int legId = PhysicalAttackType.RIGHT_KICK == attackType ? KickAttackAction.RIGHT : KickAttackAction.LEFT;
+-            return new KickAttackAction(shooterId, target.getTargetType(), target.getTargetId(), legId);
+-        } else {
+-            // todo handle other physical attack types.
+-            return null;
+-        }
+-    }
+-
+-    /**
+      * Basic constructor.
+      *
+      * @param shooter            The {@link megamek.common.Entity} doing the attacking.
+@@ -162,7 +141,7 @@ public class PhysicalInfo {
+             setHitData(owner.getFireControl(getShooter()).guessToHitModifierPhysical(getShooter(), shooterState, getTarget(),
+                                                                          targetState, getAttackType(), game));
+         } else {
+-            PhysicalAttackAction action = buildAction(physicalAttackType, getShooter().getId(), getTarget());
++            PhysicalAttackAction action = physicalAttackType.buildAction(getShooter().getId(), getTarget());
+             setAction(action);
+             setHitData(physicalAttackType.isPunch() ?
+                        ((PunchAttackAction) action).toHit(game) :
+diff --git a/megamek/unittests/megamek/client/bot/princess/PhysicalInfoTest.java b/megamek/unittests/megamek/client/bot/princess/PhysicalInfoTest.java
+index 9631c04..40d00e0 100644
+--- a/megamek/unittests/megamek/client/bot/princess/PhysicalInfoTest.java
++++ b/megamek/unittests/megamek/client/bot/princess/PhysicalInfoTest.java
+@@ -1,6 +1,5 @@
+ package megamek.client.bot.princess;
+ 
+-import megamek.client.bot.princess.FireControl.FireControlType;
+ import megamek.common.BipedMech;
+ import megamek.common.Coords;
+ import megamek.common.Entity;
+@@ -76,12 +75,12 @@ public class PhysicalInfoTest {
+         PhysicalAttackType kick = PhysicalAttackType.LEFT_KICK;
+ 
+         PunchAttackAction punchAction = Mockito.mock(PunchAttackAction.class);
+-        Mockito.doReturn(punchAction).when(testPhysicalInfo).buildAction(Mockito.eq(punch), Mockito.anyInt(),
++        Mockito.eq(punch).buildAction(Mockito.anyInt(),
+                                                                          Mockito.any(Targetable.class));
+         Mockito.when(punchAction.toHit(Mockito.any(IGame.class))).thenReturn(mockToHit);
+ 
+         KickAttackAction kickAction = Mockito.mock(KickAttackAction.class);
+-        Mockito.doReturn(kickAction).when(testPhysicalInfo).buildAction(Mockito.eq(kick), Mockito.anyInt(),
++        Mockito.eq(kick).buildAction(Mockito.anyInt(),
+                                                                         Mockito.any(Targetable.class));
+         Mockito.when(kickAction.toHit(Mockito.any(IGame.class))).thenReturn(mockToHit);
+ 

@@ -1,0 +1,68 @@
+diff --git a/megamek/src/megamek/client/ratgenerator/ForceDescriptor.java b/megamek/src/megamek/client/ratgenerator/ForceDescriptor.java
+index da5ad52..2f38a89 100644
+--- a/megamek/src/megamek/client/ratgenerator/ForceDescriptor.java
++++ b/megamek/src/megamek/client/ratgenerator/ForceDescriptor.java
+@@ -27,6 +27,7 @@ import java.util.Set;
+ import java.util.UUID;
+ import java.util.stream.Collectors;
+ 
++import megamek.client.ui.swing.ForceGeneratorViewUi;
+ import megamek.common.Compute;
+ import megamek.common.Entity;
+ import megamek.common.EntityMovementMode;
+@@ -1735,4 +1736,15 @@ public class ForceDescriptor {
+             sub.show(indent + " +", logLevel);
+         }
+     }
++
++    public void addEntities(ForceGeneratorViewUi.ChosenEntityModel chosenEntityModel) {
++        if (isElement()) {
++            if (getEntity() != null) {
++                chosenEntityModel.addEntity(getEntity());
++            }
++        }
++        getSubforces().stream().forEach(sf -> sf.addEntities(chosenEntityModel));
++        getAttached().stream().forEach(sf -> sf.addEntities(chosenEntityModel));
++
++    }
+ }
+diff --git a/megamek/src/megamek/client/ui/swing/ForceGeneratorViewUi.java b/megamek/src/megamek/client/ui/swing/ForceGeneratorViewUi.java
+index 0d2cdd5..016c348 100644
+--- a/megamek/src/megamek/client/ui/swing/ForceGeneratorViewUi.java
++++ b/megamek/src/megamek/client/ui/swing/ForceGeneratorViewUi.java
+@@ -349,7 +349,7 @@ public class ForceGeneratorViewUi {
+                     JPopupMenu menu = new JPopupMenu();
+                     
+                     JMenuItem item = new JMenuItem("Add to game");
+-                    item.addActionListener(ev -> modelChosen.addEntities(fd));
++                    item.addActionListener(ev -> fd.addEntities(modelChosen));
+                     menu.add(item);
+                     
+                     item = new JMenuItem("Export as MUL");
+@@ -560,7 +560,7 @@ public class ForceGeneratorViewUi {
+         }
+     }
+     
+-    private static class ChosenEntityModel extends AbstractTableModel {
++    public static class ChosenEntityModel extends AbstractTableModel {
+         
+         private static final long serialVersionUID = 779497693159590878L;
+         
+@@ -602,17 +602,6 @@ public class ForceGeneratorViewUi {
+             fireTableDataChanged();
+         }
+ 
+-        public void addEntities(ForceDescriptor fd) {
+-            if (fd.isElement()) {
+-                if (fd.getEntity() != null) {
+-                    addEntity(fd.getEntity());
+-                }
+-            }
+-            fd.getSubforces().stream().forEach(sf -> addEntities(sf));
+-            fd.getAttached().stream().forEach(sf -> addEntities(sf));
+-            
+-        }
+-        
+ 		public List<Entity> allEntities() {
+             return entities;
+         }

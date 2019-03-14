@@ -1,0 +1,113 @@
+diff --git a/megamek/src/megamek/client/ui/swing/widget/GeneralInfoMapSet.java b/megamek/src/megamek/client/ui/swing/widget/GeneralInfoMapSet.java
+index c12ff62..d6fbf59 100644
+--- a/megamek/src/megamek/client/ui/swing/widget/GeneralInfoMapSet.java
++++ b/megamek/src/megamek/client/ui/swing/widget/GeneralInfoMapSet.java
+@@ -21,7 +21,6 @@ import java.awt.Color;
+ import java.awt.Font;
+ import java.awt.FontMetrics;
+ import java.awt.Image;
+-import java.util.Enumeration;
+ import java.util.Vector;
+ 
+ import javax.swing.JComponent;
+@@ -43,9 +42,6 @@ import megamek.common.QuadVee;
+ import megamek.common.Sensor;
+ import megamek.common.Tank;
+ import megamek.common.Warship;
+-import megamek.common.options.IOption;
+-import megamek.common.options.IOptionGroup;
+-import megamek.common.options.IOptions;
+ import megamek.common.options.OptionsConstants;
+ import megamek.common.options.PilotOptions;
+ import megamek.common.util.MegaMekFile;
+@@ -346,7 +342,7 @@ public class GeneralInfoMapSet implements DisplayMapSet {
+ 
+         if ((null != en.getGame())
+                 && en.getGame().getOptions().booleanOption(OptionsConstants.ADVANCED_STRATOPS_QUIRKS)) {
+-            addOptionsToList(en.getQuirks(), quirksAndPartReps);
++            quirksAndPartReps.addOptionsToList(en.getQuirks());
+         }
+ 
+         if ((null != en.getGame())
+@@ -354,7 +350,7 @@ public class GeneralInfoMapSet implements DisplayMapSet {
+             // skip a line for readability
+             quirksAndPartReps.addString("");
+ 
+-            addOptionsToList(en.getPartialRepairs(), quirksAndPartReps);
++            quirksAndPartReps.addOptionsToList(en.getPartialRepairs());
+         }
+ 
+         if (en.mpUsed > 0) {
+@@ -580,27 +576,6 @@ public class GeneralInfoMapSet implements DisplayMapSet {
+ 
+     }
+ 
+-    /**
+-     * Add all options from the given IOptions instance into an array of PMSimpleLabel elements.
+-     * @param optionsInstance IOptions instance
+-     * @param quirksAndPartReps
+-     */
+-    public void addOptionsToList(IOptions optionsInstance, PMMultiLineLabel quirksAndPartReps) {
+-        for (Enumeration<IOptionGroup> optionGroups = optionsInstance.getGroups(); optionGroups.hasMoreElements();) {
+-            IOptionGroup group = optionGroups.nextElement();
+-            if (optionsInstance.count(group.getKey()) > 0) {
+-                quirksAndPartReps.addString(group.getDisplayableName());
+-
+-                for (Enumeration<IOption> options = group.getOptions(); options.hasMoreElements();) {
+-                    IOption option = options.nextElement();
+-                    if (option != null && option.booleanValue()) {
+-                        quirksAndPartReps.addString("  " + option.getDisplayableNameWithValue());
+-                    }
+-                }
+-            }
+-        }
+-    }
+-
+     public PMAreasGroup getContentGroup() {
+         return content;
+     }
+diff --git a/megamek/src/megamek/client/ui/swing/widget/PMMultiLineLabel.java b/megamek/src/megamek/client/ui/swing/widget/PMMultiLineLabel.java
+index 3eab1d8..24a38e2 100644
+--- a/megamek/src/megamek/client/ui/swing/widget/PMMultiLineLabel.java
++++ b/megamek/src/megamek/client/ui/swing/widget/PMMultiLineLabel.java
+@@ -1,10 +1,15 @@
+ package megamek.client.ui.swing.widget;
+ 
++import megamek.common.options.IOption;
++import megamek.common.options.IOptionGroup;
++import megamek.common.options.IOptions;
++
+ import java.awt.Color;
+ import java.awt.Font;
+ import java.awt.FontMetrics;
+ import java.awt.Graphics;
+ import java.util.ArrayList;
++import java.util.Enumeration;
+ import java.util.List;
+ 
+ /**
+@@ -71,4 +76,24 @@ public class PMMultiLineLabel extends PMSimpleLabel {
+         g.setFont(font);
+     }
+ 
++    /**
++     * Add all options from the given IOptions instance into an array of PMSimpleLabel elements.
++     * @param optionsInstance IOptions instance
++     *
++     */
++    public void addOptionsToList(IOptions optionsInstance) {
++        for (Enumeration<IOptionGroup> optionGroups = optionsInstance.getGroups(); optionGroups.hasMoreElements();) {
++            IOptionGroup group = optionGroups.nextElement();
++            if (optionsInstance.count(group.getKey()) > 0) {
++                addString(group.getDisplayableName());
++
++                for (Enumeration<IOption> options = group.getOptions(); options.hasMoreElements();) {
++                    IOption option = options.nextElement();
++                    if (option != null && option.booleanValue()) {
++                        addString("  " + option.getDisplayableNameWithValue());
++                    }
++                }
++            }
++        }
++    }
+ }

@@ -1,0 +1,97 @@
+diff --git a/megamek/src/megamek/client/ratgenerator/AbstractUnitRecord.java b/megamek/src/megamek/client/ratgenerator/AbstractUnitRecord.java
+index d93ec09..0d5c461 100644
+--- a/megamek/src/megamek/client/ratgenerator/AbstractUnitRecord.java
++++ b/megamek/src/megamek/client/ratgenerator/AbstractUnitRecord.java
+@@ -40,31 +40,6 @@ public class AbstractUnitRecord {
+ 		includedFactions = new HashSet<String>();
+ 	}
+ 
+-	/**
+-	 * Adjusts availability rating for the first couple years after introduction.
+-	 * 
+-	 * @param ar The AvailabilityRecord for the chassis or model.
+-	 * @param rating The force equipment rating.
+-	 * @param ratingLevels The number of equipment rating levels used by the faction.
+-	 * @param year The game year
+-	 * @return The adjusted availability rating.
+-	 */
+-	public int calcAvailability(AvailabilityRating ar,
+-			int rating, int ratingLevels, int year) {
+-		int retVal = ar.adjustForRating(rating, ratingLevels);
+-		
+-		if (introYear == year) {
+-			retVal -= 2;
+-		}
+-		if (introYear == year + 1) {
+-			retVal -= 1;
+-		}
+-		if (retVal < 0) {
+-			return 0;
+-		}
+-		return retVal;
+-	}
+-
+ 	public String getChassis() {
+ 		return chassis;
+ 	}
+diff --git a/megamek/src/megamek/client/ratgenerator/AvailabilityRating.java b/megamek/src/megamek/client/ratgenerator/AvailabilityRating.java
+index f384127..4320a33 100644
+--- a/megamek/src/megamek/client/ratgenerator/AvailabilityRating.java
++++ b/megamek/src/megamek/client/ratgenerator/AvailabilityRating.java
+@@ -210,4 +210,28 @@ public class AvailabilityRating {
+ 	static double calcAvRating(double weight) {
+ 		return 2.0 * Math.log(weight) / LOG_BASE;
+ 	}
++
++    /**
++     * Adjusts availability rating for the first couple years after introduction.
++     *
++     * @param rating The force equipment rating.
++     * @param ratingLevels The number of equipment rating levels used by the faction.
++     * @param year The game year
++     * @param abstractUnitRecord
++     * @return The adjusted availability rating.
++     */
++    public int calcAvailability(int rating, int ratingLevels, int year, AbstractUnitRecord abstractUnitRecord) {
++        int retVal = adjustForRating(rating, ratingLevels);
++
++        if (abstractUnitRecord.introYear == year) {
++            retVal -= 2;
++        }
++        if (abstractUnitRecord.introYear == year + 1) {
++            retVal -= 1;
++        }
++        if (retVal < 0) {
++            return 0;
++        }
++        return retVal;
++    }
+ }
+diff --git a/megamek/src/megamek/client/ratgenerator/RATGenerator.java b/megamek/src/megamek/client/ratgenerator/RATGenerator.java
+index 1e369b5..1dcbe2d 100644
+--- a/megamek/src/megamek/client/ratgenerator/RATGenerator.java
++++ b/megamek/src/megamek/client/ratgenerator/RATGenerator.java
+@@ -375,9 +375,9 @@ public class RATGenerator {
+ 			if (ar == null) {
+ 				continue;
+ 			}
+-			double cAv = cRec.calcAvailability(ar, ratingLevel, numRatingLevels, early);
++			double cAv = ar.calcAvailability(ratingLevel, numRatingLevels, early);
+ 			cAv = interpolate(cAv,
+-					cRec.calcAvailability(ar, ratingLevel, numRatingLevels, late),
++					ar.calcAvailability(ratingLevel, numRatingLevels, late),
+ 					Math.max(early, cRec.getIntroYear()), late, year);
+ 			if (cAv > 0) {
+ 				double totalModelWeight = cRec.totalModelWeight(early,
+@@ -397,9 +397,9 @@ public class RATGenerator {
+ 					if (ar == null || ar.getAvailability() == 0) {
+ 						continue;
+ 					}
+-					double mAv = mRec.calcAvailability(ar, ratingLevel, numRatingLevels, early);
++					double mAv = ar.calcAvailability(ratingLevel, numRatingLevels, early);
+ 					mAv = interpolate(mAv,
+-							mRec.calcAvailability(ar, ratingLevel, numRatingLevels, late),
++							ar.calcAvailability(ratingLevel, numRatingLevels, late),
+ 							Math.max(early, mRec.getIntroYear()), late, year);
+ 					Double adjMAv = MissionRole.adjustAvailabilityByRole(mAv, roles, mRec, year, roleStrictness);
+ 					if (adjMAv != null) {

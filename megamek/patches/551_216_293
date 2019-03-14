@@ -1,0 +1,111 @@
+diff --git a/megamek/src/megamek/common/PilotingRollData.java b/megamek/src/megamek/common/PilotingRollData.java
+index f0358eb..be5811f 100644
+--- a/megamek/src/megamek/common/PilotingRollData.java
++++ b/megamek/src/megamek/common/PilotingRollData.java
+@@ -14,6 +14,8 @@
+ 
+ package megamek.common;
+ 
++import megamek.common.options.OptionsConstants;
++
+ public class PilotingRollData extends TargetRoll {
+     private static final long serialVersionUID = -8965684775619336323L;
+     private int entityId;
+@@ -47,4 +49,41 @@ public class PilotingRollData extends TargetRoll {
+         return entityId;
+     }
+ 
++    public void addStandingPenalties(Entity entity) {
++
++        if (entity.hasQuirk(OptionsConstants.QUIRK_NEG_NO_ARMS)) {
++            addModifier(2, "no/minimal arms");
++            return;
++        }
++
++        if (entity.game.getOptions().booleanOption(OptionsConstants.ADVGRNDMOV_TACOPS_ATTEMPTING_STAND)) {
++            int[] locsToCheck = new int[2];
++
++            locsToCheck[0] = Mech.LOC_RARM;
++            locsToCheck[1] = Mech.LOC_LARM;
++
++            for (int i = 0; i < locsToCheck.length; i++) {
++                int loc = locsToCheck[i];
++                if (entity.isLocationBad(loc)) {
++                    addModifier(2, entity.getLocationName(loc) + " destroyed");
++                } else {
++                    // check for damaged hip actuators
++                    if (!entity.hasWorkingSystem(Mech.ACTUATOR_HAND, loc)) {
++                        addModifier(1, entity.getLocationName(loc)
++                                            + " hand Actuator missing/destroyed");
++                    } else if (!entity.hasWorkingSystem(Mech.ACTUATOR_LOWER_ARM, loc)) {
++                        addModifier(1, entity.getLocationName(loc)
++                                            + " lower Actuator missing/destroyed");
++                    } else if (!entity.hasWorkingSystem(Mech.ACTUATOR_UPPER_ARM, loc)) {
++                        addModifier(1, entity.getLocationName(loc)
++                                            + " upper ctuator missing/destroyed");
++                    } else if (!entity.hasWorkingSystem(Mech.ACTUATOR_SHOULDER, loc)) {
++                        addModifier(1, entity.getLocationName(loc)
++                                            + " shoulder Actuator missing/destroyed");
++                    }
++                }
++            }
++        }
++
++    }
+ }
+diff --git a/megamek/src/megamek/common/TripodMech.java b/megamek/src/megamek/common/TripodMech.java
+index a3f5b4d..ce8802c 100644
+--- a/megamek/src/megamek/common/TripodMech.java
++++ b/megamek/src/megamek/common/TripodMech.java
+@@ -902,50 +902,12 @@ public class TripodMech extends Mech {
+         PilotingRollData roll = super.checkGetUp(step, moveType);
+ 
+         if (roll.getValue() != TargetRoll.CHECK_FALSE) {
+-            addStandingPenalties(roll);
++            roll.addStandingPenalties();
+         }
+ 
+         return roll;
+     }
+ 
+-    public void addStandingPenalties(PilotingRollData roll) {
+-
+-        if (hasQuirk(OptionsConstants.QUIRK_NEG_NO_ARMS)) {
+-            roll.addModifier(2, "no/minimal arms");
+-            return;
+-        }
+-
+-        if (game.getOptions().booleanOption(OptionsConstants.ADVGRNDMOV_TACOPS_ATTEMPTING_STAND)) {
+-            int[] locsToCheck = new int[2];
+-
+-            locsToCheck[0] = Mech.LOC_RARM;
+-            locsToCheck[1] = Mech.LOC_LARM;
+-
+-            for (int i = 0; i < locsToCheck.length; i++) {
+-                int loc = locsToCheck[i];
+-                if (isLocationBad(loc)) {
+-                    roll.addModifier(2, getLocationName(loc) + " destroyed");
+-                } else {
+-                    // check for damaged hip actuators
+-                    if (!hasWorkingSystem(Mech.ACTUATOR_HAND, loc)) {
+-                        roll.addModifier(1, getLocationName(loc)
+-                                            + " hand Actuator missing/destroyed");
+-                    } else if (!hasWorkingSystem(Mech.ACTUATOR_LOWER_ARM, loc)) {
+-                        roll.addModifier(1, getLocationName(loc)
+-                                            + " lower Actuator missing/destroyed");
+-                    } else if (!hasWorkingSystem(Mech.ACTUATOR_UPPER_ARM, loc)) {
+-                        roll.addModifier(1, getLocationName(loc)
+-                                            + " upper ctuator missing/destroyed");
+-                    } else if (!hasWorkingSystem(Mech.ACTUATOR_SHOULDER, loc)) {
+-                        roll.addModifier(1, getLocationName(loc)
+-                                            + " shoulder Actuator missing/destroyed");
+-                    }
+-                }
+-            }
+-        }
+-
+-    }
+-
+     /**
+      * @return if this mech cannot stand up from hulldown
+      */

@@ -1,0 +1,123 @@
+diff --git a/megamek/src/megamek/common/MovePath.java b/megamek/src/megamek/common/MovePath.java
+index 255915a..f3ae326 100644
+--- a/megamek/src/megamek/common/MovePath.java
++++ b/megamek/src/megamek/common/MovePath.java
+@@ -57,6 +57,47 @@ public class MovePath implements Cloneable, Serializable {
+         this.entity = entity;
+     }
+ 
++    /**
++     * Helper function that, given a unit facing and a move step, adds turns to the given path until the facing of the path matches
++     * the facing of the step.
++     * @param intersectionStep
++     */
++    public void matchFacingToPath(MoveStep intersectionStep) {
++        // algorithm: from initial facing, two rotation paths: add and subtract one
++        // until we reach the desired facing with either.
++        // could probably be done with geometry instead, but I'm not *that* good with abstract math
++
++        int initialFacing = getFinalFacing();
++        int desiredFacing = intersectionStep.getFacing();
++        int leftTurnFacing = initialFacing;
++        int rightTurnFacing = initialFacing;
++        int leftTurnCount = 0;
++        int rightTurnCount = 0;
++
++        while((leftTurnFacing != desiredFacing) && (rightTurnFacing != desiredFacing)) {
++            leftTurnFacing--;
++            rightTurnFacing++;
++            leftTurnCount++;
++            rightTurnCount++;
++
++            // "wrap around" if we hit 0 from either edge
++            if(leftTurnFacing < 0) {
++                leftTurnFacing = 5;
++            }
++
++            if(rightTurnFacing > 5) {
++                rightTurnFacing = 0;
++            }
++        }
++
++        MoveStepType turnDirection = leftTurnCount > rightTurnCount ? MoveStepType.TURN_RIGHT : MoveStepType.TURN_LEFT;
++        int turnCount = leftTurnCount > rightTurnCount ? rightTurnCount : leftTurnCount;
++
++        for(int count = 0; count < turnCount; count++) {
++            addStep(turnDirection);
++        }
++    }
++
+     public enum MoveStepType {
+         NONE, FORWARDS, BACKWARDS, TURN_LEFT, TURN_RIGHT, GET_UP, GO_PRONE, START_JUMP, CHARGE, DFA,
+         FLEE, LATERAL_LEFT, LATERAL_RIGHT, LATERAL_LEFT_BACKWARDS, LATERAL_RIGHT_BACKWARDS, UNJAM_RAC,
+diff --git a/megamek/src/megamek/common/pathfinder/BoardEdgePathFinder.java b/megamek/src/megamek/common/pathfinder/BoardEdgePathFinder.java
+index 38d9f21..f8d3e9a 100644
+--- a/megamek/src/megamek/common/pathfinder/BoardEdgePathFinder.java
++++ b/megamek/src/megamek/common/pathfinder/BoardEdgePathFinder.java
+@@ -209,7 +209,7 @@ public class BoardEdgePathFinder {
+ 
+         for(MoveStep step : startingPath.getStepVector()) {
+             if(step.getPosition() == joinedPath.getFinalCoords()) {
+-                matchFacingToPath(joinedPath, step);
++                joinedPath.matchFacingToPath(step);
+                 intersected = true;
+             }
+ 
+@@ -223,7 +223,7 @@ public class BoardEdgePathFinder {
+         for(MoveStep step : endingPath.getStepVector()) {
+             // this is the point where we intersect
+             if(step.getPosition() == startingPath.getFinalCoords()) {
+-                matchFacingToPath(joinedPath, step);
++                joinedPath.matchFacingToPath(step);
+                 intersected = true;
+             }
+ 
+@@ -236,48 +236,6 @@ public class BoardEdgePathFinder {
+     }
+ 
+     /**
+-     * Helper function that, given a unit facing and a move step, adds turns to the given path until the facing of the path matches
+-     * the facing of the step.
+-     * @param initialPath
+-     * @param intersectionStep
+-     */
+-    private void matchFacingToPath(MovePath initialPath, MoveStep intersectionStep) {
+-        // algorithm: from initial facing, two rotation paths: add and subtract one
+-        // until we reach the desired facing with either.
+-        // could probably be done with geometry instead, but I'm not *that* good with abstract math
+-
+-        int initialFacing = initialPath.getFinalFacing();
+-        int desiredFacing = intersectionStep.getFacing();
+-        int leftTurnFacing = initialFacing;
+-        int rightTurnFacing = initialFacing;
+-        int leftTurnCount = 0;
+-        int rightTurnCount = 0;
+-
+-        while((leftTurnFacing != desiredFacing) && (rightTurnFacing != desiredFacing)) {
+-            leftTurnFacing--;
+-            rightTurnFacing++;
+-            leftTurnCount++;
+-            rightTurnCount++;
+-
+-            // "wrap around" if we hit 0 from either edge
+-            if(leftTurnFacing < 0) {
+-                leftTurnFacing = 5;
+-            }
+-
+-            if(rightTurnFacing > 5) {
+-                rightTurnFacing = 0;
+-            }
+-        }
+-
+-        MoveStepType turnDirection = leftTurnCount > rightTurnCount ? MoveStepType.TURN_RIGHT : MoveStepType.TURN_LEFT;
+-        int turnCount = leftTurnCount > rightTurnCount ? rightTurnCount : leftTurnCount;
+-
+-        for(int count = 0; count < turnCount; count++) {
+-            initialPath.addStep(turnDirection);
+-        }
+-    }
+-
+-    /**
+      * Invalidate all paths that go through this set of coordinates (because of a building or bridge collapse), or some other terrain change
+      * either directly or by connecting to a path that goes through this set of coordinates.
+      * @param coords

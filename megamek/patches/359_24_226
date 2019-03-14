@@ -1,0 +1,132 @@
+diff --git a/megamek/src/megamek/client/ui/swing/AdvancedSearchDialog.java b/megamek/src/megamek/client/ui/swing/AdvancedSearchDialog.java
+index 50b63fc..6fadec8 100644
+--- a/megamek/src/megamek/client/ui/swing/AdvancedSearchDialog.java
++++ b/megamek/src/megamek/client/ui/swing/AdvancedSearchDialog.java
+@@ -813,53 +813,6 @@ public class AdvancedSearchDialog extends JDialog implements ActionListener,
+         return false;
+     }
+ 
+-    private boolean matchUnitType(int unitTypeFilter, EquipmentType eq){
+-        // All is selected
+-        if (unitTypeFilter < 0){
+-            return true;
+-        }
+-        switch (unitTypeFilter) {
+-        case 5: //UnitType.AERO: the aero index is out of order
+-            if (eq.hasFlag(WeaponType.F_AERO_WEAPON)
+-                    || eq.hasFlag(MiscType.F_FIGHTER_EQUIPMENT)) {
+-                return true;
+-            }
+-            break;
+-        case UnitType.BATTLE_ARMOR:
+-            if (eq.hasFlag(WeaponType.F_BA_WEAPON)
+-                    || eq.hasFlag(MiscType.F_BA_EQUIPMENT)) {
+-                return true;
+-            }
+-            break;
+-        case UnitType.INFANTRY:
+-            if (eq.hasFlag(WeaponType.F_INFANTRY)) {
+-                return true;
+-            }
+-            break;
+-        case UnitType.MEK:
+-            if (eq.hasFlag(WeaponType.F_MECH_WEAPON)
+-                    || eq.hasFlag(MiscType.F_MECH_EQUIPMENT)) {
+-                return true;
+-            }
+-            break;
+-        case UnitType.TANK:
+-            if (eq.hasFlag(WeaponType.F_TANK_WEAPON)
+-                    || eq.hasFlag(MiscType.F_TANK_EQUIPMENT)) {
+-                return true;
+-            }
+-            break;
+-        case UnitType.PROTOMEK:
+-            if (eq.hasFlag(WeaponType.F_PROTO_WEAPON)
+-                    || eq.hasFlag(MiscType.F_PROTOMECH_EQUIPMENT)) {
+-                return true;
+-            }
+-            break;
+-        default:
+-            return false;
+-        }
+-        return false;
+-    }
+-
+     void filterTables() {
+         RowFilter<WeaponsTableModel, Integer> weaponFilter = null;
+         RowFilter<EquipmentTableModel, Integer> equipmentFilter = null;
+@@ -880,7 +833,7 @@ public class AdvancedSearchDialog extends JDialog implements ActionListener,
+                             matchTechLvl(techLevel,wp.getTechLevel(gameYear));
+                     boolean techClassMatch =
+                             matchTechClass(techClass,currTechClass);
+-                    boolean unitTypeMatch = matchUnitType(unitType,wp);
++                    boolean unitTypeMatch = wp.matchUnitType(unitType);
+                     if (techLvlMatch && techClassMatch && unitTypeMatch){
+                         return true;
+                     }else{
+@@ -906,7 +859,7 @@ public class AdvancedSearchDialog extends JDialog implements ActionListener,
+                             matchTechLvl(techLevel,eq.getTechLevel(gameYear));
+                     boolean techClassMatch =
+                             matchTechClass(techClass,currTechClass);
+-                    boolean unitTypeMatch = matchUnitType(unitType,eq);
++                    boolean unitTypeMatch = eq.matchUnitType(unitType);
+                     if (techLvlMatch && techClassMatch && unitTypeMatch){
+                         return true;
+                     }else{
+diff --git a/megamek/src/megamek/common/EquipmentType.java b/megamek/src/megamek/common/EquipmentType.java
+index e5be51d..22e7709 100644
+--- a/megamek/src/megamek/common/EquipmentType.java
++++ b/megamek/src/megamek/common/EquipmentType.java
+@@ -1199,4 +1199,51 @@ public class EquipmentType implements ITechnology {
+     public int getBaseAvailability(int era) {
+         return techAdvancement.getBaseAvailability(era);
+     }
++
++    public boolean matchUnitType(int unitTypeFilter){
++        // All is selected
++        if (unitTypeFilter < 0){
++            return true;
++        }
++        switch (unitTypeFilter) {
++        case 5: //UnitType.AERO: the aero index is out of order
++            if (hasFlag(WeaponType.F_AERO_WEAPON)
++                    || hasFlag(MiscType.F_FIGHTER_EQUIPMENT)) {
++                return true;
++            }
++            break;
++        case UnitType.BATTLE_ARMOR:
++            if (hasFlag(WeaponType.F_BA_WEAPON)
++                    || hasFlag(MiscType.F_BA_EQUIPMENT)) {
++                return true;
++            }
++            break;
++        case UnitType.INFANTRY:
++            if (hasFlag(WeaponType.F_INFANTRY)) {
++                return true;
++            }
++            break;
++        case UnitType.MEK:
++            if (hasFlag(WeaponType.F_MECH_WEAPON)
++                    || hasFlag(MiscType.F_MECH_EQUIPMENT)) {
++                return true;
++            }
++            break;
++        case UnitType.TANK:
++            if (hasFlag(WeaponType.F_TANK_WEAPON)
++                    || hasFlag(MiscType.F_TANK_EQUIPMENT)) {
++                return true;
++            }
++            break;
++        case UnitType.PROTOMEK:
++            if (hasFlag(WeaponType.F_PROTO_WEAPON)
++                    || hasFlag(MiscType.F_PROTOMECH_EQUIPMENT)) {
++                return true;
++            }
++            break;
++        default:
++            return false;
++        }
++        return false;
++    }
+ }

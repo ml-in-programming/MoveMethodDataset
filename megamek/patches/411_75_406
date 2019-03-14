@@ -1,0 +1,146 @@
+diff --git a/megamek/src/megamek/client/bot/BotClient.java b/megamek/src/megamek/client/bot/BotClient.java
+index 5121c31..97eb886 100644
+--- a/megamek/src/megamek/client/bot/BotClient.java
++++ b/megamek/src/megamek/client/bot/BotClient.java
+@@ -79,6 +79,7 @@ import megamek.common.options.OptionsConstants;
+ import megamek.common.pathfinder.BoardEdgePathFinder;
+ import megamek.common.preference.PreferenceManager;
+ import megamek.common.util.StringUtil;
++import megamek.server.commands.DefeatCommand;
+ 
+ public abstract class BotClient extends Client {
+     private Map<EntityMovementMode, BoardEdgePathFinder> deploymentPathFinders = new HashMap<>();
+@@ -99,6 +100,33 @@ public abstract class BotClient extends Client {
+      */
+     private ClientGUI clientgui = null;
+ 
++    boolean shouldBotAcknowledgeVictory(String message) {
++        boolean result = false;
++
++        if (!StringUtil.isNullOrEmpty(message) &&
++            (message.contains(DefeatCommand.wantsDefeat))) {
++            String[] splitMessage = message.split(" ");
++            int i = 1;
++            String name = splitMessage[i];
++            while (!splitMessage[i + 1].equals("wants")
++                   && !splitMessage[i + 1].equals("admits")) {
++                name += " " + splitMessage[i + 1];
++                i++;
++            }
++            for (IPlayer p : getGame().getPlayersVector()) {
++                if (p.getName().equals(name)) {
++                    if (p.isEnemyOf(getLocalPlayer())) {
++                        sendChat("/victory");
++                        result = true;
++                    }
++                    break;
++                }
++            }
++        }
++
++        return result;
++    }
++
+     public class CalculateBotTurn implements Runnable {
+         public void run() {
+             calculateMyTurn();
+diff --git a/megamek/src/megamek/client/bot/ChatProcessor.java b/megamek/src/megamek/client/bot/ChatProcessor.java
+index c33ddad..0a50caa 100644
+--- a/megamek/src/megamek/client/bot/ChatProcessor.java
++++ b/megamek/src/megamek/client/bot/ChatProcessor.java
+@@ -29,7 +29,6 @@ import megamek.common.event.GamePlayerChatEvent;
+ import megamek.common.logging.LogLevel;
+ import megamek.common.util.StringUtil;
+ import megamek.server.Server;
+-import megamek.server.commands.DefeatCommand;
+ import megamek.server.commands.JoinTeamCommand;
+ 
+ public class ChatProcessor {
+@@ -59,33 +58,6 @@ public class ChatProcessor {
+         return result;
+     }
+ 
+-    boolean shouldBotAcknowledgeVictory(String message, BotClient bot) {
+-        boolean result = false;
+-
+-        if (!StringUtil.isNullOrEmpty(message) &&
+-            (message.contains(DefeatCommand.wantsDefeat))) {
+-            String[] splitMessage = message.split(" ");
+-            int i = 1;
+-            String name = splitMessage[i];
+-            while (!splitMessage[i + 1].equals("wants")
+-                   && !splitMessage[i + 1].equals("admits")) {
+-                name += " " + splitMessage[i + 1];
+-                i++;
+-            }
+-            for (IPlayer p : bot.getGame().getPlayersVector()) {
+-                if (p.getName().equals(name)) {
+-                    if (p.isEnemyOf(bot.getLocalPlayer())) {
+-                        bot.sendChat("/victory");
+-                        result = true;
+-                    }
+-                    break;
+-                }
+-            }
+-        }
+-
+-        return result;
+-    }
+-
+     public void processChat(GamePlayerChatEvent ge, BotClient bot) {
+         if (bot.getLocalPlayer() == null) {
+             return;
+@@ -95,7 +67,7 @@ public class ChatProcessor {
+         if (shouldBotAcknowledgeDefeat(message, bot)) {
+             return;
+         }
+-        if (shouldBotAcknowledgeVictory(message, bot)) {
++        if (bot.shouldBotAcknowledgeVictory(message)) {
+             return;
+         }
+ 
+diff --git a/megamek/unittests/megamek/client/bot/ChatProcessorTest.java b/megamek/unittests/megamek/client/bot/ChatProcessorTest.java
+index b221236..a19887d 100644
+--- a/megamek/unittests/megamek/client/bot/ChatProcessorTest.java
++++ b/megamek/unittests/megamek/client/bot/ChatProcessorTest.java
+@@ -158,33 +158,33 @@ public class ChatProcessorTest {
+         // Test enemy wants defeat.
+         String cmd = DefeatCommand.getWantsDefeat(mockHumanPlayerDave.getName());
+         String msg = Server.formatChatMessage(Server.ORIGIN, cmd);
+-        Assert.assertTrue(chatProcessor.shouldBotAcknowledgeVictory(msg, mockBotHal));
++        Assert.assertTrue(mockBotHal.shouldBotAcknowledgeVictory(msg));
+ 
+         // Test enemy admits defeat.
+         cmd = DefeatCommand.getAdmitsDefeat(mockHumanPlayerDave.getName());
+         msg = Server.formatChatMessage(Server.ORIGIN, cmd);
+-        Assert.assertFalse(chatProcessor.shouldBotAcknowledgeVictory(msg, mockBotHal));
++        Assert.assertFalse(mockBotHal.shouldBotAcknowledgeVictory(msg));
+ 
+         // Test ally wants defeat.
+         cmd = DefeatCommand.getWantsDefeat(mockHumanPlayerKirk.getName());
+         msg = Server.formatChatMessage(Server.ORIGIN, cmd);
+-        Assert.assertFalse(chatProcessor.shouldBotAcknowledgeVictory(msg, mockBotHal));
++        Assert.assertFalse(mockBotHal.shouldBotAcknowledgeVictory(msg));
+ 
+         // Test ally admits defeat.
+         cmd = DefeatCommand.getAdmitsDefeat(mockHumanPlayerKirk.getName());
+         msg = Server.formatChatMessage(Server.ORIGIN, cmd);
+-        Assert.assertFalse(chatProcessor.shouldBotAcknowledgeVictory(msg, mockBotHal));
++        Assert.assertFalse(mockBotHal.shouldBotAcknowledgeVictory(msg));
+ 
+         // Test a different message.
+         msg = "This is general chat message with no bot commands.";
+-        Assert.assertFalse(chatProcessor.shouldBotAcknowledgeVictory(msg, mockBotHal));
++        Assert.assertFalse(mockBotHal.shouldBotAcknowledgeVictory(msg));
+ 
+         // Test null message.
+-        Assert.assertFalse(chatProcessor.shouldBotAcknowledgeVictory(null, mockBotHal));
++        Assert.assertFalse(mockBotHal.shouldBotAcknowledgeVictory(null));
+ 
+         // Test empty message.
+         msg = "";
+-        Assert.assertFalse(chatProcessor.shouldBotAcknowledgeVictory(msg, mockBotHal));
++        Assert.assertFalse(mockBotHal.shouldBotAcknowledgeVictory(msg));
+     }
+ 
+     @Test

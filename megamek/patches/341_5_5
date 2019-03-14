@@ -1,0 +1,112 @@
+diff --git a/megamek/src/megamek/client/ui/swing/boardview/BoardView1.java b/megamek/src/megamek/client/ui/swing/boardview/BoardView1.java
+index a01524d..df834f7 100644
+--- a/megamek/src/megamek/client/ui/swing/boardview/BoardView1.java
++++ b/megamek/src/megamek/client/ui/swing/boardview/BoardView1.java
+@@ -3735,21 +3735,6 @@ public class BoardView1 extends JPanel implements IBoardView, Scrollable,
+         return flareImage;
+     }
+ 
+-    /**
+-     * Moves the cursor to the new position, or hides it, if newPos is null
+-     */
+-    private void moveCursor(CursorSprite cursor, Coords newPos) {
+-        final Rectangle oldBounds = new Rectangle(cursor.getBounds());
+-        if (newPos != null) {
+-            cursor.setHexLocation(newPos);
+-        } else {
+-            cursor.setOffScreen();
+-        }
+-        // repaint affected area
+-        repaint(oldBounds);
+-        repaint(cursor.getBounds());
+-    }
+-
+     /** Centers the board on hex c. Uses smooth centering
+      * if activated in the client settings. */
+     public void centerOnHex(Coords c) {
+@@ -4497,8 +4482,8 @@ public class BoardView1 extends JPanel implements IBoardView, Scrollable,
+ 
+     protected void firstLOSHex(Coords c) {
+         if (useLOSTool) {
+-            moveCursor(secondLOSSprite, null);
+-            moveCursor(firstLOSSprite, c);
++            secondLOSSprite.moveCursor(null);
++            firstLOSSprite.moveCursor(c);
+         }
+     }
+ 
+@@ -4913,9 +4898,9 @@ public class BoardView1 extends JPanel implements IBoardView, Scrollable,
+     public void select(Coords coords) {
+         if ((coords == null) || game.getBoard().contains(coords)) {
+             setSelected(coords);
+-            moveCursor(selectedSprite, coords);
+-            moveCursor(firstLOSSprite, null);
+-            moveCursor(secondLOSSprite, null);
++            selectedSprite.moveCursor(coords);
++            firstLOSSprite.moveCursor(null);
++            secondLOSSprite.moveCursor(null);
+             processBoardViewEvent(new BoardViewEvent(this, coords, null,
+                                                      BoardViewEvent.BOARD_HEX_SELECTED, 0));
+         }
+@@ -4940,9 +4925,9 @@ public class BoardView1 extends JPanel implements IBoardView, Scrollable,
+     public void highlight(Coords coords) {
+         if ((coords == null) || game.getBoard().contains(coords)) {
+             setHighlighted(coords);
+-            moveCursor(highlightSprite, coords);
+-            moveCursor(firstLOSSprite, null);
+-            moveCursor(secondLOSSprite, null);
++            highlightSprite.moveCursor(coords);
++            firstLOSSprite.moveCursor(null);
++            secondLOSSprite.moveCursor(null);
+             processBoardViewEvent(new BoardViewEvent(this, coords, null,
+                                                      BoardViewEvent.BOARD_HEX_HIGHLIGHTED, 0));
+         }
+@@ -4985,9 +4970,9 @@ public class BoardView1 extends JPanel implements IBoardView, Scrollable,
+             if ((getLastCursor() == null) || (coords == null)
+                 || !coords.equals(getLastCursor())) {
+                 setLastCursor(coords);
+-                moveCursor(cursorSprite, coords);
+-                moveCursor(firstLOSSprite, null);
+-                moveCursor(secondLOSSprite, null);
++                cursorSprite.moveCursor(coords);
++                firstLOSSprite.moveCursor(null);
++                secondLOSSprite.moveCursor(null);
+                 processBoardViewEvent(new BoardViewEvent(this, coords, null,
+                                                          BoardViewEvent.BOARD_HEX_CURSOR, 0));
+             } else {
+diff --git a/megamek/src/megamek/client/ui/swing/boardview/CursorSprite.java b/megamek/src/megamek/client/ui/swing/boardview/CursorSprite.java
+index 76e77d3..69e4d12 100644
+--- a/megamek/src/megamek/client/ui/swing/boardview/CursorSprite.java
++++ b/megamek/src/megamek/client/ui/swing/boardview/CursorSprite.java
+@@ -11,6 +11,8 @@ import java.awt.image.BufferedImage;
+ import megamek.client.ui.swing.GUIPreferences;
+ import megamek.common.Coords;
+ 
++import javax.swing.*;
++
+ /**
+  * Sprite for a cursor. Just a hexagon outline in a specified color.
+  */
+@@ -92,4 +94,21 @@ class CursorSprite extends Sprite {
+     public boolean isHidden() {
+         return hidden || isOffScreen();
+     }
++
++    /**
++     * Moves the cursor to the new position, or hides it, if newPos is null
++     * @param newPos
++     * @param jComponent
++     */
++    void moveCursor(Coords newPos, JComponent jComponent) {
++        final Rectangle oldBounds = new Rectangle(getBounds());
++        if (newPos != null) {
++            setHexLocation(newPos);
++        } else {
++            setOffScreen();
++        }
++        // repaint affected area
++        jComponent.repaint(oldBounds);
++        jComponent.repaint(getBounds());
++    }
+ }
+\ No newline at end of file

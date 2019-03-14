@@ -1,0 +1,62 @@
+diff --git a/megamek/src/megamek/common/actions/WeaponAttackAction.java b/megamek/src/megamek/common/actions/WeaponAttackAction.java
+index 4eb9501..b8521fe 100644
+--- a/megamek/src/megamek/common/actions/WeaponAttackAction.java
++++ b/megamek/src/megamek/common/actions/WeaponAttackAction.java
+@@ -4492,4 +4492,18 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
+     public void updateTurnsTilHit(IGame game) {
+         
+     }
++
++    /**
++     *
++     * @param g
++     */
++    public void checkAmmo(IGame g) {
++        Entity ae = getEntity(g);
++        Mounted weapon = ae.getEquipment(getWeaponId());
++        Mounted ammo = weapon.getLinked();
++        if (ammo == null || ammo.getUsableShotsLeft() < 1) {
++            ae.loadWeaponWithSameAmmo(weapon);
++            ammo = weapon.getLinked();
++        }
++    }
+ }
+diff --git a/megamek/src/megamek/common/weapons/AmmoWeapon.java b/megamek/src/megamek/common/weapons/AmmoWeapon.java
+index 4838e1b..28d9727 100644
+--- a/megamek/src/megamek/common/weapons/AmmoWeapon.java
++++ b/megamek/src/megamek/common/weapons/AmmoWeapon.java
+@@ -17,9 +17,7 @@
+  */
+ package megamek.common.weapons;
+ 
+-import megamek.common.Entity;
+ import megamek.common.IGame;
+-import megamek.common.Mounted;
+ import megamek.common.ToHitData;
+ import megamek.common.actions.WeaponAttackAction;
+ import megamek.server.Server;
+@@ -49,23 +47,10 @@ public abstract class AmmoWeapon extends Weapon {
+         // Just in case. Often necessary when/if multiple ammo weapons are
+         // fired; if this line not present
+         // then when one ammo slots run dry the rest silently don't fire.
+-        checkAmmo(waa, game);
++        waa.checkAmmo(game);
+         return super.fire(waa, game, server);
+     }
+ 
+-    /**
+-     * 
+-     */
+-    protected void checkAmmo(WeaponAttackAction waa, IGame g) {
+-        Entity ae = waa.getEntity(g);
+-        Mounted weapon = ae.getEquipment(waa.getWeaponId());
+-        Mounted ammo = weapon.getLinked();
+-        if (ammo == null || ammo.getUsableShotsLeft() < 1) {
+-            ae.loadWeaponWithSameAmmo(weapon);
+-            ammo = weapon.getLinked();
+-        }
+-    }
+-
+     /*
+      * (non-Javadoc)
+      * 

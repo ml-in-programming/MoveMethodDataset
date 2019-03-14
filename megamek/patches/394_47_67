@@ -1,0 +1,147 @@
+diff --git a/megamek/src/megamek/client/bot/princess/EntityState.java b/megamek/src/megamek/client/bot/princess/EntityState.java
+index a97f575..03e4fa4 100644
+--- a/megamek/src/megamek/client/bot/princess/EntityState.java
++++ b/megamek/src/megamek/client/bot/princess/EntityState.java
+@@ -14,14 +14,11 @@
+ package megamek.client.bot.princess;
+ 
+ import megamek.client.bot.princess.BotGeometry.CoordFacingCombo;
+-import megamek.common.BuildingTarget;
+-import megamek.common.Coords;
+-import megamek.common.Entity;
+-import megamek.common.EntityMovementType;
+-import megamek.common.MovePath;
+-import megamek.common.Targetable;
++import megamek.common.*;
+ import megamek.common.options.OptionsConstants;
+ 
++import java.util.Enumeration;
++
+ /**
+  * EntityState describes a hypothetical situation an entity could be in when firing
+  *
+@@ -183,4 +180,22 @@ public class EntityState {
+     public boolean hasNaturalAptPiloting() {
+         return naturalAptPilot;
+     }
++
++    /**
++     * Checks if a target lies under a move path, to see if an aero unit can attack it.
++     *
++     * @param flightPath  move path to check
++     * @return TRUE if the target is under the path.
++     */
++    boolean isTargetUnderFlightPath(final MovePath flightPath) {
++
++        final Coords targetCoords = getPosition();
++        for (final Enumeration<MoveStep> step = flightPath.getSteps(); step.hasMoreElements(); ) {
++            final Coords stepCoords = step.nextElement().getPosition();
++            if (targetCoords.equals(stepCoords)) {
++                return true;
++            }
++        }
++        return false;
++    }
+ }
+diff --git a/megamek/src/megamek/client/bot/princess/FireControl.java b/megamek/src/megamek/client/bot/princess/FireControl.java
+index a106426..2b024ad 100644
+--- a/megamek/src/megamek/client/bot/princess/FireControl.java
++++ b/megamek/src/megamek/client/bot/princess/FireControl.java
+@@ -16,7 +16,6 @@ package megamek.client.bot.princess;
+ import java.text.DecimalFormat;
+ import java.text.NumberFormat;
+ import java.util.ArrayList;
+-import java.util.Enumeration;
+ import java.util.Iterator;
+ import java.util.List;
+ import java.util.Map;
+@@ -48,7 +47,6 @@ import megamek.common.Mech;
+ import megamek.common.MechWarrior;
+ import megamek.common.Mounted;
+ import megamek.common.MovePath;
+-import megamek.common.MoveStep;
+ import megamek.common.Protomech;
+ import megamek.common.RangeType;
+ import megamek.common.Tank;
+@@ -1066,7 +1064,7 @@ public class FireControl {
+         }
+ 
+         // check if target is even under our path
+-        if (!assumeUnderFlightPlan && !isTargetUnderFlightPath(flightPath, targetState)) {
++        if (!assumeUnderFlightPlan && !targetState.isTargetUnderFlightPath(flightPath)) {
+             return new ToHitData(TH_AIR_STRIKE_PATH);
+         }
+ 
+@@ -1083,26 +1081,6 @@ public class FireControl {
+     }
+ 
+     /**
+-     * Checks if a target lies under a move path, to see if an aero unit can attack it.
+-     *
+-     * @param flightPath  move path to check
+-     * @param targetState used for targets position
+-     * @return TRUE if the target is under the path.
+-     */
+-    boolean isTargetUnderFlightPath(final MovePath flightPath,
+-                                    final EntityState targetState) {
+-
+-        final Coords targetCoords = targetState.getPosition();
+-        for (final Enumeration<MoveStep> step = flightPath.getSteps(); step.hasMoreElements(); ) {
+-            final Coords stepCoords = step.nextElement().getPosition();
+-            if (targetCoords.equals(stepCoords)) {
+-                return true;
+-            }
+-        }
+-        return false;
+-    }
+-
+-    /**
+      * Mostly for debugging, this returns a non-null string that describes how
+      * the guess has failed to be perfectly accurate. or null if perfectly
+      * accurate
+@@ -1690,7 +1668,7 @@ public class FireControl {
+         }
+ 
+         // Must fly over the target to hit it.
+-        if (!assumeUnderFlightPath && !isTargetUnderFlightPath(flightPath, targetState)) {
++        if (!assumeUnderFlightPath && !targetState.isTargetUnderFlightPath(flightPath)) {
+             return new FiringPlan(target);
+         }
+ 
+diff --git a/megamek/unittests/megamek/client/bot/princess/FireControlTest.java b/megamek/unittests/megamek/client/bot/princess/FireControlTest.java
+index 9032249..a9d8960 100644
+--- a/megamek/unittests/megamek/client/bot/princess/FireControlTest.java
++++ b/megamek/unittests/megamek/client/bot/princess/FireControlTest.java
+@@ -1931,10 +1931,10 @@ public class FireControlTest {
+                .guessToHitModifierHelperForAnyAttack(Mockito.any(Entity.class), Mockito.any(EntityState.class),
+                                                      Mockito.any(Targetable.class), Mockito.any(EntityState.class),
+                                                      Mockito.anyInt(), Mockito.any(IGame.class));
+-        Mockito.doReturn(true).when(testFireControl).isTargetUnderFlightPath(Mockito.any(MovePath.class),
+-                                                                             Mockito.any(EntityState.class));
+-        Mockito.doReturn(false).when(testFireControl).isTargetUnderFlightPath(Mockito.eq(mockFlightPathBad),
+-                                                                              Mockito.any(EntityState.class));
++        Mockito.any(EntityState.class).isTargetUnderFlightPath(Mockito.any(MovePath.class)
++        );
++        Mockito.any(EntityState.class).isTargetUnderFlightPath(Mockito.eq(mockFlightPathBad)
++        );
+ 
+         final Mounted mockWeapon = Mockito.mock(Mounted.class);
+         Mockito.when(mockWeapon.canFire()).thenReturn(true);
+@@ -2028,7 +2028,7 @@ public class FireControlTest {
+         MovePath mockPath = Mockito.mock(MovePath.class);
+         Mockito.when(mockPath.getSteps()).thenReturn(pathSteps.elements());
+         Mockito.when(mockStep.getPosition()).thenReturn(mockTargetCoords);
+-        Assert.assertTrue(testFireControl.isTargetUnderFlightPath(mockPath, mockTargetState));
++        Assert.assertTrue(mockTargetState.isTargetUnderFlightPath(mockPath));
+ 
+         // Test the target not being under the path.
+         pathSteps = new Vector<>(1);
+@@ -2037,7 +2037,7 @@ public class FireControlTest {
+         mockPath = Mockito.mock(MovePath.class);
+         Mockito.when(mockPath.getSteps()).thenReturn(pathSteps.elements());
+         Mockito.when(mockStep.getPosition()).thenReturn(mockShooterCoords);
+-        Assert.assertFalse(testFireControl.isTargetUnderFlightPath(mockPath, mockTargetState));
++        Assert.assertFalse(mockTargetState.isTargetUnderFlightPath(mockPath));
+     }
+ 
+     @SuppressWarnings("ResultOfMethodCallIgnored")

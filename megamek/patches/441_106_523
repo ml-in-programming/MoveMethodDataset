@@ -1,0 +1,105 @@
+diff --git a/megamek/src/megamek/common/Entity.java b/megamek/src/megamek/common/Entity.java
+index 63015f9..f7da355 100644
+--- a/megamek/src/megamek/common/Entity.java
++++ b/megamek/src/megamek/common/Entity.java
+@@ -40,15 +40,7 @@ import megamek.client.ui.swing.GUIPreferences;
+ import megamek.common.Building.BasementType;
+ import megamek.common.IGame.Phase;
+ import megamek.common.MovePath.MoveStepType;
+-import megamek.common.actions.AbstractAttackAction;
+-import megamek.common.actions.AttackAction;
+-import megamek.common.actions.ChargeAttackAction;
+-import megamek.common.actions.DfaAttackAction;
+-import megamek.common.actions.DisplacementAttackAction;
+-import megamek.common.actions.EntityAction;
+-import megamek.common.actions.PushAttackAction;
+-import megamek.common.actions.TeleMissileAttackAction;
+-import megamek.common.actions.WeaponAttackAction;
++import megamek.common.actions.*;
+ import megamek.common.annotations.Nullable;
+ import megamek.common.event.GameEntityChangeEvent;
+ import megamek.common.options.GameOptions;
+@@ -166,6 +158,30 @@ public abstract class Entity extends TurnOrdered implements Transporter,
+ 
+     public static final String ENTITY_AIR_TO_GROUND_SENSOR_RANGE= Messages.getString("Entity.sensor_range_vs_ground_target");
+ 
++    public boolean willIlluminate(IGame game, SearchlightAttackAction searchlightAttackAction, AbstractEntityAction abstractEntityAction) {
++        if (!searchlightAttackAction.isPossible(game)) {
++            return false;
++        }
++        final Entity attacker = searchlightAttackAction.getEntity(game);
++        final Coords apos = attacker.getPosition();
++        final Targetable target = searchlightAttackAction.getTarget(game);
++        final Coords tpos = target.getPosition();
++
++        ArrayList<Coords> in = Coords.intervening(apos, tpos); // nb includes
++                                                                // attacker &
++                                                                // target
++        for (Coords c : in) {
++            for (Entity en : game.getEntitiesVector(c)) {
++                LosEffects los = LosEffects.calculateLos(game, abstractEntityAction.getEntityId(),
++                        en);
++                if (los.canSee() && en.equals(this)) {
++                    return true;
++                }
++            }
++        }
++        return false;
++    }
++
+     // Weapon sort order defines
+     public static enum WeaponSortOrder {
+         DEFAULT("DEFAULT"),
+diff --git a/megamek/src/megamek/common/actions/AbstractAttackAction.java b/megamek/src/megamek/common/actions/AbstractAttackAction.java
+index 81d5437..40e1f48 100644
+--- a/megamek/src/megamek/common/actions/AbstractAttackAction.java
++++ b/megamek/src/megamek/common/actions/AbstractAttackAction.java
+@@ -28,7 +28,6 @@ import megamek.common.PlanetaryConditions;
+ import megamek.common.Targetable;
+ import megamek.common.ToHitData;
+ import megamek.common.options.OptionsConstants;
+-import megamek.common.options.PilotOptions;
+ 
+ /**
+  * Abstract superclass for any action where an entity is attacking another
+@@ -125,7 +124,7 @@ public abstract class AbstractAttackAction extends AbstractEntityAction
+                     if (a instanceof SearchlightAttackAction) {
+                         SearchlightAttackAction saa = 
+                                 (SearchlightAttackAction) a;
+-                        if (saa.willIlluminate(game, te)) {
++                        if (te.willIlluminate(game, saa)) {
+                             illuminated = true;
+                             break;
+                         }
+diff --git a/megamek/src/megamek/common/actions/SearchlightAttackAction.java b/megamek/src/megamek/common/actions/SearchlightAttackAction.java
+index d51d479..907e475 100644
+--- a/megamek/src/megamek/common/actions/SearchlightAttackAction.java
++++ b/megamek/src/megamek/common/actions/SearchlightAttackAction.java
+@@ -156,27 +156,4 @@ public class SearchlightAttackAction extends AbstractAttackAction {
+         return hexesAdded;
+     }
+ 
+-    public boolean willIlluminate(IGame game, Entity who) {
+-        if (!isPossible(game)) {
+-            return false;
+-        }
+-        final Entity attacker = getEntity(game);
+-        final Coords apos = attacker.getPosition();
+-        final Targetable target = getTarget(game);
+-        final Coords tpos = target.getPosition();
+-
+-        ArrayList<Coords> in = Coords.intervening(apos, tpos); // nb includes
+-                                                                // attacker &
+-                                                                // target
+-        for (Coords c : in) {
+-            for (Entity en : game.getEntitiesVector(c)) {
+-                LosEffects los = LosEffects.calculateLos(game, getEntityId(),
+-                        en);
+-                if (los.canSee() && en.equals(who)) {
+-                    return true;
+-                }
+-            }
+-        }
+-        return false;
+-    }
+ }

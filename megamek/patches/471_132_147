@@ -1,0 +1,177 @@
+diff --git a/megamek/src/megamek/common/EntityFluff.java b/megamek/src/megamek/common/EntityFluff.java
+index 7873826..86b623e 100644
+--- a/megamek/src/megamek/common/EntityFluff.java
++++ b/megamek/src/megamek/common/EntityFluff.java
+@@ -17,6 +17,8 @@ import java.io.Serializable;
+ import java.util.EnumMap;
+ import java.util.List;
+ import java.util.Map;
++import java.util.StringJoiner;
++import java.util.function.Supplier;
+ import java.util.stream.Collectors;
+ 
+ import megamek.common.annotations.Nullable;
+@@ -33,6 +35,31 @@ public class EntityFluff implements Serializable {
+      */
+     private static final long serialVersionUID = -8018098140016149185L;
+ 
++    /**
++     * Builds the fluff name for a system component.
++     *
++     * @param system
++     *            The system component
++     * @param altText
++     *            Alternate text that will be used if neither fluff field is set.
++     * @return The fluff display name, which consists of the manufacturer and the
++     *         model separated by a space. If either is missing it is left out.
++     */
++    public String formatSystemFluff(System system, Supplier<String> altText) {
++        final StringJoiner sj = new StringJoiner(" ");
++        if (getSystemManufacturer(system).length() > 0) {
++            sj.add(getSystemManufacturer(system));
++        }
++        if (getSystemModel(system).length() > 0) {
++            sj.add(getSystemModel(system));
++        }
++        if (sj.toString().length() > 0) {
++            return sj.toString();
++        } else {
++            return altText.get();
++        }
++    }
++
+     public enum System {
+         CHASSIS, ENGINE, ARMOR, JUMPJET, COMMUNICATIONS, TARGETING;
+ 
+diff --git a/megamek/src/megamek/common/templates/AeroTROView.java b/megamek/src/megamek/common/templates/AeroTROView.java
+index 5a1cb38..acf7b37 100644
+--- a/megamek/src/megamek/common/templates/AeroTROView.java
++++ b/megamek/src/megamek/common/templates/AeroTROView.java
+@@ -106,8 +106,8 @@ public class AeroTROView extends TROView {
+ 
+     private void addFluff() {
+         addMechVeeAeroFluff(aero);
+-        setModelData("frameDesc", formatSystemFluff(EntityFluff.System.CHASSIS, aero.getFluff(),
+-                () -> Messages.getString("TROView.Unknown")));
++        setModelData("frameDesc", aero.getFluff().formatSystemFluff(EntityFluff.System.CHASSIS,
++                () -> Messages.getString("TROView.Unknown"), AeroTROView.this));
+     }
+ 
+     private static final int[][] AERO_ARMOR_LOCS = { { Aero.LOC_NOSE }, { Aero.LOC_RWING, Aero.LOC_LWING },
+diff --git a/megamek/src/megamek/common/templates/MechTROView.java b/megamek/src/megamek/common/templates/MechTROView.java
+index f362bbb..a25123f 100644
+--- a/megamek/src/megamek/common/templates/MechTROView.java
++++ b/megamek/src/megamek/common/templates/MechTROView.java
+@@ -141,8 +141,8 @@ public class MechTROView extends TROView {
+     protected void addFluff() {
+         addMechVeeAeroFluff(mech);
+         setModelData("chassisDesc",
+-                formatSystemFluff(EntityFluff.System.CHASSIS, mech.getFluff(), () -> formatChassisDesc()));
+-        setModelData("jjDesc", formatSystemFluff(EntityFluff.System.JUMPJET, mech.getFluff(), () -> formatJJDesc()));
++                mech.getFluff().formatSystemFluff(EntityFluff.System.CHASSIS, () -> formatChassisDesc(), MechTROView.this));
++        setModelData("jjDesc", mech.getFluff().formatSystemFluff(EntityFluff.System.JUMPJET, () -> formatJJDesc(), MechTROView.this));
+         setModelData("jumpCapacity", mech.getJumpMP() * 30);
+     }
+ 
+diff --git a/megamek/src/megamek/common/templates/ProtomechTROView.java b/megamek/src/megamek/common/templates/ProtomechTROView.java
+index 213801f..686bd0a 100644
+--- a/megamek/src/megamek/common/templates/ProtomechTROView.java
++++ b/megamek/src/megamek/common/templates/ProtomechTROView.java
+@@ -99,10 +99,10 @@ public class ProtomechTROView extends TROView {
+     private void addFluff() {
+         addMechVeeAeroFluff(proto);
+         if (proto.getOriginalJumpMP() > 0) {
+-            setModelData("chassisDesc", formatSystemFluff(EntityFluff.System.CHASSIS, proto.getFluff(), () -> ""));
++            setModelData("chassisDesc", proto.getFluff().formatSystemFluff(EntityFluff.System.CHASSIS, () -> "", ProtomechTROView.this));
+         }
+         if (!proto.isGlider()) {
+-            setModelData("jjDesc", formatSystemFluff(EntityFluff.System.JUMPJET, proto.getFluff(), () -> ""));
++            setModelData("jjDesc", proto.getFluff().formatSystemFluff(EntityFluff.System.JUMPJET, () -> "", ProtomechTROView.this));
+             setModelData("jumpCapacity", proto.getJumpMP() * 30);
+         }
+         if (proto.isGlider()) {
+diff --git a/megamek/src/megamek/common/templates/TROView.java b/megamek/src/megamek/common/templates/TROView.java
+index 9ff45d9..c0b5a2a 100644
+--- a/megamek/src/megamek/common/templates/TROView.java
++++ b/megamek/src/megamek/common/templates/TROView.java
+@@ -28,7 +28,6 @@ import java.util.List;
+ import java.util.Map;
+ import java.util.StringJoiner;
+ import java.util.function.BiFunction;
+-import java.util.function.Supplier;
+ import java.util.stream.Collectors;
+ 
+ import freemarker.template.Template;
+@@ -214,43 +213,16 @@ public class TROView {
+         }
+     }
+ 
+-    /**
+-     * Builds the fluff name for a system component.
+-     *
+-     * @param system
+-     *            The system component
+-     * @param fluff
+-     *            The {@link Entity}'s fluff object
+-     * @param altText
+-     *            Alternate text that will be used if neither fluff field is set.
+-     * @return The fluff display name, which consists of the manufacturer and the
+-     *         model separated by a space. If either is missing it is left out.
+-     */
+-    protected String formatSystemFluff(EntityFluff.System system, EntityFluff fluff, Supplier<String> altText) {
+-        final StringJoiner sj = new StringJoiner(" ");
+-        if (fluff.getSystemManufacturer(system).length() > 0) {
+-            sj.add(fluff.getSystemManufacturer(system));
+-        }
+-        if (fluff.getSystemModel(system).length() > 0) {
+-            sj.add(fluff.getSystemModel(system));
+-        }
+-        if (sj.toString().length() > 0) {
+-            return sj.toString();
+-        } else {
+-            return altText.get();
+-        }
+-    }
+-
+     protected void addMechVeeAeroFluff(Entity entity) {
+         addEntityFluff(entity);
+         model.put("massDesc", NumberFormat.getInstance().format(entity.getWeight())
+                 + Messages.getString(entity.getWeight() == 1.0 ? "TROView.ton" : "TROView.tons"));
+-        model.put("engineDesc", formatSystemFluff(EntityFluff.System.ENGINE, entity.getFluff(),
++        model.put("engineDesc", entity.getFluff().formatSystemFluff(EntityFluff.System.ENGINE,
+                 () -> stripNotes(entity.getEngine().getEngineName())));
+         model.put("cruisingSpeed", entity.getWalkMP() * 10.8);
+         model.put("maxSpeed", entity.getRunMP() * 10.8);
+         model.put("armorDesc",
+-                formatSystemFluff(EntityFluff.System.ARMOR, entity.getFluff(), () -> formatArmorType(entity, false)));
++                entity.getFluff().formatSystemFluff(EntityFluff.System.ARMOR, () -> formatArmorType(entity, false)));
+         final Map<String, Integer> weaponCount = new HashMap<>();
+         double podSpace = 0.0;
+         for (final Mounted m : entity.getEquipment()) {
+@@ -268,9 +240,9 @@ public class TROView {
+             armaments.add(String.format(Messages.getString("TROView.podspace.format"), podSpace));
+         }
+         model.put("armamentList", armaments);
+-        model.put("communicationDesc", formatSystemFluff(EntityFluff.System.COMMUNICATIONS, entity.getFluff(),
++        model.put("communicationDesc", entity.getFluff().formatSystemFluff(EntityFluff.System.COMMUNICATIONS,
+                 () -> Messages.getString("TROView.Unknown")));
+-        model.put("targetingDesc", formatSystemFluff(EntityFluff.System.TARGETING, entity.getFluff(),
++        model.put("targetingDesc", entity.getFluff().formatSystemFluff(EntityFluff.System.TARGETING,
+                 () -> Messages.getString("TROView.Unknown")));
+     }
+ 
+diff --git a/megamek/src/megamek/common/templates/VehicleTROView.java b/megamek/src/megamek/common/templates/VehicleTROView.java
+index 08afc2e..a6b33de 100644
+--- a/megamek/src/megamek/common/templates/VehicleTROView.java
++++ b/megamek/src/megamek/common/templates/VehicleTROView.java
+@@ -114,8 +114,8 @@ public class VehicleTROView extends TROView {
+     private void addFluff() {
+         addMechVeeAeroFluff(tank);
+         if (tank.getJumpMP() > 0) {
+-            setModelData("jjDesc", formatSystemFluff(EntityFluff.System.JUMPJET, tank.getFluff(),
+-                    () -> Messages.getString("TROView.jjVehicle")));
++            setModelData("jjDesc", tank.getFluff().formatSystemFluff(EntityFluff.System.JUMPJET,
++                    () -> Messages.getString("TROView.jjVehicle"), VehicleTROView.this));
+             setModelData("jumpCapacity", tank.getJumpMP() * 30);
+         }
+     }

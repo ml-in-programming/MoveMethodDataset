@@ -1,0 +1,57 @@
+diff --git a/megamek/src/megamek/server/FireProcessor.java b/megamek/src/megamek/server/FireProcessor.java
+index 2185d3e..d27e4cb 100644
+--- a/megamek/src/megamek/server/FireProcessor.java
++++ b/megamek/src/megamek/server/FireProcessor.java
+@@ -376,7 +376,7 @@ public class FireProcessor extends DynamicTerrainProcessor {
+         //update all the new coords for the smoke cloud.
+         for ( SmokeCloud cloud : smokeCloudData.keySet() ){
+             smokeToAdd = smokeCloudData.get(cloud);
+-            server.updateSmoke(cloud, smokeToAdd);
++            cloud.updateSmoke(smokeToAdd, server);
+         }
+ 
+         // Cycle through the vector again and dissipate the smoke, then
+diff --git a/megamek/src/megamek/server/Server.java b/megamek/src/megamek/server/Server.java
+index abc1a38..fa66f0f 100644
+--- a/megamek/src/megamek/server/Server.java
++++ b/megamek/src/megamek/server/Server.java
+@@ -37148,17 +37148,6 @@ public class Server implements Runnable {
+     }
+ 
+     /**
+-     * Update the map with a new set of coords.
+-     *
+-     * @param newCoords
+-     */
+-    public void updateSmoke(SmokeCloud cloud, ArrayList<Coords> newCoords) {
+-        removeSmokeTerrain(cloud);
+-        cloud.getCoordsList().clear();
+-        cloud.getCoordsList().addAll(newCoords);
+-    }
+-
+-    /**
+      * remove a cloud from the map
+      *
+      * @param cloud
+diff --git a/megamek/src/megamek/server/SmokeCloud.java b/megamek/src/megamek/server/SmokeCloud.java
+index f6b4dcf..58e1f6d 100644
+--- a/megamek/src/megamek/server/SmokeCloud.java
++++ b/megamek/src/megamek/server/SmokeCloud.java
+@@ -115,4 +115,16 @@ public class SmokeCloud implements Serializable{
+     public boolean didDrift(){
+         return this.didDrift;
+     }
++
++    /**
++     * Update the map with a new set of coords.
++     *
++     * @param newCoords
++     * @param server
++     */
++    public void updateSmoke(ArrayList<Coords> newCoords, Server server) {
++        server.removeSmokeTerrain(this);
++        getCoordsList().clear();
++        getCoordsList().addAll(newCoords);
++    }
+ }
+\ No newline at end of file
