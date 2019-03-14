@@ -1,0 +1,71 @@
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/map/Attribute.java b/cayenne-server/src/main/java/org/apache/cayenne/map/Attribute.java
+old mode 100644
+new mode 100755
+index 8c8a48ed9..43a8824df
+--- a/cayenne-server/src/main/java/org/apache/cayenne/map/Attribute.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/map/Attribute.java
+@@ -91,4 +91,14 @@ public abstract class Attribute implements CayenneMapEntry, XMLSerializable, Ser
+ 
+         setEntity((Entity) parent);
+     }
++
++    /**
++     *
++     * @since 4.0
++     * @param entity
++     */
++    public void updateAttribute(Entity entity) {
++        entity.removeAttribute(getName());
++        entity.addAttribute(this);
++    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/map/Entity.java b/cayenne-server/src/main/java/org/apache/cayenne/map/Entity.java
+old mode 100644
+new mode 100755
+index db68fea1d..260ee9954
+--- a/cayenne-server/src/main/java/org/apache/cayenne/map/Entity.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/map/Entity.java
+@@ -27,12 +27,10 @@ import org.apache.cayenne.util.ToStringBuilder;
+ import org.apache.cayenne.util.XMLSerializable;
+ 
+ import java.io.Serializable;
+-import java.util.ArrayList;
+ import java.util.Collection;
+ import java.util.Collections;
+ import java.util.Iterator;
+ import java.util.LinkedHashMap;
+-import java.util.List;
+ import java.util.Map;
+ import java.util.StringTokenizer;
+ 
+@@ -163,15 +161,6 @@ public abstract class Entity implements CayenneMapEntry, XMLSerializable, Serial
+         attributes.remove(attrName);
+     }
+ 
+-    /**
+-     *
+-     * @since 4.0
+-     */
+-    public void updateAttribute(Attribute attribute) {
+-        removeAttribute(attribute.getName());
+-        addAttribute(attribute);
+-    }
+-
+     public void clearAttributes() {
+         attributes.clear();
+     }
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/ObjAttributeTableModel.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/ObjAttributeTableModel.java
+old mode 100644
+new mode 100755
+index 61fb98bb0..4e18f8593
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/ObjAttributeTableModel.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/ObjAttributeTableModel.java
+@@ -309,7 +309,7 @@ public class ObjAttributeTableModel extends CayenneTableModel<ObjAttributeWrappe
+         attributeNew.setType(attribute.getType());
+         attributeNew.setUsedForLocking(attribute.isUsedForLocking());
+ 
+-        entity.updateAttribute(attributeNew);
++        attributeNew.updateAttribute();
+ 
+         mediator.fireObjEntityEvent(new EntityEvent(this, entity, MapEvent.CHANGE));
+ 

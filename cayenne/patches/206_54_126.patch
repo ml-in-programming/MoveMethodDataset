@@ -1,0 +1,109 @@
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/Node.java b/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/Node.java
+old mode 100644
+new mode 100755
+index 550425f8a..21a6f80d9
+--- a/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/Node.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/Node.java
+@@ -149,4 +149,21 @@ public abstract class Node {
+ 
+     public void appendChildrenEnd(QuotingAppendable buffer) {
+     }
++
++    public void replaceExtractFunction(FunctionNode original, int index, String format) {
++        Node replacement = new FunctionNode("cast", original.getAlias(), true) {
++            @Override
++            public void appendChildrenSeparator(QuotingAppendable buffer, int childIdx) {
++                buffer.append(" as ");
++            }
++        };
++
++        FunctionNode strftime = new FunctionNode("strftime", null, true);
++        strftime.addChild(new TextNode(format));
++        strftime.addChild(original.getChild(0));
++        replacement.addChild(strftime);
++        replacement.addChild(new TextNode("integer"));
++
++        replaceChild(index, replacement);
++    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/dba/sqlite/SQLiteTreeProcessor.java b/cayenne-server/src/main/java/org/apache/cayenne/dba/sqlite/SQLiteTreeProcessor.java
+old mode 100644
+new mode 100755
+index d20bc66e9..a2d2f70d0
+--- a/cayenne-server/src/main/java/org/apache/cayenne/dba/sqlite/SQLiteTreeProcessor.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/dba/sqlite/SQLiteTreeProcessor.java
+@@ -1,11 +1,9 @@
+ package org.apache.cayenne.dba.sqlite;
+ 
+-import org.apache.cayenne.access.sqlbuilder.QuotingAppendable;
+ import org.apache.cayenne.access.sqlbuilder.sqltree.FunctionNode;
+ import org.apache.cayenne.access.sqlbuilder.sqltree.LimitOffsetNode;
+ import org.apache.cayenne.access.sqlbuilder.sqltree.Node;
+ import org.apache.cayenne.access.sqlbuilder.sqltree.OpExpressionNode;
+-import org.apache.cayenne.access.sqlbuilder.sqltree.TextNode;
+ import org.apache.cayenne.access.translator.select.BaseSQLTreeProcessor;
+ import org.apache.cayenne.dba.mysql.sqltree.MysqlLimitOffsetNode;
+ 
+@@ -32,32 +30,32 @@ public class SQLiteTreeProcessor extends BaseSQLTreeProcessor {
+                 parent.replaceChild(index, replacement);
+                 return;
+             case "DAY_OF_YEAR":
+-                replaceExtractFunction(parent, child, index, "'%j'");
++                parent.replaceExtractFunction(child, index, "'%j'");
+                 return;
+             case "DAY_OF_WEEK":
+-                replaceExtractFunction(parent, child, index, "'%w'");
++                parent.replaceExtractFunction(child, index, "'%w'");
+                 return;
+             case "WEEK":
+-                replaceExtractFunction(parent, child, index, "'%W'");
++                parent.replaceExtractFunction(child, index, "'%W'");
+                 return;
+             case "YEAR":
+-                replaceExtractFunction(parent, child, index, "'%Y'");
++                parent.replaceExtractFunction(child, index, "'%Y'");
+                 return;
+             case "MONTH":
+-                replaceExtractFunction(parent, child, index, "'%m'");
++                parent.replaceExtractFunction(child, index, "'%m'");
+                 return;
+             case "DAY":
+             case "DAY_OF_MONTH":
+-                replaceExtractFunction(parent, child, index, "'%d'");
++                parent.replaceExtractFunction(child, index, "'%d'");
+                 return;
+             case "HOUR":
+-                replaceExtractFunction(parent, child, index, "'%H'");
++                parent.replaceExtractFunction(child, index, "'%H'");
+                 return;
+             case "MINUTE":
+-                replaceExtractFunction(parent, child, index, "'%M'");
++                parent.replaceExtractFunction(child, index, "'%M'");
+                 return;
+             case "SECOND":
+-                replaceExtractFunction(parent, child, index, "'%S'");
++                parent.replaceExtractFunction(child, index, "'%S'");
+                 return;
+ 
+             case "SUBSTRING":
+@@ -81,20 +79,4 @@ public class SQLiteTreeProcessor extends BaseSQLTreeProcessor {
+         }
+     }
+ 
+-    private void replaceExtractFunction(Node parent, FunctionNode original, int index, String format) {
+-        Node replacement = new FunctionNode("cast", original.getAlias(), true) {
+-            @Override
+-            public void appendChildrenSeparator(QuotingAppendable buffer, int childIdx) {
+-                buffer.append(" as ");
+-            }
+-        };
+-
+-        FunctionNode strftime = new FunctionNode("strftime", null, true);
+-        strftime.addChild(new TextNode(format));
+-        strftime.addChild(original.getChild(0));
+-        replacement.addChild(strftime);
+-        replacement.addChild(new TextNode("integer"));
+-
+-        parent.replaceChild(index, replacement);
+-    }
+ }

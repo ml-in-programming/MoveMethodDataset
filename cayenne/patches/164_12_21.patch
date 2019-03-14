@@ -1,0 +1,76 @@
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/DBWizardAction.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/DBWizardAction.java
+old mode 100644
+new mode 100755
+index 4cace46f7..fee1864e7
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/DBWizardAction.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/DBWizardAction.java
+@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
+ import javax.swing.*;
+ import java.sql.Connection;
+ import java.util.Collection;
+-import java.util.Collections;
+ import java.util.List;
+ 
+ public abstract class DBWizardAction<T extends DbActionOptionsDialog> extends CayenneAction {
+@@ -60,7 +59,7 @@ public abstract class DBWizardAction<T extends DbActionOptionsDialog> extends Ca
+         String currentCatalog;
+         String currentSchema = null;
+         try(Connection connection = connectWizard.getDataSource().getConnection()) {
+-            catalogs = getCatalogs(connectWizard, connection);
++            catalogs = connectWizard.getCatalogs(connection);
+             schemas = getSchemas(connection);
+             if (catalogs.isEmpty() && schemas.isEmpty()) {
+                 return null;
+@@ -98,15 +97,6 @@ public abstract class DBWizardAction<T extends DbActionOptionsDialog> extends Ca
+         return createDialog(catalogs, schemas, currentCatalog, currentSchema, command);
+     }
+ 
+-    @SuppressWarnings("unchecked")
+-    private List<String> getCatalogs(DataSourceWizard connectWizard, Connection connection) throws Exception {
+-        if(!connectWizard.getAdapter().supportsCatalogsOnReverseEngineering()) {
+-            return (List<String>) Collections.EMPTY_LIST;
+-        }
+-
+-        return DbLoader.loadCatalogs(connection);
+-    }
+-
+     private List<String> getSchemas(Connection connection) throws Exception {
+         return DbLoader.loadSchemas(connection);
+     }
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/DataSourceWizard.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/DataSourceWizard.java
+old mode 100644
+new mode 100755
+index 7ef6a1a3d..8d22cde3b
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/DataSourceWizard.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/DataSourceWizard.java
+@@ -20,6 +20,7 @@
+ package org.apache.cayenne.modeler.dialog.db;
+ 
+ import org.apache.cayenne.dba.DbAdapter;
++import org.apache.cayenne.dbsync.reverse.dbload.DbLoader;
+ import org.apache.cayenne.modeler.ClassLoadingService;
+ import org.apache.cayenne.modeler.ProjectController;
+ import org.apache.cayenne.modeler.action.GetDbConnectionAction;
+@@ -41,6 +42,8 @@ import java.awt.Component;
+ import java.sql.Connection;
+ import java.sql.SQLException;
+ import java.util.Arrays;
++import java.util.Collections;
++import java.util.List;
+ import java.util.Map;
+ import java.util.prefs.Preferences;
+ 
+@@ -318,4 +321,13 @@ public class DataSourceWizard extends CayenneController {
+ 	public DbAdapter getAdapter() {
+ 		return adapter;
+ 	}
++
++    @SuppressWarnings("unchecked")
++    public List<String> getCatalogs(Connection connection) throws Exception {
++        if(!getAdapter().supportsCatalogsOnReverseEngineering()) {
++            return (List<String>) Collections.EMPTY_LIST;
++        }
++
++        return DbLoader.loadCatalogs(connection);
++    }
+ }

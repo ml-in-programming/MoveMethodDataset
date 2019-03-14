@@ -1,0 +1,78 @@
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/Application.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/Application.java
+old mode 100644
+new mode 100755
+index 8bd18b429..b229769c5
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/Application.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/Application.java
+@@ -21,6 +21,7 @@ package org.apache.cayenne.modeler;
+ 
+ import org.apache.cayenne.configuration.DataChannelDescriptor;
+ import org.apache.cayenne.configuration.xml.DataChannelMetaData;
++import org.apache.cayenne.dbsync.naming.ObjectNameGenerator;
+ import org.apache.cayenne.di.Inject;
+ import org.apache.cayenne.di.Injector;
+ import org.apache.cayenne.modeler.action.ActionManager;
+@@ -28,6 +29,7 @@ import org.apache.cayenne.modeler.dialog.LogConsole;
+ import org.apache.cayenne.modeler.dialog.pref.ClasspathPreferences;
+ import org.apache.cayenne.modeler.undo.CayenneUndoManager;
+ import org.apache.cayenne.modeler.util.AdapterMapping;
++import org.apache.cayenne.modeler.util.NameGeneratorPreferences;
+ import org.apache.cayenne.modeler.util.WidgetFactory;
+ import org.apache.cayenne.pref.CayennePreference;
+ import org.apache.cayenne.pref.CayenneProjectPreferences;
+@@ -280,4 +282,11 @@ public class Application {
+     protected void initPreferences() {
+         this.cayenneProjectPreferences = new CayenneProjectPreferences();
+     }
++
++    public ObjectNameGenerator createNamingStrategy(NameGeneratorPreferences nameGeneratorPreferences)
++            throws ClassNotFoundException, IllegalAccessException, InstantiationException {
++
++        return getClassLoadingService()
++                .loadClass(ObjectNameGenerator.class, nameGeneratorPreferences.getLastUsedStrategies().get(0)).newInstance();
++    }
+ }
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/objentity/EntitySyncController.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/objentity/EntitySyncController.java
+old mode 100644
+new mode 100755
+index 3319cf024..cde5232c4
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/objentity/EntitySyncController.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/objentity/EntitySyncController.java
+@@ -28,8 +28,6 @@ import org.apache.cayenne.modeler.util.CayenneController;
+ import org.apache.cayenne.modeler.util.NameGeneratorPreferences;
+ 
+ import java.awt.*;
+-import java.awt.event.ActionEvent;
+-import java.awt.event.ActionListener;
+ import java.util.Collection;
+ import java.util.Collections;
+ 
+@@ -64,7 +62,7 @@ public class EntitySyncController extends CayenneController {
+ 
+         ObjectNameGenerator namingStrategy;
+         try {
+-            namingStrategy = NameGeneratorPreferences.getInstance().createNamingStrategy(application);
++            namingStrategy = application.createNamingStrategy(NameGeneratorPreferences.getInstance());
+         } catch (Throwable e) {
+             namingStrategy = NameGeneratorPreferences.defaultNameGenerator();
+         }
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/util/NameGeneratorPreferences.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/util/NameGeneratorPreferences.java
+old mode 100644
+new mode 100755
+index 65b2f744d..56d486b9e
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/util/NameGeneratorPreferences.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/util/NameGeneratorPreferences.java
+@@ -91,13 +91,6 @@ public class NameGeneratorPreferences {
+         getPreference().put(STRATEGIES_PREFERENCE, res.toString());
+     }
+ 
+-    public ObjectNameGenerator createNamingStrategy(Application application)
+-            throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+-
+-        return application.getClassLoadingService()
+-                .loadClass(ObjectNameGenerator.class, getLastUsedStrategies().get(0)).newInstance();
+-    }
+-
+     public static ObjectNameGenerator defaultNameGenerator() {
+         return new DefaultObjectNameGenerator(NoStemStemmer.getInstance());
+     }

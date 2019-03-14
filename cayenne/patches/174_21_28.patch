@@ -1,0 +1,36 @@
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/autorelationship/InferRelationshipsControllerBase.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/autorelationship/InferRelationshipsControllerBase.java
+old mode 100644
+new mode 100755
+index 4a41b323f..23e4ca9f8
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/autorelationship/InferRelationshipsControllerBase.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/autorelationship/InferRelationshipsControllerBase.java
+@@ -119,12 +119,6 @@ public class InferRelationshipsControllerBase extends CayenneController {
+         inferredRelationships.add(myir);
+     }
+ 
+-    public String getJoin(InferredRelationship irItem) {
+-        return irItem.getJoinSource().getName()
+-                + " : "
+-                + irItem.getJoinTarget().getName();
+-    }
+-
+     public String getToMany(InferredRelationship irItem) {
+         if (irItem.isToMany()) {
+             return "to many";
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/autorelationship/InferredRelationship.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/autorelationship/InferredRelationship.java
+old mode 100644
+new mode 100755
+index 41f400b3f..3882afa3b
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/autorelationship/InferredRelationship.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/autorelationship/InferredRelationship.java
+@@ -77,4 +77,10 @@ public class InferredRelationship {
+     public void setName(String name) {
+         this.name = name;
+     }
++
++    public String getJoin() {
++        return getJoinSource().getName()
++                + " : "
++                + getJoinTarget().getName();
++    }
+ }

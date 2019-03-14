@@ -1,0 +1,66 @@
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/ReverseEngineeringAction.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/ReverseEngineeringAction.java
+old mode 100644
+new mode 100755
+index 80d8288b4..c2cb14726
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/ReverseEngineeringAction.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/ReverseEngineeringAction.java
+@@ -26,14 +26,12 @@ import org.apache.cayenne.modeler.dialog.db.DataSourceWizard;
+ import org.apache.cayenne.modeler.dialog.db.DbActionOptionsDialog;
+ import org.apache.cayenne.modeler.dialog.db.load.DbLoadResultDialog;
+ import org.apache.cayenne.modeler.dialog.db.load.DbLoaderContext;
+-import org.apache.cayenne.modeler.dialog.db.load.LoadDataMapTask;
+ import org.apache.cayenne.modeler.editor.DbImportController;
+ import org.apache.cayenne.modeler.editor.dbimport.DbImportView;
+ import org.apache.cayenne.modeler.pref.DBConnectionInfo;
+ import org.apache.cayenne.modeler.pref.DataMapDefaults;
+ 
+ import javax.swing.JOptionPane;
+-import javax.swing.SwingUtilities;
+ import java.awt.event.ActionEvent;
+ import java.sql.SQLException;
+ import java.util.Collection;
+@@ -111,7 +109,7 @@ public class ReverseEngineeringAction extends DBWizardAction<DbActionOptionsDial
+             return;
+         }
+ 
+-        runLoaderInThread(context, () -> {
++        context.runLoaderInThread(() -> {
+             application.getUndoManager().discardAllEdits();
+             try {
+                 context.getConnection().close();
+@@ -170,15 +168,6 @@ public class ReverseEngineeringAction extends DBWizardAction<DbActionOptionsDial
+         return dataMapDefaults.getCurrentPreference().get(DB_ADAPTER_PROPERTY, null) != null;
+     }
+ 
+-    private void runLoaderInThread(final DbLoaderContext context, final Runnable callback) {
+-        Thread th = new Thread(() -> {
+-            LoadDataMapTask task = new LoadDataMapTask(Application.getFrame(), "Reengineering DB", context);
+-            task.startAndWait();
+-            SwingUtilities.invokeLater(callback);
+-        });
+-        th.start();
+-    }
+-
+     @Override
+     protected DbActionOptionsDialog createDialog(Collection<String> catalogs, Collection<String> schemas,
+                                                  String currentCatalog, String currentSchema, int command) {
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/load/DbLoaderContext.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/load/DbLoaderContext.java
+old mode 100644
+new mode 100755
+index 47a7f331d..e4c1c19f9
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/load/DbLoaderContext.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/load/DbLoaderContext.java
+@@ -200,4 +200,13 @@ public class DbLoaderContext {
+     public boolean isInterrupted() {
+         return isInterrupted;
+     }
++
++    public void runLoaderInThread(final Runnable callback) {
++        Thread th = new Thread(() -> {
++            LoadDataMapTask task = new LoadDataMapTask(Application.getFrame(), "Reengineering DB", this);
++            task.startAndWait();
++            SwingUtilities.invokeLater(callback);
++        });
++        th.start();
++    }
+ }
