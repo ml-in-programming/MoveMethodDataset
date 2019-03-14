@@ -1,0 +1,95 @@
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/cpd/GUI.java b/pmd-core/src/main/java/net/sourceforge/pmd/cpd/GUI.java
+index 9162765..bbdb920 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/cpd/GUI.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/cpd/GUI.java
+@@ -26,12 +26,10 @@ import java.util.ArrayList;
+ import java.util.Collections;
+ import java.util.Comparator;
+ import java.util.HashMap;
+-import java.util.HashSet;
+ import java.util.Iterator;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.Properties;
+-import java.util.Set;
+ import javax.swing.AbstractButton;
+ import javax.swing.BorderFactory;
+ import javax.swing.JButton;
+@@ -618,26 +616,6 @@ public class GUI implements CPDListener {
+         return false;
+     }
+ 
+-    private String setLabelFor(Match match) {
+-
+-        Set<String> sourceIDs = new HashSet<>(match.getMarkCount());
+-        for (Iterator<Mark> occurrences = match.iterator(); occurrences.hasNext();) {
+-            sourceIDs.add(occurrences.next().getFilename());
+-        }
+-        String label;
+-
+-        if (sourceIDs.size() == 1) {
+-            String sourceId = sourceIDs.iterator().next();
+-            int separatorPos = sourceId.lastIndexOf(File.separatorChar);
+-            label = "..." + sourceId.substring(separatorPos);
+-        } else {
+-            label = String.format("(%d separate files)", sourceIDs.size());
+-        }
+-
+-        match.setLabel(label);
+-        return label;
+-    }
+-
+     private void setProgressControls(boolean isRunning) {
+         progressPanel.setVisible(isRunning);
+         goButton.setEnabled(!isRunning);
+@@ -694,7 +672,7 @@ public class GUI implements CPDListener {
+             matches = new ArrayList<>();
+             for (Iterator<Match> i = cpd.getMatches(); i.hasNext();) {
+                 Match match = i.next();
+-                setLabelFor(match);
++                match.setLabelFor();
+                 matches.add(match);
+             }
+ 
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/cpd/Match.java b/pmd-core/src/main/java/net/sourceforge/pmd/cpd/Match.java
+index 19f69b9..fdc5aed 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/cpd/Match.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/cpd/Match.java
+@@ -4,10 +4,8 @@
+ 
+ package net.sourceforge.pmd.cpd;
+ 
+-import java.util.Comparator;
+-import java.util.Iterator;
+-import java.util.Set;
+-import java.util.TreeSet;
++import java.io.File;
++import java.util.*;
+ 
+ import net.sourceforge.pmd.PMD;
+ 
+@@ -137,4 +135,24 @@ public class Match implements Comparable<Match>, Iterable<Mark> {
+         }
+         return result;
+     }
++
++    String setLabelFor() {
++
++        Set<String> sourceIDs = new HashSet<>(getMarkCount());
++        for (Iterator<Mark> occurrences = iterator(); occurrences.hasNext();) {
++            sourceIDs.add(occurrences.next().getFilename());
++        }
++        String label;
++
++        if (sourceIDs.size() == 1) {
++            String sourceId = sourceIDs.iterator().next();
++            int separatorPos = sourceId.lastIndexOf(File.separatorChar);
++            label = "..." + sourceId.substring(separatorPos);
++        } else {
++            label = String.format("(%d separate files)", sourceIDs.size());
++        }
++
++        setLabel(label);
++        return label;
++    }
+ }

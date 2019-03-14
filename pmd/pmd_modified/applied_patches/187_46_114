@@ -1,0 +1,59 @@
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTMethodDeclaration.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTMethodDeclaration.java
+index b50255c..31e0e92 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTMethodDeclaration.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTMethodDeclaration.java
+@@ -156,4 +156,15 @@ public class ASTMethodDeclaration extends AbstractMethodOrConstructorDeclaration
+     public ASTMethodDeclarator getMethodDeclarator() {
+         return getFirstChildOfType(ASTMethodDeclarator.class);
+     }
++
++    // TODO: this method should be externalize into an utility class, shouldn't it ?
++    public boolean isMethodType(String methodType) {
++        boolean result = false;
++        ASTResultType type = getResultType();
++        if (type != null) {
++            result = type.hasDescendantMatchingXPath(
++                    "./Type/ReferenceType/ClassOrInterfaceType[@Image = '" + methodType + "']");
++        }
++        return result;
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/design/UselessOverridingMethodRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/design/UselessOverridingMethodRule.java
+index 6759404..932d697 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/design/UselessOverridingMethodRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/design/UselessOverridingMethodRule.java
+@@ -27,7 +27,6 @@ import net.sourceforge.pmd.lang.java.ast.ASTNameList;
+ import net.sourceforge.pmd.lang.java.ast.ASTPrimaryExpression;
+ import net.sourceforge.pmd.lang.java.ast.ASTPrimaryPrefix;
+ import net.sourceforge.pmd.lang.java.ast.ASTPrimarySuffix;
+-import net.sourceforge.pmd.lang.java.ast.ASTResultType;
+ import net.sourceforge.pmd.lang.java.ast.ASTStatement;
+ import net.sourceforge.pmd.lang.java.ast.ASTVariableDeclaratorId;
+ import net.sourceforge.pmd.lang.java.rule.AbstractJavaRule;
+@@ -75,17 +74,6 @@ public class UselessOverridingMethodRule extends AbstractJavaRule {
+     }
+ 
+     // TODO: this method should be externalize into an utility class, shouldn't it ?
+-    private boolean isMethodType(ASTMethodDeclaration node, String methodType) {
+-        boolean result = false;
+-        ASTResultType type = node.getResultType();
+-        if (type != null) {
+-            result = type.hasDescendantMatchingXPath(
+-                    "./Type/ReferenceType/ClassOrInterfaceType[@Image = '" + methodType + "']");
+-        }
+-        return result;
+-    }
+-
+-    // TODO: this method should be externalize into an utility class, shouldn't it ?
+     private boolean isMethodThrowingType(ASTMethodDeclaration node, List<String> exceptedExceptions) {
+         boolean result = false;
+         ASTNameList thrownsExceptions = node.getFirstChildOfType(ASTNameList.class);
+@@ -118,7 +106,7 @@ public class UselessOverridingMethodRule extends AbstractJavaRule {
+         // 'useless' but as it is considered a 'good practice' to
+         // implement them anyway ( see bug 1522517)
+         if (CLONE.equals(node.getMethodName()) && node.isPublic() && !this.hasArguments(node)
+-                && this.isMethodType(node, OBJECT) && this.isMethodThrowingType(node, exceptions)) {
++                && node.isMethodType(OBJECT) && this.isMethodThrowingType(node, exceptions)) {
+             return super.visit(node, data);
+         }
+ 

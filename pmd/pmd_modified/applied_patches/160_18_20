@@ -1,0 +1,44 @@
+diff --git a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTModifierNode.java b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTModifierNode.java
+index 811cd33..7a1b661 100644
+--- a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTModifierNode.java
++++ b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTModifierNode.java
+@@ -5,6 +5,7 @@
+ package net.sourceforge.pmd.lang.apex.ast;
+ 
+ import apex.jorje.semantic.ast.modifier.ModifierNode;
++import apex.jorje.semantic.symbol.type.ModifierTypeInfos;
+ 
+ public class ASTModifierNode extends AbstractApexNode<ModifierNode> implements AccessNode {
+ 
+@@ -56,4 +57,8 @@ public class ASTModifierNode extends AbstractApexNode<ModifierNode> implements A
+     public boolean isTransient() {
+         return (node.getModifiers().getJavaModifiers() & TRANSIENT) == TRANSIENT;
+     }
++
++    public boolean isWebService() {
++        return this != null && getNode().getModifiers().has(ModifierTypeInfos.WEB_SERVICE);
++    }
+ }
+diff --git a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/bestpractices/AvoidGlobalModifierRule.java b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/bestpractices/AvoidGlobalModifierRule.java
+index 9d583e7..ee90086 100644
+--- a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/bestpractices/AvoidGlobalModifierRule.java
++++ b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/bestpractices/AvoidGlobalModifierRule.java
+@@ -48,17 +48,13 @@ public class AvoidGlobalModifierRule extends AbstractApexRule {
+         List<ASTMethod> methods = node.findChildrenOfType(ASTMethod.class);
+         for (ASTMethod method : methods) {
+             ASTModifierNode methodModifier = method.getFirstChildOfType(ASTModifierNode.class);
+-            if (isWebService(methodModifier)) {
++            if (methodModifier.isWebService()) {
+                 return true;
+             }
+         }
+         return false;
+     }
+ 
+-    private boolean isWebService(ASTModifierNode modifierNode) {
+-        return modifierNode != null && modifierNode.getNode().getModifiers().has(ModifierTypeInfos.WEB_SERVICE);
+-    }
+-
+     private boolean isGlobal(ASTModifierNode modifierNode) {
+         return modifierNode != null && modifierNode.getNode().getModifiers().has(ModifierTypeInfos.GLOBAL);
+     }

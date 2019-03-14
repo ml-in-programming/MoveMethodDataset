@@ -1,0 +1,43 @@
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/cpd/CPD.java b/pmd-core/src/main/java/net/sourceforge/pmd/cpd/CPD.java
+index b1ed3e7..a5b49ba 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/cpd/CPD.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/cpd/CPD.java
+@@ -176,4 +176,11 @@ public class CPD {
+     public static void main(String[] args) {
+         CPDCommandLineInterface.main(args);
+     }
++
++    long analyzeCode() {
++        long start = System.currentTimeMillis();
++        go();
++        long stop = System.currentTimeMillis();
++        return stop - start;
++    }
+ }
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/cpd/CPDTask.java b/pmd-core/src/main/java/net/sourceforge/pmd/cpd/CPDTask.java
+index 953cfd1..8165f8b 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/cpd/CPDTask.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/cpd/CPDTask.java
+@@ -90,7 +90,7 @@ public class CPDTask extends Task {
+             tokenizeFiles(cpd);
+ 
+             log("Starting to analyze code", Project.MSG_INFO);
+-            long timeTaken = analyzeCode(cpd);
++            long timeTaken = cpd.analyzeCode();
+             log("Done analyzing code; that took " + timeTaken + " milliseconds");
+ 
+             log("Generating report", Project.MSG_INFO);
+@@ -167,13 +167,6 @@ public class CPDTask extends Task {
+         }
+     }
+ 
+-    private long analyzeCode(CPD cpd) {
+-        long start = System.currentTimeMillis();
+-        cpd.go();
+-        long stop = System.currentTimeMillis();
+-        return stop - start;
+-    }
+-
+     private CPDRenderer createRenderer() {
+         if (format.equals(TEXT_FORMAT)) {
+             return new SimpleRenderer();

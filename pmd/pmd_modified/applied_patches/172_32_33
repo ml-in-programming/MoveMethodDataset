@@ -1,0 +1,51 @@
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/report/AbstractReportNode.java b/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/report/AbstractReportNode.java
+index bcf8866..e769537 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/report/AbstractReportNode.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/report/AbstractReportNode.java
+@@ -121,4 +121,16 @@ public abstract class AbstractReportNode {
+         return childNodes.isEmpty();
+     }
+ 
++    /**
++     * Checks if node is a child of the level node.
++     * @param node
++     */
++    boolean equalsNodeInLevel(AbstractReportNode node) {
++        for (int i = 0; i < getChildCount(); i++) {
++            if (getChildAt(i).equalsNode(node)) {
++                return true;
++            }
++        }
++        return false;
++    }
+ }
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/report/ReportTree.java b/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/report/ReportTree.java
+index 988a29e..574beb6 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/report/ReportTree.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/report/ReportTree.java
+@@ -162,24 +162,12 @@ public class ReportTree implements Iterable<RuleViolation> {
+          * RuleViolation if he already exists.
+          */
+         ViolationNode tmp = new ViolationNode(violation);
+-        if (!equalsNodeInLevel(level, tmp)) {
++        if (!level.equalsNodeInLevel(tmp)) {
+             level.add(tmp);
+         }
+     }
+ 
+     /**
+-     * Checks if node is a child of the level node.
+-     */
+-    private boolean equalsNodeInLevel(AbstractReportNode level, AbstractReportNode node) {
+-        for (int i = 0; i < level.getChildCount(); i++) {
+-            if (level.getChildAt(i).equalsNode(node)) {
+-                return true;
+-            }
+-        }
+-        return false;
+-    }
+-
+-    /**
+      * Checks if the packageName or the className is a child of the current
+      * (this.level) node. If it's true, the current node changes to the child
+      * node.
