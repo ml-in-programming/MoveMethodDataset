@@ -1,0 +1,1091 @@
+diff --git a/core/src/main/java/hudson/EnvVars.java b/core/src/main/java/hudson/EnvVars.java
+index 0dbec25..32f63be 100644
+--- a/core/src/main/java/hudson/EnvVars.java
++++ b/core/src/main/java/hudson/EnvVars.java
+@@ -23,6 +23,9 @@
+  */
+ package hudson;
+ 
++import hudson.model.AbstractBuild;
++import hudson.model.ParameterValue;
++import hudson.model.Run;
+ import hudson.remoting.VirtualChannel;
+ import hudson.util.CaseInsensitiveComparator;
+ import hudson.util.CyclicGraphDetector;
+@@ -180,6 +183,19 @@ public class EnvVars extends TreeMap<String,String> {
+         return this;
+     }
+ 
++    /** @deprecated Use {@link #buildEnvironment(Run, EnvVars)} instead.
++     * @param build
++     * @param parameterValue*/
++    @Deprecated
++    public void buildEnvVars(AbstractBuild<?, ?> build, ParameterValue parameterValue) {
++        if (Util.isOverridden(ParameterValue.class, parameterValue.getClass(), "buildEnvironment", Run.class, EnvVars.class)) {
++            parameterValue.buildEnvironment(build, this);
++        } else {
++            // for backward compatibility
++            parameterValue.buildEnvVars(build,(Map<String,String>) this);
++        }
++    }
++
+     /**
+      * Calculates the order to override variables.
+      * 
+diff --git a/core/src/main/java/hudson/FilePath.java b/core/src/main/java/hudson/FilePath.java
+index cbb975c..4cb78f1 100644
+--- a/core/src/main/java/hudson/FilePath.java
++++ b/core/src/main/java/hudson/FilePath.java
+@@ -30,6 +30,7 @@ import com.jcraft.jzlib.GZIPInputStream;
+ import com.jcraft.jzlib.GZIPOutputStream;
+ import hudson.Launcher.LocalLauncher;
+ import hudson.Launcher.RemoteLauncher;
++import hudson.maven.Messages;
+ import hudson.model.AbstractProject;
+ import hudson.model.Computer;
+ import hudson.model.Item;
+@@ -48,6 +49,7 @@ import hudson.remoting.RemoteOutputStream;
+ import hudson.remoting.VirtualChannel;
+ import hudson.remoting.Which;
+ import hudson.security.AccessControlled;
++import hudson.tools.DownloadFromUrlInstaller;
+ import hudson.util.DaemonThreadFactory;
+ import hudson.util.DirScanner;
+ import hudson.util.ExceptionCatchingThreadFactory;
+@@ -483,6 +485,20 @@ public final class FilePath implements SerializableOnlyOverRemoting {
+         final OutputStream out = (channel!=null)?new RemoteOutputStream(os):os;
+         return act(new Archive(factory, out, scanner));
+     }
++
++    /**
++     * Checks if the specified expected location already contains the installed version of the tool.
++     *
++     * This check needs to run fairly efficiently. The current implementation uses the source URL of {@link DownloadFromUrlInstaller.Installable},
++     * based on the assumption that released bits do not change its content.
++     * @param i
++     * @param downloadFromUrlInstaller
++     */
++    public boolean isUpToDate(DownloadFromUrlInstaller.Installable i, DownloadFromUrlInstaller downloadFromUrlInstaller) throws IOException, InterruptedException {
++        FilePath marker = child(".installedFrom");
++        return marker.exists() && marker.readToString().equals(i.url);
++    }
++
+     private class Archive extends SecureFileCallable<Integer> {
+         private final ArchiverFactory factory;
+         private final OutputStream out;
+diff --git a/core/src/main/java/hudson/Launcher.java b/core/src/main/java/hudson/Launcher.java
+index e65011b..9046979 100644
+--- a/core/src/main/java/hudson/Launcher.java
++++ b/core/src/main/java/hudson/Launcher.java
+@@ -25,12 +25,11 @@ package hudson;
+ 
+ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+ import hudson.Proc.LocalProc;
+-import hudson.model.Computer;
++import hudson.model.*;
++import hudson.scm.SCM;
+ import jenkins.util.MemoryReductionUtil;
+ import hudson.util.QuotedStringTokenizer;
+ import jenkins.model.Jenkins;
+-import hudson.model.TaskListener;
+-import hudson.model.Node;
+ import hudson.remoting.Channel;
+ import hudson.remoting.Pipe;
+ import hudson.remoting.RemoteInputStream;
+@@ -154,6 +153,20 @@ public abstract class Launcher {
+     }
+ 
+     /**
++     * Get a chance to do operations after the workspace i checked out and the changelog is written.
++     * @since 1.568
++     * @param build
++     * @param workspace
++     * @param listener
++     * @param scm
++     */
++    public void postCheckout(@Nonnull Run<?, ?> build, @Nonnull FilePath workspace, @Nonnull TaskListener listener, SCM scm) throws IOException, InterruptedException {
++        if (build instanceof AbstractBuild && listener instanceof BuildListener) {
++            scm.postCheckout((AbstractBuild) build, this, workspace, (BuildListener) listener);
++        }
++    }
++
++    /**
+      * Builder pattern for configuring a process to launch.
+      * @since 1.311
+      */
+diff --git a/core/src/main/java/hudson/MarkupText.java b/core/src/main/java/hudson/MarkupText.java
+index 107c8fb..2575453 100644
+--- a/core/src/main/java/hudson/MarkupText.java
++++ b/core/src/main/java/hudson/MarkupText.java
+@@ -23,9 +23,16 @@
+  */
+ package hudson;
+ 
++import hudson.model.AbstractBuild;
++import hudson.model.Run;
++import hudson.scm.ChangeLogAnnotator;
++import hudson.scm.ChangeLogSet;
++
+ import java.util.ArrayList;
+ import java.util.Collections;
+ import java.util.List;
++import java.util.logging.Level;
++import java.util.logging.Logger;
+ import java.util.regex.Matcher;
+ import java.util.regex.Pattern;
+ 
+@@ -48,6 +55,35 @@ public class MarkupText extends AbstractMarkupText {
+     private final List<Tag> tags = new ArrayList<>();
+ 
+     /**
++     * Called by Hudson to allow markups to be added to the changelog text.
++     *
++     * <p>
++     * This method is invoked each time a page is rendered, so implementations
++     * of this method should not take too long to execute. Also note that
++     * this method may be invoked concurrently by multiple threads.
++     *
++     * <p>
++     * If there's any error during the processing, it should be recorded in
++     * {@link Logger} and the method should return normally.
++     *
++     * @param build
++     *      Build that owns this changelog. From here you can access broader contextual
++     *      information, like the project, or it settings. Never null.
++     * @param change
++     *      The changelog entry for which this method is adding markup.
++     *      Never null.
++     * @param changeLogAnnotator
++     * @since 1.568
++     */
++    public void annotate(Run<?, ?> build, ChangeLogSet.Entry change, ChangeLogAnnotator changeLogAnnotator) {
++        if (build instanceof AbstractBuild && Util.isOverridden(ChangeLogAnnotator.class, changeLogAnnotator.getClass(), "annotate", AbstractBuild.class, ChangeLogSet.Entry.class, MarkupText.class)) {
++            changeLogAnnotator.annotate((AbstractBuild) build, change, this);
++        } else {
++            Logger.getLogger(ChangeLogAnnotator.class.getName()).log(Level.WARNING, "You must override the newer overload of annotate from {0}", changeLogAnnotator.getClass().getName());
++        }
++    }
++
++    /**
+      * Represents one mark up inserted into text.
+      */
+     private static final class Tag implements Comparable<Tag> {
+diff --git a/core/src/main/java/hudson/PluginWrapper.java b/core/src/main/java/hudson/PluginWrapper.java
+index be78e2d..a91ea83 100644
+--- a/core/src/main/java/hudson/PluginWrapper.java
++++ b/core/src/main/java/hudson/PluginWrapper.java
+@@ -27,6 +27,7 @@ package hudson;
+ import com.google.common.collect.ImmutableSet;
+ import com.google.common.collect.Sets;
+ import hudson.PluginManager.PluginInstanceStore;
++import hudson.cli.ListPluginsCommand;
+ import hudson.model.AdministrativeMonitor;
+ import hudson.model.Api;
+ import hudson.model.ModelObject;
+@@ -330,6 +331,21 @@ public class PluginWrapper implements Comparable<PluginWrapper>, ModelObject {
+         return (dependencies != null && !dependencies.isEmpty());
+     }
+ 
++    public void printPlugin(int colWidthShortName, int colWidthDisplayName, ListPluginsCommand listPluginsCommand) {
++        final String version;
++
++        if (hasUpdate()) {
++            UpdateSite.Plugin updateInfo = getUpdateInfo();
++            version = String.format("%s (%s)", getVersion(), updateInfo.version);
++        }
++        else {
++            version = getVersion();
++        }
++
++        String formatString = String.format("%%-%ds %%-%ds %%s", colWidthShortName, colWidthDisplayName);
++        listPluginsCommand.stdout.println(String.format(formatString, getShortName(), getDisplayName(), version));
++    }
++
+     @ExportedBean
+     public static final class Dependency {
+         @Exported
+diff --git a/core/src/main/java/hudson/cli/ListPluginsCommand.java b/core/src/main/java/hudson/cli/ListPluginsCommand.java
+index faa35df..4adf6a2 100644
+--- a/core/src/main/java/hudson/cli/ListPluginsCommand.java
++++ b/core/src/main/java/hudson/cli/ListPluginsCommand.java
+@@ -27,7 +27,6 @@ import java.util.List;
+ import hudson.Extension;
+ import hudson.PluginManager;
+ import hudson.PluginWrapper;
+-import hudson.model.UpdateSite;
+ import jenkins.model.Jenkins;
+ import org.kohsuke.args4j.Argument;
+ 
+@@ -56,7 +55,7 @@ public class ListPluginsCommand extends CLICommand {
+             PluginWrapper plugin = pluginManager.getPlugin(this.name);
+ 
+             if (plugin != null) {
+-                printPlugin(plugin, plugin.getShortName().length(), plugin.getDisplayName().length());
++                plugin.printPlugin(plugin.getShortName().length(), plugin.getDisplayName().length(), this);
+             }
+             else {
+                 throw new IllegalArgumentException("No plugin with the name '" + name + "' found");
+@@ -74,7 +73,7 @@ public class ListPluginsCommand extends CLICommand {
+                 }
+ 
+                 for (PluginWrapper plugin : plugins) {
+-                    printPlugin(plugin, colWidthShortName, colWidthDisplayName);
++                    plugin.printPlugin(colWidthShortName, colWidthDisplayName, this);
+                 }
+             }
+         }
+@@ -82,18 +81,4 @@ public class ListPluginsCommand extends CLICommand {
+         return 0;
+     }
+ 
+-    private void printPlugin(PluginWrapper plugin, int colWidthShortName, int colWidthDisplayName) {
+-        final String version;
+-
+-        if (plugin.hasUpdate()) {
+-            UpdateSite.Plugin updateInfo = plugin.getUpdateInfo();
+-            version = String.format("%s (%s)", plugin.getVersion(), updateInfo.version);
+-        }
+-        else {
+-            version = plugin.getVersion();
+-        }
+-
+-        String formatString = String.format("%%-%ds %%-%ds %%s", colWidthShortName, colWidthDisplayName);
+-        stdout.println(String.format(formatString, plugin.getShortName(), plugin.getDisplayName(), version));
+-    }
+ }
+diff --git a/core/src/main/java/hudson/model/AbstractItem.java b/core/src/main/java/hudson/model/AbstractItem.java
+index b52c646..f249cb1 100644
+--- a/core/src/main/java/hudson/model/AbstractItem.java
++++ b/core/src/main/java/hudson/model/AbstractItem.java
+@@ -77,7 +77,6 @@ import javax.annotation.Nonnull;
+ 
+ import org.acegisecurity.AccessDeniedException;
+ import org.kohsuke.stapler.HttpResponse;
+-import org.kohsuke.stapler.HttpResponses;
+ import org.kohsuke.stapler.StaplerRequest;
+ import org.kohsuke.stapler.StaplerResponse;
+ import org.kohsuke.stapler.Stapler;
+@@ -97,7 +96,6 @@ import javax.xml.transform.stream.StreamSource;
+ import static hudson.model.queue.Executables.getParentOf;
+ import hudson.model.queue.SubTask;
+ import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
+-import static javax.servlet.http.HttpServletResponse.SC_NOT_FOUND;
+ 
+ import org.apache.commons.io.FileUtils;
+ import org.kohsuke.accmod.Restricted;
+@@ -943,7 +941,7 @@ public abstract class AbstractItem extends Actionable implements Item, HttpDelet
+             if (!getACL().hasPermission(Item.DISCOVER)) {
+                 return null;
+             }
+-            getACL().checkPermission(Item.READ);
++            Item.READ.checkPermission(getACL());
+         }
+         return this;
+     }
+diff --git a/core/src/main/java/hudson/model/ChoiceParameterDefinition.java b/core/src/main/java/hudson/model/ChoiceParameterDefinition.java
+index ffe11cb..e43511d 100644
+--- a/core/src/main/java/hudson/model/ChoiceParameterDefinition.java
++++ b/core/src/main/java/hudson/model/ChoiceParameterDefinition.java
+@@ -133,21 +133,15 @@ public class ChoiceParameterDefinition extends SimpleParameterDefinition {
+         return new StringParameterValue(getName(), defaultValue == null ? choices.get(0) : defaultValue, getDescription());
+     }
+ 
+-    private StringParameterValue checkValue(StringParameterValue value) {
+-        if (!choices.contains(value.value))
+-            throw new IllegalArgumentException("Illegal choice for parameter " + getName() + ": " + value.value);
+-        return value;
+-    }
+-
+     @Override
+     public ParameterValue createValue(StaplerRequest req, JSONObject jo) {
+         StringParameterValue value = req.bindJSON(StringParameterValue.class, jo);
+         value.setDescription(getDescription());
+-        return checkValue(value);
++        return value.checkValue(this);
+     }
+ 
+     public StringParameterValue createValue(String value) {
+-        return checkValue(new StringParameterValue(getName(), value, getDescription()));
++        return new StringParameterValue(getName(), value, getDescription()).checkValue(this);
+     }
+ 
+     @Extension @Symbol({"choice","choiceParam"})
+diff --git a/core/src/main/java/hudson/model/Computer.java b/core/src/main/java/hudson/model/Computer.java
+index 3464bc7..4396cc9 100644
+--- a/core/src/main/java/hudson/model/Computer.java
++++ b/core/src/main/java/hudson/model/Computer.java
+@@ -1309,6 +1309,17 @@ public /*transient*/ abstract class Computer extends Actionable implements Acces
+         oneOffExecutors.remove(e);
+     }
+ 
++    public boolean isRelevant(Collection<Label> labels, View view) {
++        Node node = getNode();
++        if (node == null) return false;
++        if (labels.contains(null) && node.getMode() == Node.Mode.NORMAL) return true;
++
++        for (Label l : labels)
++            if (l != null && node.contains(l))
++                return true;
++        return false;
++    }
++
+     private static class ListPossibleNames extends MasterToSlaveCallable<List<String>,IOException> {
+         /**
+          * In the normal case we would use {@link Computer} as the logger's name, however to
+diff --git a/core/src/main/java/hudson/model/ComputerSet.java b/core/src/main/java/hudson/model/ComputerSet.java
+index 1b618d0..6d7d8c1 100644
+--- a/core/src/main/java/hudson/model/ComputerSet.java
++++ b/core/src/main/java/hudson/model/ComputerSet.java
+@@ -277,7 +277,7 @@ public final class ComputerSet extends AbstractModelObject implements Describabl
+             if (d == null) {
+                 throw new Failure("No node type ‘" + mode + "’ is known");
+             }
+-            d.handleNewNodePage(this,name,req,rsp);
++            handleNewNodePage(name,req,rsp, d);
+         }
+     }
+ 
+@@ -383,6 +383,22 @@ public final class ComputerSet extends AbstractModelObject implements Describabl
+         return Jenkins.getInstance().getDescriptorOrDie(ComputerSet.class);
+     }
+ 
++    /**
++     * Handles the form submission from the "/computer/new" page, which is the first form for creating a new node.
++     * By default, it shows the configuration page for entering details, but subtypes can override this differently.
++     *
++     * @param name
++     *      Name of the new node.
++     * @param req
++     * @param rsp
++     * @param nodeDescriptor
++     */
++    public void handleNewNodePage(String name, StaplerRequest req, StaplerResponse rsp, NodeDescriptor nodeDescriptor) throws IOException, ServletException {
++        checkName(name);
++        req.setAttribute("descriptor", nodeDescriptor);
++        req.getView(this,"_new.jelly").forward(req,rsp);
++    }
++
+     @Extension
+     public static class DescriptorImpl extends Descriptor<ComputerSet> {
+         /**
+diff --git a/core/src/main/java/hudson/model/DirectoryBrowserSupport.java b/core/src/main/java/hudson/model/DirectoryBrowserSupport.java
+index 3325fe1..4cb071e 100644
+--- a/core/src/main/java/hudson/model/DirectoryBrowserSupport.java
++++ b/core/src/main/java/hudson/model/DirectoryBrowserSupport.java
+@@ -370,7 +370,7 @@ public final class DirectoryBrowserSupport implements HttpResponse {
+                     mappedFragments.add(current);
+                     return mappedFragments;
+                 } else {
+-                    if (isDescendant(root, relativePath)) {
++                    if (root.isDescendantOther(relativePath, this)) {
+                         mappedFragments.add(current);
+                     } else {
+                         if (patternUsed) {
+@@ -392,15 +392,6 @@ public final class DirectoryBrowserSupport implements HttpResponse {
+         return pathFragmentsStream.collect(Collectors.toList());
+     }
+ 
+-    private boolean isDescendant(VirtualFile root, String relativePath){
+-        try {
+-            return ALLOW_SYMLINK_ESCAPE || !root.supportIsDescendant() || root.isDescendant(relativePath);
+-        }
+-        catch (IOException e) {
+-            return false;
+-        }
+-    }
+-
+     private String getPath(StaplerRequest req) {
+         String path = req.getRestOfPath();
+         if(path.length()==0)
+diff --git a/core/src/main/java/hudson/model/Label.java b/core/src/main/java/hudson/model/Label.java
+index 0cb65ee..cbfd138 100644
+--- a/core/src/main/java/hudson/model/Label.java
++++ b/core/src/main/java/hudson/model/Label.java
+@@ -444,10 +444,6 @@ public abstract class Label extends Actionable implements Comparable<Label>, Mod
+         }
+     }
+ 
+-    public boolean contains(Node node) {
+-        return getNodes().contains(node);
+-    }
+-
+     /**
+      * If there's no such label defined in {@link Node} or {@link Cloud}.
+      * This is usually used as a signal that this label is invalid.
+diff --git a/core/src/main/java/hudson/model/Node.java b/core/src/main/java/hudson/model/Node.java
+index d060214..50ebb08 100644
+--- a/core/src/main/java/hudson/model/Node.java
++++ b/core/src/main/java/hudson/model/Node.java
+@@ -243,6 +243,10 @@ public abstract class Node extends AbstractModelObject implements Reconfigurable
+         return true;
+     }
+ 
++    public boolean contains(Label label) {
++        return label.getNodes().contains(this);
++    }
++
+     /**
+      * Let Nodes be aware of the lifecycle of their own {@link Computer}.
+      */
+@@ -383,7 +387,7 @@ public abstract class Node extends AbstractModelObject implements Reconfigurable
+      */
+     public CauseOfBlockage canTake(Queue.BuildableItem item) {
+         Label l = item.getAssignedLabel();
+-        if(l!=null && !l.contains(this))
++        if(l!=null && !contains(l))
+             return CauseOfBlockage.fromMessage(Messages._Node_LabelMissing(getDisplayName(), l));   // the task needs to be executed on label that this node doesn't have.
+ 
+         if(l==null && getMode()== Mode.EXCLUSIVE) {
+diff --git a/core/src/main/java/hudson/model/ParameterValue.java b/core/src/main/java/hudson/model/ParameterValue.java
+index e64413d..33df714 100644
+--- a/core/src/main/java/hudson/model/ParameterValue.java
++++ b/core/src/main/java/hudson/model/ParameterValue.java
+@@ -155,23 +155,12 @@ public abstract class ParameterValue implements Serializable {
+                 // if the subtype already derives buildEnvironment, then delegate to it
+                 buildEnvironment(build, (EnvVars) env);
+             } else if (Util.isOverridden(ParameterValue.class, getClass(), "buildEnvVars", AbstractBuild.class, EnvVars.class)) {
+-                buildEnvVars(build, (EnvVars) env);
++                ((EnvVars) env).buildEnvVars(build, this);
+             }
+         }
+         // otherwise no-op by default
+     }
+ 
+-    /** @deprecated Use {@link #buildEnvironment(Run, EnvVars)} instead. */
+-    @Deprecated
+-    public void buildEnvVars(AbstractBuild<?,?> build, EnvVars env) {
+-        if (Util.isOverridden(ParameterValue.class, getClass(), "buildEnvironment", Run.class, EnvVars.class)) {
+-            buildEnvironment(build, env);
+-        } else {
+-            // for backward compatibility
+-            buildEnvVars(build,(Map<String,String>)env);
+-        }
+-    }
+-
+     /**
+      * Adds environmental variables for the builds to the given map.
+      *
+@@ -192,7 +181,7 @@ public abstract class ParameterValue implements Serializable {
+      */
+     public void buildEnvironment(Run<?,?> build, EnvVars env) {
+         if (build instanceof AbstractBuild) {
+-            buildEnvVars((AbstractBuild) build, env);
++            env.buildEnvVars((AbstractBuild) build, this);
+         }
+         // else do not know how to do it
+     }
+diff --git a/core/src/main/java/hudson/model/Queue.java b/core/src/main/java/hudson/model/Queue.java
+index a2de43a..156bce1 100644
+--- a/core/src/main/java/hudson/model/Queue.java
++++ b/core/src/main/java/hudson/model/Queue.java
+@@ -1737,7 +1737,7 @@ public class Queue extends ResourceController implements Saveable {
+                 if (c == null || c.isOffline()) {
+                     continue;
+                 }
+-                if (lbl!=null && !lbl.contains(n)) {
++                if (lbl!=null && !n.contains(lbl)) {
+                     continue;
+                 }
+                 if (n.canTake(p) != null) {
+diff --git a/core/src/main/java/hudson/model/StringParameterValue.java b/core/src/main/java/hudson/model/StringParameterValue.java
+index 1cb3b5e..cacc60d 100644
+--- a/core/src/main/java/hudson/model/StringParameterValue.java
++++ b/core/src/main/java/hudson/model/StringParameterValue.java
+@@ -118,4 +118,9 @@ public class StringParameterValue extends ParameterValue {
+         return name + '=' + value;
+     }
+ 
++    public StringParameterValue checkValue(ChoiceParameterDefinition choiceParameterDefinition) {
++        if (!choiceParameterDefinition.getChoices().contains(this.value))
++            throw new IllegalArgumentException("Illegal choice for parameter " + choiceParameterDefinition.getName() + ": " + this.value);
++        return this;
++    }
+ }
+diff --git a/core/src/main/java/hudson/model/TaskAction.java b/core/src/main/java/hudson/model/TaskAction.java
+index 8c4e70b..66523b3 100644
+--- a/core/src/main/java/hudson/model/TaskAction.java
++++ b/core/src/main/java/hudson/model/TaskAction.java
+@@ -140,7 +140,7 @@ public abstract class TaskAction extends AbstractModelObject implements Action {
+      */
+     @RequirePOST
+     public synchronized void doClearError(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
+-        getACL().checkPermission(getPermission());
++        getPermission().checkPermission(getACL());
+ 
+         if(workerThread!=null && !workerThread.isRunning())
+             workerThread = null;
+diff --git a/core/src/main/java/hudson/model/User.java b/core/src/main/java/hudson/model/User.java
+index 9c09bb9..fa32262 100644
+--- a/core/src/main/java/hudson/model/User.java
++++ b/core/src/main/java/hudson/model/User.java
+@@ -38,10 +38,7 @@ import hudson.init.InitMilestone;
+ import hudson.init.Initializer;
+ import hudson.model.Descriptor.FormException;
+ import hudson.model.listeners.SaveableListener;
+-import hudson.security.ACL;
+-import hudson.security.AccessControlled;
+-import hudson.security.SecurityRealm;
+-import hudson.security.UserMayOrMayNotExistException;
++import hudson.security.*;
+ import hudson.util.FormApply;
+ import hudson.util.FormValidation;
+ import hudson.util.RunList;
+@@ -68,17 +65,20 @@ import javax.annotation.Nonnull;
+ import javax.annotation.Nullable;
+ import javax.servlet.ServletException;
+ import javax.servlet.http.HttpServletResponse;
++import javax.servlet.http.HttpSession;
+ 
+ import jenkins.model.IdStrategy;
+ import jenkins.model.Jenkins;
+ import jenkins.model.ModelObjectWithContextMenu;
+ import jenkins.security.ImpersonatingUserDetailsService;
+ import jenkins.security.LastGrantedAuthoritiesProperty;
++import jenkins.security.SecurityListener;
+ import jenkins.security.UserDetailsCache;
+ import jenkins.util.SystemProperties;
+ import net.sf.json.JSONObject;
+ import org.acegisecurity.Authentication;
+ import org.acegisecurity.GrantedAuthority;
++import org.acegisecurity.context.SecurityContextHolder;
+ import org.acegisecurity.providers.UsernamePasswordAuthenticationToken;
+ import org.acegisecurity.providers.anonymous.AnonymousAuthenticationToken;
+ import org.acegisecurity.userdetails.UserDetails;
+@@ -412,6 +412,32 @@ public class User extends AbstractModelObject implements AccessControlled, Descr
+     }
+ 
+     /**
++     * Lets the current user silently login as the given user and report back accordingly.
++     * @param req
++     * @param rsp
++     * @param hudsonPrivateSecurityRealm
++     */
++    @SuppressWarnings("ACL.impersonate")
++    public void loginAndTakeBack(StaplerRequest req, StaplerResponse rsp, HudsonPrivateSecurityRealm hudsonPrivateSecurityRealm) throws ServletException, IOException {
++        HttpSession session = req.getSession(false);
++        if (session != null) {
++            // avoid session fixation
++            session.invalidate();
++        }
++        req.getSession(true);
++
++        // ... and let him login
++        Authentication a = new UsernamePasswordAuthenticationToken(getId(),req.getParameter("password1"));
++        a = hudsonPrivateSecurityRealm.getSecurityComponents().manager.authenticate(a);
++        SecurityContextHolder.getContext().setAuthentication(a);
++
++        SecurityListener.fireLoggedIn(getId());
++
++        // then back to top
++        req.getView(hudsonPrivateSecurityRealm,"success.jelly").forward(req,rsp);
++    }
++
++    /**
+      * Only used for a legitimate user we have no idea about. We give it only minimum access
+      */
+     private static class LegitimateButUnknownUserDetails extends org.acegisecurity.userdetails.User {
+diff --git a/core/src/main/java/hudson/model/View.java b/core/src/main/java/hudson/model/View.java
+index 5a51471..8960786 100644
+--- a/core/src/main/java/hudson/model/View.java
++++ b/core/src/main/java/hudson/model/View.java
+@@ -438,23 +438,12 @@ public abstract class View extends AbstractModelObject implements AccessControll
+         }
+ 
+         for (Computer c : computers) {
+-            if (isRelevant(labels, c)) result.add(c);
++            if (c.isRelevant(labels, this)) result.add(c);
+         }
+ 
+         return result;
+     }
+ 
+-    private boolean isRelevant(Collection<Label> labels, Computer computer) {
+-        Node node = computer.getNode();
+-        if (node == null) return false;
+-        if (labels.contains(null) && node.getMode() == Node.Mode.NORMAL) return true;
+-
+-        for (Label l : labels)
+-            if (l != null && l.contains(node))
+-                return true;
+-        return false;
+-    }
+-
+     private final static int FILTER_LOOP_MAX_COUNT = 10;
+ 
+     private List<Queue.Item> filterQueue(List<Queue.Item> base) {
+diff --git a/core/src/main/java/hudson/model/queue/MappingWorksheet.java b/core/src/main/java/hudson/model/queue/MappingWorksheet.java
+index d953b48..64ec508 100644
+--- a/core/src/main/java/hudson/model/queue/MappingWorksheet.java
++++ b/core/src/main/java/hudson/model/queue/MappingWorksheet.java
+@@ -131,7 +131,7 @@ public class MappingWorksheet {
+             if (this.size()<c.size())
+                 return false;   // too small compared towork
+ 
+-            if (c.assignedLabel!=null && !c.assignedLabel.contains(node))
++            if (c.assignedLabel!=null && !node.contains(c.assignedLabel))
+                 return false;   // label mismatch
+ 
+             if (!(Node.SKIP_BUILD_CHECK_ON_FLYWEIGHTS && item.task instanceof Queue.FlyweightTask) && !nodeAcl.hasPermission(item.authenticate(), Computer.BUILD))
+diff --git a/core/src/main/java/hudson/scm/ChangeLogAnnotator.java b/core/src/main/java/hudson/scm/ChangeLogAnnotator.java
+index c9544b6..dfe3d1c 100644
+--- a/core/src/main/java/hudson/scm/ChangeLogAnnotator.java
++++ b/core/src/main/java/hudson/scm/ChangeLogAnnotator.java
+@@ -28,13 +28,10 @@ import hudson.ExtensionList;
+ import hudson.ExtensionListView;
+ import hudson.ExtensionPoint;
+ import hudson.MarkupText;
+-import hudson.Util;
+ import hudson.model.AbstractBuild;
+ import hudson.model.Run;
+ import hudson.scm.ChangeLogSet.Entry;
+ import hudson.util.CopyOnWriteList;
+-import java.util.logging.Level;
+-import java.util.logging.Logger;
+ 
+ /**
+  * Performs mark up on changelog messages to be displayed.
+@@ -52,43 +49,10 @@ import java.util.logging.Logger;
+  * @since 1.70
+  */
+ public abstract class ChangeLogAnnotator implements ExtensionPoint {
+-    /**
+-     * Called by Hudson to allow markups to be added to the changelog text.
+-     *
+-     * <p>
+-     * This method is invoked each time a page is rendered, so implementations
+-     * of this method should not take too long to execute. Also note that
+-     * this method may be invoked concurrently by multiple threads.
+-     *
+-     * <p>
+-     * If there's any error during the processing, it should be recorded in
+-     * {@link Logger} and the method should return normally.
+-     *
+-     * @param build
+-     *      Build that owns this changelog. From here you can access broader contextual
+-     *      information, like the project, or it settings. Never null.
+-     * @param change
+-     *      The changelog entry for which this method is adding markup.
+-     *      Never null.
+-     * @param text
+-     *      The text and markups. Implementation of this method is expected to
+-     *      add additional annotations into this object. If other annotators
+-     *      are registered, the object may already contain some markups when this
+-     *      method is invoked. Never null. {@link MarkupText#getText()} on this instance
+-     *      will return the same string as {@link Entry#getMsgEscaped()}.
+-     * @since 1.568
+-     */
+-    public void annotate(Run<?,?> build, Entry change, MarkupText text) {
+-        if (build instanceof AbstractBuild && Util.isOverridden(ChangeLogAnnotator.class, getClass(), "annotate", AbstractBuild.class, Entry.class, MarkupText.class)) {
+-            annotate((AbstractBuild) build, change, text);
+-        } else {
+-            Logger.getLogger(ChangeLogAnnotator.class.getName()).log(Level.WARNING, "You must override the newer overload of annotate from {0}", getClass().getName());
+-        }
+-    }
+ 
+     @Deprecated
+     public void annotate(AbstractBuild<?,?> build, Entry change, MarkupText text) {
+-        annotate((Run) build, change, text);
++        text.annotate((Run) build, change, this);
+     }
+ 
+     /**
+diff --git a/core/src/main/java/hudson/scm/ChangeLogSet.java b/core/src/main/java/hudson/scm/ChangeLogSet.java
+index 770b552..00fcae4 100644
+--- a/core/src/main/java/hudson/scm/ChangeLogSet.java
++++ b/core/src/main/java/hudson/scm/ChangeLogSet.java
+@@ -249,7 +249,7 @@ public abstract class ChangeLogSet<T extends ChangeLogSet.Entry> implements Iter
+             MarkupText markup = new MarkupText(getMsg());
+             for (ChangeLogAnnotator a : ChangeLogAnnotator.all())
+                 try {
+-                    a.annotate(parent.run, this, markup);
++                    markup.annotate(parent.run, this, a);
+                 } catch(Exception e) {
+                     LOGGER.info("ChangeLogAnnotator " + a.toString() + " failed to annotate message '" + getMsg() + "'; " + e.getMessage());
+                 } catch(Error e) {
+diff --git a/core/src/main/java/hudson/scm/SCM.java b/core/src/main/java/hudson/scm/SCM.java
+index b49f3f1..ae226ca 100644
+--- a/core/src/main/java/hudson/scm/SCM.java
++++ b/core/src/main/java/hudson/scm/SCM.java
+@@ -505,20 +505,10 @@ public abstract class SCM implements Describable<SCM>, ExtensionPoint {
+         return true;
+     }
+ 
+-    /**
+-     * Get a chance to do operations after the workspace i checked out and the changelog is written.
+-     * @since 1.568
+-     */
+-    public void postCheckout(@Nonnull Run<?,?> build, @Nonnull Launcher launcher, @Nonnull FilePath workspace, @Nonnull TaskListener listener) throws IOException, InterruptedException {
+-        if (build instanceof AbstractBuild && listener instanceof BuildListener) {
+-            postCheckout((AbstractBuild) build, launcher, workspace, (BuildListener) listener);
+-        }
+-    }
+-
+     @Deprecated
+     public void postCheckout(AbstractBuild<?,?> build, Launcher launcher, FilePath workspace, BuildListener listener) throws IOException, InterruptedException {
+         if (Util.isOverridden(SCM.class, getClass(), "postCheckout", Run.class, Launcher.class, FilePath.class, TaskListener.class)) {
+-            postCheckout((Run) build, launcher, workspace, listener);
++            launcher.postCheckout((Run) build, workspace, listener, this);
+         }
+         /* Default implementation is noop */
+     }
+diff --git a/core/src/main/java/hudson/security/ACL.java b/core/src/main/java/hudson/security/ACL.java
+index 1f39620..0da3480 100644
+--- a/core/src/main/java/hudson/security/ACL.java
++++ b/core/src/main/java/hudson/security/ACL.java
+@@ -55,23 +55,6 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
+  * @author Kohsuke Kawaguchi
+  */
+ public abstract class ACL {
+-    /**
+-     * Checks if the current security principal has this permission.
+-     *
+-     * <p>
+-     * This is just a convenience function.
+-     *
+-     * @throws AccessDeniedException
+-     *      if the user doesn't have the permission.
+-     */
+-    public final void checkPermission(@Nonnull Permission p) {
+-        Authentication a = Jenkins.getAuthentication();
+-        if (a == SYSTEM) {
+-            return;
+-        }
+-        if(!hasPermission(a,p))
+-            throw new AccessDeniedException2(a,p);
+-    }
+ 
+     /**
+      * Checks if the current security principal has this permission.
+diff --git a/core/src/main/java/hudson/security/AccessControlled.java b/core/src/main/java/hudson/security/AccessControlled.java
+index 9aa084d..e42c6e0 100644
+--- a/core/src/main/java/hudson/security/AccessControlled.java
++++ b/core/src/main/java/hudson/security/AccessControlled.java
+@@ -44,7 +44,7 @@ public interface AccessControlled {
+      * Convenient short-cut for {@code getACL().checkPermission(permission)}
+      */
+     default void checkPermission(@Nonnull Permission permission) throws AccessDeniedException {
+-        getACL().checkPermission(permission);
++        permission.checkPermission(getACL());
+     }
+ 
+     /**
+diff --git a/core/src/main/java/hudson/security/HudsonPrivateSecurityRealm.java b/core/src/main/java/hudson/security/HudsonPrivateSecurityRealm.java
+index fe66e46..1ee6d75 100644
+--- a/core/src/main/java/hudson/security/HudsonPrivateSecurityRealm.java
++++ b/core/src/main/java/hudson/security/HudsonPrivateSecurityRealm.java
+@@ -46,12 +46,9 @@ import jenkins.security.SecurityListener;
+ import jenkins.util.SystemProperties;
+ import jenkins.security.seed.UserSeedProperty;
+ import net.sf.json.JSONObject;
+-import org.acegisecurity.Authentication;
+ import org.acegisecurity.AuthenticationException;
+ import org.acegisecurity.BadCredentialsException;
+ import org.acegisecurity.GrantedAuthority;
+-import org.acegisecurity.context.SecurityContextHolder;
+-import org.acegisecurity.providers.UsernamePasswordAuthenticationToken;
+ import org.acegisecurity.providers.encoding.PasswordEncoder;
+ import org.acegisecurity.providers.encoding.ShaPasswordEncoder;
+ import org.acegisecurity.userdetails.UserDetails;
+@@ -77,7 +74,6 @@ import javax.servlet.ServletRequest;
+ import javax.servlet.ServletResponse;
+ import javax.servlet.http.HttpServletRequest;
+ import javax.servlet.http.HttpServletResponse;
+-import javax.servlet.http.HttpSession;
+ 
+ import static javax.servlet.http.HttpServletResponse.SC_UNAUTHORIZED;
+ import java.io.IOException;
+@@ -258,35 +254,12 @@ public class HudsonPrivateSecurityRealm extends AbstractPasswordBasedSecurityRea
+         if(u!=null) {
+             if(firstUser)
+                 tryToMakeAdmin(u);  // the first user should be admin, or else there's a risk of lock out
+-            loginAndTakeBack(req, rsp, u);
++            u.loginAndTakeBack(req, rsp, this);
+         }
+         return u;
+     }
+ 
+     /**
+-     * Lets the current user silently login as the given user and report back accordingly.
+-     */
+-    @SuppressWarnings("ACL.impersonate")
+-    private void loginAndTakeBack(StaplerRequest req, StaplerResponse rsp, User u) throws ServletException, IOException {
+-        HttpSession session = req.getSession(false);
+-        if (session != null) {
+-            // avoid session fixation
+-            session.invalidate();
+-        }
+-        req.getSession(true);
+-        
+-        // ... and let him login
+-        Authentication a = new UsernamePasswordAuthenticationToken(u.getId(),req.getParameter("password1"));
+-        a = this.getSecurityComponents().manager.authenticate(a);
+-        SecurityContextHolder.getContext().setAuthentication(a);
+-
+-        SecurityListener.fireLoggedIn(u.getId());
+-
+-        // then back to top
+-        req.getView(this,"success.jelly").forward(req,rsp);
+-    }
+-
+-    /**
+      * Creates a user account. Used by admins.
+      *
+      * This version behaves differently from {@link #doCreateAccount(StaplerRequest, StaplerResponse)} in that
+@@ -354,7 +327,7 @@ public class HudsonPrivateSecurityRealm extends AbstractPasswordBasedSecurityRea
+         User u = createAccount(req, rsp, false, "firstUser.jelly");
+         if (u!=null) {
+             tryToMakeAdmin(u);
+-            loginAndTakeBack(req, rsp, u);
++            u.loginAndTakeBack(req, rsp, this);
+         }
+     }
+ 
+diff --git a/core/src/main/java/hudson/security/Permission.java b/core/src/main/java/hudson/security/Permission.java
+index 040aa94..0512ac6 100644
+--- a/core/src/main/java/hudson/security/Permission.java
++++ b/core/src/main/java/hudson/security/Permission.java
+@@ -36,6 +36,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
+ import javax.annotation.CheckForNull;
+ import javax.annotation.Nonnull;
+ 
++import org.acegisecurity.AccessDeniedException;
++import org.acegisecurity.Authentication;
+ import org.jvnet.localizer.Localizable;
+ 
+ /**
+@@ -366,4 +368,23 @@ public final class Permission {
+      * Generic configuration access.
+      */
+     public static final Permission CONFIGURE = new Permission(GROUP,"GenericConfigure",null,UPDATE);
++
++    /**
++     * Checks if the current security principal has this permission.
++     *
++     * <p>
++     * This is just a convenience function.
++     *
++     * @throws AccessDeniedException
++     *      if the user doesn't have the permission.
++     * @param acl
++     */
++    public final void checkPermission(ACL acl) {
++        Authentication a = Jenkins.getAuthentication();
++        if (a == ACL.SYSTEM) {
++            return;
++        }
++        if(!acl.hasPermission(a, this))
++            throw new AccessDeniedException2(a, this);
++    }
+ }
+diff --git a/core/src/main/java/hudson/security/csrf/CrumbIssuer.java b/core/src/main/java/hudson/security/csrf/CrumbIssuer.java
+index d918fb9..9f67239 100644
+--- a/core/src/main/java/hudson/security/csrf/CrumbIssuer.java
++++ b/core/src/main/java/hudson/security/csrf/CrumbIssuer.java
+@@ -21,7 +21,7 @@ import hudson.ExtensionPoint;
+ import hudson.model.Api;
+ import hudson.model.Describable;
+ import hudson.model.Descriptor;
+-import hudson.util.MultipartFormDataParser;
++
+ import java.io.IOException;
+ import java.io.OutputStream;
+ import java.nio.charset.StandardCharsets;
+@@ -121,22 +121,6 @@ public abstract class CrumbIssuer implements Describable<CrumbIssuer>, Extension
+     }
+ 
+     /**
+-     * Get a crumb from multipart form data and validate it against other data
+-     * in the current request. The salt and request parameter that is used is
+-     * defined by the current configuration.
+-     *
+-     * @param request
+-     * @param parser
+-     */
+-    public boolean validateCrumb(ServletRequest request, MultipartFormDataParser parser) {
+-        CrumbIssuerDescriptor<CrumbIssuer> desc = getDescriptor();
+-        String crumbField = desc.getCrumbRequestField();
+-        String crumbSalt = desc.getCrumbSalt();
+-
+-        return validateCrumb(request, crumbSalt, parser.get(crumbField));
+-    }
+-
+-    /**
+      * Validate a previously created crumb against information in the current request.
+      *
+      * @param request
+diff --git a/core/src/main/java/hudson/slaves/NodeDescriptor.java b/core/src/main/java/hudson/slaves/NodeDescriptor.java
+index a7c1375..c51f1f5 100644
+--- a/core/src/main/java/hudson/slaves/NodeDescriptor.java
++++ b/core/src/main/java/hudson/slaves/NodeDescriptor.java
+@@ -24,7 +24,6 @@
+ package hudson.slaves;
+ 
+ import hudson.Extension;
+-import hudson.model.ComputerSet;
+ import hudson.model.Descriptor;
+ import hudson.model.Slave;
+ import hudson.model.Node;
+@@ -35,15 +34,10 @@ import hudson.DescriptorExtensionList;
+ import hudson.Util;
+ import hudson.model.Failure;
+ 
+-import java.io.IOException;
+ import java.util.List;
+ import java.util.ArrayList;
+ 
+ import org.kohsuke.stapler.QueryParameter;
+-import org.kohsuke.stapler.StaplerRequest;
+-import org.kohsuke.stapler.StaplerResponse;
+-
+-import javax.servlet.ServletException;
+ 
+ /**
+  * {@link Descriptor} for {@link Slave}.
+@@ -78,19 +72,6 @@ public abstract class NodeDescriptor extends Descriptor<Node> {
+         return '/'+clazz.getName().replace('.','/').replace('$','/')+"/newInstanceDetail.jelly";
+     }
+ 
+-    /**
+-     * Handles the form submission from the "/computer/new" page, which is the first form for creating a new node.
+-     * By default, it shows the configuration page for entering details, but subtypes can override this differently.
+-     *
+-     * @param name
+-     *      Name of the new node.
+-     */
+-    public void handleNewNodePage(ComputerSet computerSet, String name, StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException {
+-        computerSet.checkName(name);
+-        req.setAttribute("descriptor", this);
+-        req.getView(computerSet,"_new.jelly").forward(req,rsp);
+-    }
+-
+     @Override
+     public String getConfigPage() {
+         return getViewPage(clazz, "configure-entries.jelly");
+diff --git a/core/src/main/java/hudson/tools/DownloadFromUrlInstaller.java b/core/src/main/java/hudson/tools/DownloadFromUrlInstaller.java
+index ab67566..bc93ebb 100644
+--- a/core/src/main/java/hudson/tools/DownloadFromUrlInstaller.java
++++ b/core/src/main/java/hudson/tools/DownloadFromUrlInstaller.java
+@@ -36,17 +36,6 @@ public abstract class DownloadFromUrlInstaller extends ToolInstaller {
+     }
+ 
+     /**
+-     * Checks if the specified expected location already contains the installed version of the tool.
+-     *
+-     * This check needs to run fairly efficiently. The current implementation uses the source URL of {@link Installable},
+-     * based on the assumption that released bits do not change its content.
+-     */
+-    protected boolean isUpToDate(FilePath expectedLocation, Installable i) throws IOException, InterruptedException {
+-        FilePath marker = expectedLocation.child(".installedFrom");
+-        return marker.exists() && marker.readToString().equals(i.url);
+-    }
+-
+-    /**
+      * Gets the {@link Installable} identified by {@link #id}.
+      *
+      * @return null if no such ID is found.
+@@ -71,7 +60,7 @@ public abstract class DownloadFromUrlInstaller extends ToolInstaller {
+             inst = (Installable) ((NodeSpecific) inst).forNode(node, log);
+         }
+ 
+-        if(isUpToDate(expected,inst))
++        if(expected.isUpToDate(inst, this))
+             return expected;
+ 
+         if(expected.installIfNecessaryFrom(new URL(inst.url), log, "Unpacking " + inst.url + " to " + expected + " on " + node.getDisplayName())) {
+diff --git a/core/src/main/java/hudson/tools/ToolInstaller.java b/core/src/main/java/hudson/tools/ToolInstaller.java
+index 0a6ef5d..255734b 100644
+--- a/core/src/main/java/hudson/tools/ToolInstaller.java
++++ b/core/src/main/java/hudson/tools/ToolInstaller.java
+@@ -86,7 +86,7 @@ public abstract class ToolInstaller implements Describable<ToolInstaller>, Exten
+      */
+     public boolean appliesTo(Node node) {
+         Label l = Jenkins.getInstance().getLabel(label);
+-        return l == null || l.contains(node);
++        return l == null || node.contains(l);
+     }
+ 
+     /**
+diff --git a/core/src/main/java/hudson/util/MultipartFormDataParser.java b/core/src/main/java/hudson/util/MultipartFormDataParser.java
+index 141523e..0343826 100644
+--- a/core/src/main/java/hudson/util/MultipartFormDataParser.java
++++ b/core/src/main/java/hudson/util/MultipartFormDataParser.java
+@@ -23,6 +23,8 @@
+  */
+ package hudson.util;
+ 
++import hudson.security.csrf.CrumbIssuer;
++import hudson.security.csrf.CrumbIssuerDescriptor;
+ import org.apache.commons.fileupload.servlet.ServletFileUpload;
+ import org.apache.commons.fileupload.disk.DiskFileItemFactory;
+ import org.apache.commons.fileupload.FileItem;
+@@ -30,6 +32,7 @@ import org.apache.commons.fileupload.FileUploadException;
+ import org.apache.commons.lang.ArrayUtils;
+ 
+ import javax.annotation.CheckForNull;
++import javax.servlet.ServletRequest;
+ import javax.servlet.http.HttpServletRequest;
+ import javax.servlet.ServletException;
+ import java.util.List;
+@@ -95,4 +98,19 @@ public class MultipartFormDataParser implements AutoCloseable {
+         String[] parts = contentType.split(";");
+         return ArrayUtils.contains(parts, "multipart/form-data");
+     }
++
++    /**
++     * Get a crumb from multipart form data and validate it against other data
++     * in the current request. The salt and request parameter that is used is
++     * defined by the current configuration.
++     *  @param request
++     * @param crumbIssuer
++     */
++    public boolean validateCrumb(ServletRequest request, CrumbIssuer crumbIssuer) {
++        CrumbIssuerDescriptor<CrumbIssuer> desc = crumbIssuer.getDescriptor();
++        String crumbField = desc.getCrumbRequestField();
++        String crumbSalt = desc.getCrumbSalt();
++
++        return crumbIssuer.validateCrumb(request, crumbSalt, get(crumbField));
++    }
+ }
+diff --git a/core/src/main/java/jenkins/model/Jenkins.java b/core/src/main/java/jenkins/model/Jenkins.java
+index 20ed762..0b2b16a 100644
+--- a/core/src/main/java/jenkins/model/Jenkins.java
++++ b/core/src/main/java/jenkins/model/Jenkins.java
+@@ -4094,7 +4094,7 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
+     public void doDoFingerprintCheck( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException {
+         // Parse the request
+         try (MultipartFormDataParser p = new MultipartFormDataParser(req)) {
+-            if (isUseCrumbs() && !getCrumbIssuer().validateCrumb(req, p)) {
++            if (isUseCrumbs() && !p.validateCrumb(req, getCrumbIssuer())) {
+                 // TODO investigate whether this check can be removed
+                 rsp.sendError(HttpServletResponse.SC_FORBIDDEN, "No crumb found");
+             }
+@@ -4418,7 +4418,7 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
+      */
+     public static void _doScript(StaplerRequest req, StaplerResponse rsp, RequestDispatcher view, VirtualChannel channel, ACL acl) throws IOException, ServletException {
+         // ability to run arbitrary script is dangerous
+-        acl.checkPermission(RUN_SCRIPTS);
++        RUN_SCRIPTS.checkPermission(acl);
+ 
+         String text = req.getParameter("script");
+         if (text != null) {
+diff --git a/core/src/main/java/jenkins/util/VirtualFile.java b/core/src/main/java/jenkins/util/VirtualFile.java
+index 80a7471..0a904cd 100644
+--- a/core/src/main/java/jenkins/util/VirtualFile.java
++++ b/core/src/main/java/jenkins/util/VirtualFile.java
+@@ -234,6 +234,16 @@ public abstract class VirtualFile implements Comparable<VirtualFile>, Serializab
+             return includePatterns.stream().anyMatch(patt -> patt.matchPath(path, true)) && excludePatterns.stream().noneMatch(patt -> patt.matchPath(path, true));
+         }).collect(Collectors.toSet());
+     }
++
++    public boolean isDescendantOther(String relativePath, DirectoryBrowserSupport directoryBrowserSupport){
++        try {
++            return DirectoryBrowserSupport.ALLOW_SYMLINK_ESCAPE || !supportIsDescendant() || isDescendant(relativePath);
++        }
++        catch (IOException e) {
++            return false;
++        }
++    }
++
+     private static final class CollectFiles extends MasterToSlaveCallable<Collection<String>, IOException> {
+         private static final long serialVersionUID = 1;
+         private final VirtualFile root;

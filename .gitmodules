@@ -10,3 +10,6 @@
 [submodule "pmd/pmd"]
 	path = pmd/pmd
 	url = https://github.com/pmd/pmd.git
+[submodule "jenkins/jenkins"]
+	path = jenkins/jenkins
+	url = https://github.com/jenkinsci/jenkins.git

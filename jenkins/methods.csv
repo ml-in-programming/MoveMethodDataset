@@ -1,0 +1,39 @@
+id,name,file,offset,containing_class_id,target_ids
+0,hudson.cli.ListPluginsCommand.printPlugin,core/src/main/java/hudson/cli/ListPluginsCommand.java,3034,5,9
+1,hudson.scm.SCM.postCheckout,core/src/main/java/hudson/scm/SCM.java,23965,25,12 29
+2,hudson.scm.SCM.postCheckout,core/src/main/java/hudson/scm/SCM.java,24484,25,12 29
+3,hudson.scm.SCM.getModuleRoot,core/src/main/java/hudson/scm/SCM.java,28272,25,29
+4,hudson.scm.SCM.getModuleRoots,core/src/main/java/hudson/scm/SCM.java,28767,25,29
+5,hudson.scm.SCM.getModuleRoots,core/src/main/java/hudson/scm/SCM.java,30495,25,29
+6,hudson.scm.ChangeLogAnnotator.annotate,core/src/main/java/hudson/scm/ChangeLogAnnotator.java,2147,30,2
+7,hudson.model.View.isRelevant,core/src/main/java/hudson/model/View.java,13850,14,10
+8,hudson.model.Label.contains,core/src/main/java/hudson/model/Label.java,15071,8,31
+9,hudson.model.Queue._getBuildableItems,core/src/main/java/hudson/model/Queue.java,34559,3,10
+10,hudson.model.ParameterValue.buildEnvVars,core/src/main/java/hudson/model/ParameterValue.java,5921,24,17
+11,hudson.model.ViewGroupMixIn.canDelete,core/src/main/java/hudson/model/ViewGroupMixIn.java,3033,6,14
+12,hudson.model.DirectoryBrowserSupport.isDescendant,core/src/main/java/hudson/model/DirectoryBrowserSupport.java,16315,32,34
+13,hudson.model.ChoiceParameterDefinition.checkValue,core/src/main/java/hudson/model/ChoiceParameterDefinition.java,4635,16,4
+14,hudson.tasks.Maven.buildEnvVars,core/src/main/java/hudson/tasks/Maven.java,14672,27,17
+15,hudson.tasks.BuildStepCompatibilityLayer.perform,core/src/main/java/hudson/tasks/BuildStepCompatibilityLayer.java,4058,11,12
+16,hudson.tools.ToolInstaller.appliesTo,core/src/main/java/hudson/tools/ToolInstaller.java,2978,0,31
+17,hudson.tools.ToolInstallation.translate,core/src/main/java/hudson/tools/ToolInstallation.java,5730,36,17 31
+18,hudson.tools.DownloadFromUrlInstaller.isUpToDate,core/src/main/java/hudson/tools/DownloadFromUrlInstaller.java,1042,26,29
+19,hudson.tools.DownloadFromUrlInstaller.findPullUpDirectory,core/src/main/java/hudson/tools/DownloadFromUrlInstaller.java,3181,26,29
+20,hudson.slaves.JNLPLauncher.getWorkDirOptions,core/src/main/java/hudson/slaves/JNLPLauncher.java,5184,28,10
+21,hudson.slaves.SlaveComputer.grabLauncher,core/src/main/java/hudson/slaves/SlaveComputer.java,33575,15,31
+22,hudson.slaves.NodeDescriptor.handleNewNodePage,core/src/main/java/hudson/slaves/NodeDescriptor.java,2713,37,33
+23,hudson.security.csrf.CrumbIssuer.validateCrumb,core/src/main/java/hudson/security/csrf/CrumbIssuer.java,4200,13,7
+24,hudson.security.ACL.checkPermission,core/src/main/java/hudson/security/ACL.java,2366,21,18
+25,hudson.security.ACL.hasPermission,core/src/main/java/hudson/security/ACL.java,2876,21,18
+26,hudson.security.ACL.checkCreatePermission,core/src/main/java/hudson/security/ACL.java,4231,21,35
+27,hudson.security.ACL.checkCreatePermission,core/src/main/java/hudson/security/ACL.java,5912,21,20
+28,hudson.security.HudsonPrivateSecurityRealm.loginAndTakeBack,core/src/main/java/hudson/security/HudsonPrivateSecurityRealm.java,10427,19,38
+29,hudson.security.HudsonPrivateSecurityRealm.tryToMakeAdmin,core/src/main/java/hudson/security/HudsonPrivateSecurityRealm.java,14149,19,38
+30,hudson.FilePath.reading,core/src/main/java/hudson/FilePath.java,125483,29,23
+31,hudson.Launcher.printCommandLine,core/src/main/java/hudson/Launcher.java,28391,12,29
+32,hudson.Launcher.decorateFor,core/src/main/java/hudson/Launcher.java,30627,12,31
+33,jenkins.scm.SCMCheckoutStrategy.preCheckout,core/src/main/java/jenkins/scm/SCMCheckoutStrategy.java,2526,1,12
+34,jenkins.security.apitoken.LegacyApiTokenAdministrativeMonitor.getLegacyTokenOf,core/src/main/java/jenkins/security/apitoken/LegacyApiTokenAdministrativeMonitor.java,3366,22,38
+35,jenkins.security.apitoken.LegacyApiTokenAdministrativeMonitor.getLegacyStatsOf,core/src/main/java/jenkins/security/apitoken/LegacyApiTokenAdministrativeMonitor.java,3678,22,38
+36,jenkins.security.apitoken.LegacyApiTokenAdministrativeMonitor.hasFreshToken,core/src/main/java/jenkins/security/apitoken/LegacyApiTokenAdministrativeMonitor.java,4342,22,38
+37,jenkins.security.apitoken.LegacyApiTokenAdministrativeMonitor.hasMoreRecentlyUsedToken,core/src/main/java/jenkins/security/apitoken/LegacyApiTokenAdministrativeMonitor.java,5361,22,38

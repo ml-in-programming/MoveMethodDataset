@@ -1,0 +1,14 @@
+id,name,file,offset,original_class_id,target_class_id
+0,hudson.PluginWrapper.printPlugin,core/src/main/java/hudson/PluginWrapper.java,11480,5,9
+1,hudson.Launcher.postCheckout,core/src/main/java/hudson/Launcher.java,5351,25,12
+6,hudson.MarkupText.annotate,core/src/main/java/hudson/MarkupText.java,1962,30,2
+7,hudson.model.Computer.isRelevant,core/src/main/java/hudson/model/Computer.java,45035,14,10
+8,hudson.model.Node.contains,core/src/main/java/hudson/model/Node.java,9131,8,31
+10,hudson.EnvVars.buildEnvVars,core/src/main/java/hudson/EnvVars.java,6962,24,17
+12,jenkins.util.VirtualFile.isDescendantOther,core/src/main/java/jenkins/util/VirtualFile.java,10554,32,34
+13,hudson.model.StringParameterValue.checkValue,core/src/main/java/hudson/model/StringParameterValue.java,3660,16,4
+18,hudson.FilePath.isUpToDate,core/src/main/java/hudson/FilePath.java,19080,26,29
+22,hudson.model.ComputerSet.handleNewNodePage,core/src/main/java/hudson/model/ComputerSet.java,12915,37,33
+23,hudson.util.MultipartFormDataParser.validateCrumb,core/src/main/java/hudson/util/MultipartFormDataParser.java,3677,13,7
+24,hudson.security.Permission.checkPermission,core/src/main/java/hudson/security/Permission.java,12902,21,18
+28,hudson.model.User.loginAndTakeBack,core/src/main/java/hudson/model/User.java,15423,19,38
