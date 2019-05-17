@@ -26,3 +26,6 @@
 [submodule "buck/buck"]
 	path = buck/buck
 	url = https://github.com/facebook/buck.git
+[submodule "pinpoint/pinpoint"]
+	path = pinpoint/pinpoint
+	url = https://github.com/naver/pinpoint.git
