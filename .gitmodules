@@ -13,3 +13,6 @@
 [submodule "jenkins/jenkins"]
 	path = jenkins/jenkins
 	url = https://github.com/jenkinsci/jenkins.git
+[submodule "drools/drools"]
+	path = drools/drools
+	url = https://github.com/kiegroup/drools.git
