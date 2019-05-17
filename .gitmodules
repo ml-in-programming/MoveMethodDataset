@@ -19,3 +19,7 @@
 [submodule "hive/hive"]
 	path = hive/hive
 	url = https://github.com/apache/hive.git
+[submodule "drools/drools"]
+	path = drools/drools
+	url = https://github.com/kiegroup/drools.git
+
