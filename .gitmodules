@@ -29,3 +29,6 @@
 [submodule "pinpoint/pinpoint"]
 	path = pinpoint/pinpoint
 	url = https://github.com/naver/pinpoint.git
+[submodule "bazel/bazel"]
+	path = bazel/bazel
+	url = https://github.com/bazelbuild/bazel.git

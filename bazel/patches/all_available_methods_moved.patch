@@ -1,0 +1,3812 @@
+diff --git a/src/main/java/com/google/devtools/build/lib/actions/ActionEnvironment.java b/src/main/java/com/google/devtools/build/lib/actions/ActionEnvironment.java
+index 2378a00..64a8afb 100644
+--- a/src/main/java/com/google/devtools/build/lib/actions/ActionEnvironment.java
++++ b/src/main/java/com/google/devtools/build/lib/actions/ActionEnvironment.java
+@@ -19,7 +19,7 @@ import com.google.common.collect.ImmutableSet;
+ import com.google.common.collect.Iterables;
+ import com.google.devtools.build.lib.collect.CollectionUtils;
+ import com.google.devtools.build.lib.skyframe.serialization.autocodec.AutoCodec;
+-import com.google.devtools.build.lib.util.Fingerprint;
++
+ import java.util.LinkedHashMap;
+ import java.util.Map;
+ import java.util.Set;
+@@ -232,8 +232,4 @@ public final class ActionEnvironment {
+     }
+   }
+ 
+-  public void addTo(Fingerprint f) {
+-    f.addStringMap(fixedEnv.toMap());
+-    f.addStrings(inheritedEnv);
+-  }
+ }
+diff --git a/src/main/java/com/google/devtools/build/lib/actions/ActionExecutionContext.java b/src/main/java/com/google/devtools/build/lib/actions/ActionExecutionContext.java
+index fe4bf42..f1e349c 100644
+--- a/src/main/java/com/google/devtools/build/lib/actions/ActionExecutionContext.java
++++ b/src/main/java/com/google/devtools/build/lib/actions/ActionExecutionContext.java
+@@ -19,15 +19,17 @@ import com.google.common.collect.ImmutableList;
+ import com.google.common.collect.ImmutableMap;
+ import com.google.devtools.build.lib.actions.Artifact.ArtifactExpander;
+ import com.google.devtools.build.lib.actions.cache.MetadataHandler;
++import com.google.devtools.build.lib.analysis.test.TestRunnerAction;
++import com.google.devtools.build.lib.buildeventstream.TestFileNameConstants;
+ import com.google.devtools.build.lib.clock.Clock;
+ import com.google.devtools.build.lib.cmdline.Label;
+ import com.google.devtools.build.lib.events.Event;
+ import com.google.devtools.build.lib.events.EventKind;
+ import com.google.devtools.build.lib.events.ExtendedEventHandler;
++import com.google.devtools.build.lib.exec.StandaloneTestStrategy;
++import com.google.devtools.build.lib.util.Pair;
+ import com.google.devtools.build.lib.util.io.FileOutErr;
+-import com.google.devtools.build.lib.vfs.FileSystem;
+-import com.google.devtools.build.lib.vfs.Path;
+-import com.google.devtools.build.lib.vfs.Root;
++import com.google.devtools.build.lib.vfs.*;
+ import com.google.devtools.build.skyframe.SkyFunction.Environment;
+ import com.google.devtools.common.options.OptionsProvider;
+ import java.io.Closeable;
+@@ -40,7 +42,53 @@ import javax.annotation.Nullable;
+  */
+ public class ActionExecutionContext implements Closeable {
+ 
+-  /** Enum for --subcommands flag */
++    public ImmutableList<Pair<String, Path>> renameOutputs(
++            TestRunnerAction action,
++            ImmutableList<Pair<String, Path>> testOutputs,
++            int attemptId, StandaloneTestStrategy standaloneTestStrategy)
++        throws IOException {
++        // Rename outputs
++      String namePrefix =
++          FileSystemUtils.removeExtension(action.getTestLog().getExecPath().getBaseName());
++      Path testRoot = getInputPath(action.getTestLog()).getParentDirectory();
++      Path attemptsDir = testRoot.getChild(namePrefix + "_attempts");
++      attemptsDir.createDirectory();
++      String attemptPrefix = "attempt_" + attemptId;
++      Path testLog = attemptsDir.getChild(attemptPrefix + ".log");
++
++      // Get the normal test output paths, and then update them to use "attempt_N" names, and
++      // attemptDir, before adding them to the outputs.
++      ImmutableList.Builder<Pair<String, Path>> testOutputsBuilder = new ImmutableList.Builder<>();
++      for (Pair<String, Path> testOutput : testOutputs) {
++        // e.g. /testRoot/test.dir/file, an example we follow throughout this loop's comments.
++        Path testOutputPath = testOutput.getSecond();
++        Path destinationPath;
++        if (testOutput.getFirst().equals(TestFileNameConstants.TEST_LOG)) {
++          // The rename rules for the test log are different than for all the other files.
++          destinationPath = testLog;
++        } else {
++          // e.g. test.dir/file
++          PathFragment relativeToTestDirectory = testOutputPath.relativeTo(testRoot);
++
++          // e.g. attempt_1.dir/file
++          String destinationPathFragmentStr =
++              relativeToTestDirectory.getSafePathString().replaceFirst("test", attemptPrefix);
++          PathFragment destinationPathFragment = PathFragment.create(destinationPathFragmentStr);
++
++          // e.g. /attemptsDir/attempt_1.dir/file
++          destinationPath = attemptsDir.getRelative(destinationPathFragment);
++          destinationPath.getParentDirectory().createDirectory();
++        }
++
++        // Move to the destination.
++        testOutputPath.renameTo(destinationPath);
++
++        testOutputsBuilder.add(Pair.of(testOutput.getFirst(), destinationPath));
++      }
++      return testOutputsBuilder.build();
++    }
++
++    /** Enum for --subcommands flag */
+   public enum ShowSubcommands {
+     TRUE(true, false), PRETTY_PRINT(true, true), FALSE(false, false);
+ 
+diff --git a/src/main/java/com/google/devtools/build/lib/actions/Artifact.java b/src/main/java/com/google/devtools/build/lib/actions/Artifact.java
+index 4b693bd..42d83e3 100644
+--- a/src/main/java/com/google/devtools/build/lib/actions/Artifact.java
++++ b/src/main/java/com/google/devtools/build/lib/actions/Artifact.java
+@@ -28,10 +28,12 @@ import com.google.common.collect.Iterables;
+ import com.google.common.collect.Streams;
+ import com.google.devtools.build.lib.actions.ActionAnalysisMetadata.MiddlemanType;
+ import com.google.devtools.build.lib.actions.ArtifactResolver.ArtifactResolverSupplier;
++import com.google.devtools.build.lib.analysis.RuleContext;
+ import com.google.devtools.build.lib.cmdline.Label;
+ import com.google.devtools.build.lib.cmdline.LabelConstants;
+ import com.google.devtools.build.lib.concurrent.BlazeInterners;
+ import com.google.devtools.build.lib.concurrent.ThreadSafety.Immutable;
++import com.google.devtools.build.lib.rules.cpp.CcImport;
+ import com.google.devtools.build.lib.shell.ShellUtils;
+ import com.google.devtools.build.lib.skyframe.serialization.DeserializationContext;
+ import com.google.devtools.build.lib.skyframe.serialization.ObjectCodec;
+@@ -168,7 +170,25 @@ public class Artifact
+     return EXEC_PATH_COMPARATOR.compare(this, o);
+   }
+ 
+-  /** An object that can expand middleman and tree artifacts. */
++    public void performErrorChecks(
++            RuleContext ruleContext,
++            boolean systemProvided,
++            Artifact interfaceLibrary, CcImport ccImport) {
++        // If the shared library will be provided by system during runtime, users are not supposed to
++      // specify shared_library.
++      if (systemProvided && this != null) {
++        ruleContext.ruleError(
++            "'shared_library' shouldn't be specified when 'system_provided' is true");
++      }
++      // If a shared library won't be provided by system during runtime and we are linking the shared
++      // library through interface library, the shared library must be specified.
++      if (!systemProvided && this == null && interfaceLibrary != null) {
++        ruleContext.ruleError(
++            "'shared_library' should be specified when 'system_provided' is false");
++      }
++    }
++
++    /** An object that can expand middleman and tree artifacts. */
+   public interface ArtifactExpander {
+ 
+     /**
+diff --git a/src/main/java/com/google/devtools/build/lib/actions/ArtifactFactory.java b/src/main/java/com/google/devtools/build/lib/actions/ArtifactFactory.java
+index f04ebcd..d86ccf7 100644
+--- a/src/main/java/com/google/devtools/build/lib/actions/ArtifactFactory.java
++++ b/src/main/java/com/google/devtools/build/lib/actions/ArtifactFactory.java
+@@ -283,7 +283,7 @@ public class ArtifactFactory implements ArtifactResolver {
+     Preconditions.checkNotNull(execPath);
+ 
+     if (!root.isSourceRoot()) {
+-      return createArtifact(root, execPath, owner, type);
++      return root.createArtifact(execPath, owner, type, this);
+     }
+ 
+     // Double-checked locking to avoid locking cost when possible.
+@@ -300,7 +300,7 @@ public class ArtifactFactory implements ArtifactResolver {
+           // There really should be a safety net that makes it impossible to create two Artifacts
+           // with the same exec path but a different Owner, but we also need to reuse Artifacts from
+           // previous builds.
+-          artifact = createArtifact(root, execPath, owner, type);
++          artifact = root.createArtifact(execPath, owner, type, this);
+           sourceArtifactCache.putArtifact(execPath, artifact);
+         }
+       } finally {
+@@ -310,22 +310,7 @@ public class ArtifactFactory implements ArtifactResolver {
+     return artifact;
+   }
+ 
+-  private Artifact createArtifact(
+-      ArtifactRoot root,
+-      PathFragment execPath,
+-      ArtifactOwner owner,
+-      @Nullable SpecialArtifactType type) {
+-    Preconditions.checkNotNull(owner);
+-    if (type == null) {
+-      return root.isSourceRoot()
+-          ? new Artifact.SourceArtifact(root, execPath, owner)
+-          : new Artifact(root, execPath, owner);
+-    } else {
+-      return new Artifact.SpecialArtifact(root, execPath, owner, type);
+-    }
+-  }
+-
+-  /**
++    /**
+    * Returns an {@link Artifact} with exec path formed by composing {@code baseExecPath} and {@code
+    * relativePath} (via {@code baseExecPath.getRelative(relativePath)} if baseExecPath is not null).
+    * That Artifact will have root determined by the package roots of this factory if it lives in a
+diff --git a/src/main/java/com/google/devtools/build/lib/actions/ArtifactRoot.java b/src/main/java/com/google/devtools/build/lib/actions/ArtifactRoot.java
+index ad3399f..3b0f7fc 100644
+--- a/src/main/java/com/google/devtools/build/lib/actions/ArtifactRoot.java
++++ b/src/main/java/com/google/devtools/build/lib/actions/ArtifactRoot.java
+@@ -86,7 +86,21 @@ public final class ArtifactRoot implements Comparable<ArtifactRoot>, Serializabl
+     return INTERNER.intern(new ArtifactRoot(root, execPath, rootType));
+   }
+ 
+-  @AutoCodec.VisibleForSerialization
++    public Artifact createArtifact(
++            PathFragment execPath,
++            ArtifactOwner owner,
++            @Nullable Artifact.SpecialArtifactType type, ArtifactFactory artifactFactory) {
++        Preconditions.checkNotNull(owner);
++      if (type == null) {
++        return isSourceRoot()
++            ? new Artifact.SourceArtifact(this, execPath, owner)
++            : new Artifact(this, execPath, owner);
++      } else {
++        return new Artifact.SpecialArtifact(this, execPath, owner, type);
++      }
++    }
++
++    @AutoCodec.VisibleForSerialization
+   enum RootType {
+     Source,
+     Output,
+diff --git a/src/main/java/com/google/devtools/build/lib/actions/FileContentsProxy.java b/src/main/java/com/google/devtools/build/lib/actions/FileContentsProxy.java
+index f56bbf1..9d7f1ed 100644
+--- a/src/main/java/com/google/devtools/build/lib/actions/FileContentsProxy.java
++++ b/src/main/java/com/google/devtools/build/lib/actions/FileContentsProxy.java
+@@ -13,7 +13,6 @@
+ // limitations under the License.
+ package com.google.devtools.build.lib.actions;
+ 
+-import com.google.devtools.build.lib.util.BigIntegerFingerprint;
+ import com.google.devtools.build.lib.vfs.FileStatus;
+ import java.io.IOException;
+ import java.io.Serializable;
+@@ -77,12 +76,7 @@ public final class FileContentsProxy implements Serializable {
+     return Objects.hash(ctime, nodeId);
+   }
+ 
+-  void addToFingerprint(BigIntegerFingerprint fp) {
+-    fp.addLong(ctime);
+-    fp.addLong(nodeId);
+-  }
+-
+-  @Override
++    @Override
+   public String toString() {
+     return prettyPrint();
+   }
+diff --git a/src/main/java/com/google/devtools/build/lib/actions/FileStateValue.java b/src/main/java/com/google/devtools/build/lib/actions/FileStateValue.java
+index 4632f09..5de590f 100644
+--- a/src/main/java/com/google/devtools/build/lib/actions/FileStateValue.java
++++ b/src/main/java/com/google/devtools/build/lib/actions/FileStateValue.java
+@@ -298,7 +298,7 @@ public abstract class FileStateValue implements SkyValue {
+     public BigInteger getValueFingerprint() {
+       BigIntegerFingerprint fp = new BigIntegerFingerprint().addDigestedBytes(digest).addLong(size);
+       if (contentsProxy != null) {
+-        contentsProxy.addToFingerprint(fp);
++        fp.addToFingerprint(contentsProxy);
+       }
+       return fp.getFingerprint();
+     }
+@@ -378,7 +378,7 @@ public abstract class FileStateValue implements SkyValue {
+     @Override
+     public BigInteger getValueFingerprint() {
+       BigIntegerFingerprint fp = new BigIntegerFingerprint();
+-      contentsProxy.addToFingerprint(fp);
++      fp.addToFingerprint(contentsProxy);
+       return fp.getFingerprint();
+     }
+ 
+diff --git a/src/main/java/com/google/devtools/build/lib/analysis/RuleContext.java b/src/main/java/com/google/devtools/build/lib/analysis/RuleContext.java
+index ca8da90..04cc622 100644
+--- a/src/main/java/com/google/devtools/build/lib/analysis/RuleContext.java
++++ b/src/main/java/com/google/devtools/build/lib/analysis/RuleContext.java
+@@ -61,6 +61,7 @@ import com.google.devtools.build.lib.analysis.constraints.ConstraintSemantics;
+ import com.google.devtools.build.lib.analysis.platform.PlatformInfo;
+ import com.google.devtools.build.lib.analysis.skylark.SymbolGenerator;
+ import com.google.devtools.build.lib.analysis.stringtemplate.TemplateContext;
++import com.google.devtools.build.lib.bazel.rules.java.BazelJavaSemantics;
+ import com.google.devtools.build.lib.cmdline.Label;
+ import com.google.devtools.build.lib.cmdline.RepositoryName;
+ import com.google.devtools.build.lib.collect.ImmutableSortedKeyListMultimap;
+@@ -126,7 +127,12 @@ import javax.annotation.Nullable;
+ public final class RuleContext extends TargetContext
+     implements ActionConstructionContext, ActionRegistry, RuleErrorConsumer {
+ 
+-  /**
++    public boolean isJavaBinaryOrJavaTest(BazelJavaSemantics bazelJavaSemantics) {
++        String ruleClass = getRule().getRuleClass();
++      return ruleClass.equals("java_binary") || ruleClass.equals("java_test");
++    }
++
++    /**
+    * The configured version of FilesetEntry.
+    */
+   @Immutable
+diff --git a/src/main/java/com/google/devtools/build/lib/analysis/actions/SpawnAction.java b/src/main/java/com/google/devtools/build/lib/analysis/actions/SpawnAction.java
+index 4c33832..ea11a51 100644
+--- a/src/main/java/com/google/devtools/build/lib/analysis/actions/SpawnAction.java
++++ b/src/main/java/com/google/devtools/build/lib/analysis/actions/SpawnAction.java
+@@ -400,7 +400,7 @@ public class SpawnAction extends AbstractAction implements ExecutionInfoSpecifie
+     for (Artifact runfilesManifest : runfilesManifests) {
+       fp.addPath(runfilesManifest.getExecPath());
+     }
+-    env.addTo(fp);
++    fp.addTo(env);
+     fp.addStringMap(getExecutionInfo());
+   }
+ 
+diff --git a/src/main/java/com/google/devtools/build/lib/analysis/actions/SymlinkTreeAction.java b/src/main/java/com/google/devtools/build/lib/analysis/actions/SymlinkTreeAction.java
+index b9dcfae..ac560bf 100644
+--- a/src/main/java/com/google/devtools/build/lib/analysis/actions/SymlinkTreeAction.java
++++ b/src/main/java/com/google/devtools/build/lib/analysis/actions/SymlinkTreeAction.java
+@@ -99,7 +99,7 @@ public final class SymlinkTreeAction extends AbstractAction {
+     fp.addString(GUID);
+     fp.addBoolean(filesetTree);
+     fp.addBoolean(enableRunfiles);
+-    env.addTo(fp);
++    fp.addTo(env);
+   }
+ 
+   @Override
+diff --git a/src/main/java/com/google/devtools/build/lib/analysis/test/TestRunnerAction.java b/src/main/java/com/google/devtools/build/lib/analysis/test/TestRunnerAction.java
+index 962dca3..1100e3c 100644
+--- a/src/main/java/com/google/devtools/build/lib/analysis/test/TestRunnerAction.java
++++ b/src/main/java/com/google/devtools/build/lib/analysis/test/TestRunnerAction.java
+@@ -332,8 +332,8 @@ public class TestRunnerAction extends AbstractAction
+     fp.addStringMap(extraTestEnv);
+     // TODO(ulfjack): It might be better for performance to hash the action and test envs in config,
+     // and only add a hash here.
+-    configuration.getActionEnvironment().addTo(fp);
+-    configuration.getTestActionEnvironment().addTo(fp);
++    fp.addTo(configuration.getActionEnvironment());
++    fp.addTo(configuration.getTestActionEnvironment());
+     // The 'requiredClientEnvVariables' are handled by Skyframe and don't need to be added here.
+     fp.addString(testProperties.getSize().toString());
+     fp.addString(testProperties.getTimeout().toString());
+diff --git a/src/main/java/com/google/devtools/build/lib/bazel/commands/SyncCommand.java b/src/main/java/com/google/devtools/build/lib/bazel/commands/SyncCommand.java
+index 8f27370..97a2c7e 100644
+--- a/src/main/java/com/google/devtools/build/lib/bazel/commands/SyncCommand.java
++++ b/src/main/java/com/google/devtools/build/lib/bazel/commands/SyncCommand.java
+@@ -157,7 +157,7 @@ public final class SyncCommand implements BlazeCommand {
+           // Moreover, it is not affected by the invalidation mechanism as there is nothing to
+           // fetch anyway. So the only task remaining is to record the use of "bind" for whoever
+           // collects resolved information.
+-          env.getReporter().post(resolveBind(rule));
++          env.getReporter().post(rule.resolveBind(this));
+         } else if (shouldSync(rule)) {
+           // TODO(aehlig): avoid the detour of serializing and then parsing the repository name
+           try {
+@@ -211,36 +211,7 @@ public final class SyncCommand implements BlazeCommand {
+     return WHITELISTED_NATIVE_RULES.contains(rule.getRuleClassObject().getName());
+   }
+ 
+-  private ResolvedEvent resolveBind(Rule rule) {
+-    String name = rule.getName();
+-    Object actual = rule.getAttributeContainer().getAttr("actual");
+-    String nativeCommand =
+-        "bind(name = "
+-            + Printer.getPrinter().repr(name)
+-            + ", actual = "
+-            + Printer.getWorkspacePrettyPrinter().repr(actual)
+-            + ")";
+-
+-    return new ResolvedEvent() {
+-      @Override
+-      public String getName() {
+-        return name;
+-      }
+-
+-      @Override
+-      public Object getResolvedInformation() {
+-        return ImmutableMap.<String, Object>builder()
+-            .put(ResolvedHashesFunction.ORIGINAL_RULE_CLASS, "bind")
+-            .put(
+-                ResolvedHashesFunction.ORIGINAL_ATTRIBUTES,
+-                ImmutableMap.<String, Object>of("name", name, "actual", actual))
+-            .put(ResolvedHashesFunction.NATIVE, nativeCommand)
+-            .build();
+-      }
+-    };
+-  }
+-
+-  private ResolvedEvent toolchainEvent(List<String> toolchains) {
++    private ResolvedEvent toolchainEvent(List<String> toolchains) {
+     // For the name attribute we are in a slightly tricky situation, as the ResolvedEvents are
+     // designed for external repositories and hence are indexted by their unique
+     // names. Technically, however, the list of toolchains is not associated with ant external
+diff --git a/src/main/java/com/google/devtools/build/lib/bazel/repository/MavenDownloader.java b/src/main/java/com/google/devtools/build/lib/bazel/repository/MavenDownloader.java
+index 574b44a..4a1eaa2 100644
+--- a/src/main/java/com/google/devtools/build/lib/bazel/repository/MavenDownloader.java
++++ b/src/main/java/com/google/devtools/build/lib/bazel/repository/MavenDownloader.java
+@@ -71,8 +71,8 @@ public class MavenDownloader extends HttpDownloader {
+ 
+     // Initialize maven artifacts
+     String artifactCoords = mapper.get("artifact", Type.STRING);
+-    String sha1 = retrieveSha1(name, "sha1", mapper);
+-    String sha1Src = retrieveSha1(name, "sha1_src", mapper);
++    String sha1 = mapper.retrieveSha1(name, "sha1", this);
++    String sha1Src = mapper.retrieveSha1(name, "sha1_src", this);
+ 
+     Artifact artifact;
+     try {
+@@ -152,19 +152,7 @@ public class MavenDownloader extends HttpDownloader {
+     return new JarPaths(jarDownload, Optional.fromNullable(srcjarDownload));
+   }
+ 
+-  private String retrieveSha1(String name, String attribute, WorkspaceAttributeMapper mapper)
+-      throws EvalException, IOException {
+-    String sha1 =
+-        mapper.isAttributeValueExplicitlySpecified(attribute)
+-            ? mapper.get(attribute, Type.STRING)
+-            : null;
+-    if (sha1 != null && !KeyType.SHA1.isValid(sha1)) {
+-      throw new IOException("Invalid SHA-1 for maven_jar " + name + ": '" + sha1 + "'");
+-    }
+-    return sha1;
+-  }
+-
+-  private Path getDownloadDestination(Path outputDirectory, Artifact artifact) {
++    private Path getDownloadDestination(Path outputDirectory, Artifact artifact) {
+     String groupIdPath = artifact.getGroupId().replace('.', '/');
+     String artifactId = artifact.getArtifactId();
+     String classifier = artifact.getClassifier();
+diff --git a/src/main/java/com/google/devtools/build/lib/bazel/rules/BazelPrerequisiteValidator.java b/src/main/java/com/google/devtools/build/lib/bazel/rules/BazelPrerequisiteValidator.java
+index 23a84a4..ae02762 100644
+--- a/src/main/java/com/google/devtools/build/lib/bazel/rules/BazelPrerequisiteValidator.java
++++ b/src/main/java/com/google/devtools/build/lib/bazel/rules/BazelPrerequisiteValidator.java
+@@ -19,11 +19,7 @@ import com.google.devtools.build.lib.analysis.AliasProvider.TargetMode;
+ import com.google.devtools.build.lib.analysis.ConfiguredRuleClassProvider;
+ import com.google.devtools.build.lib.analysis.RuleContext;
+ import com.google.devtools.build.lib.packages.Attribute;
+-import com.google.devtools.build.lib.packages.FunctionSplitTransitionWhitelist;
+ import com.google.devtools.build.lib.packages.NonconfigurableAttributeMapper;
+-import com.google.devtools.build.lib.packages.PackageGroup;
+-import com.google.devtools.build.lib.packages.RawAttributeMapper;
+-import com.google.devtools.build.lib.packages.RequiredProviders;
+ import com.google.devtools.build.lib.packages.Rule;
+ import com.google.devtools.build.lib.packages.Target;
+ import com.google.devtools.build.lib.skyframe.ConfiguredTargetAndData;
+@@ -36,76 +32,13 @@ public class BazelPrerequisiteValidator
+   @Override
+   public void validate(
+       RuleContext.Builder context, ConfiguredTargetAndData prerequisite, Attribute attribute) {
+-    validateDirectPrerequisiteVisibility(context, prerequisite, attribute.getName());
++    prerequisite.validateDirectPrerequisiteVisibility(context, attribute.getName(), this);
+     validateDirectPrerequisiteForTestOnly(context, prerequisite);
+     ConfiguredRuleClassProvider.DeprecationValidator.validateDirectPrerequisiteForDeprecation(
+         context, context.getRule(), prerequisite, context.forAspect());
+   }
+ 
+-  private void validateDirectPrerequisiteVisibility(
+-      RuleContext.Builder context, ConfiguredTargetAndData prerequisite, String attrName) {
+-    Rule rule = context.getRule();
+-    Target prerequisiteTarget = prerequisite.getTarget();
+-    if (!context
+-            .getRule()
+-            .getLabel()
+-            .getPackageIdentifier()
+-            .equals(
+-                AliasProvider.getDependencyLabel(prerequisite.getConfiguredTarget())
+-                    .getPackageIdentifier())
+-        && !context.isVisible(prerequisite.getConfiguredTarget())) {
+-      String errorMessage;
+-      if (!context.getConfiguration().checkVisibility()) {
+-        errorMessage =
+-            String.format(
+-                "Target '%s' violates visibility of "
+-                    + "%s. Continuing because --nocheck_visibility is active",
+-                rule.getLabel(), AliasProvider.describeTargetWithAliases(prerequisite,
+-                    TargetMode.WITHOUT_KIND));
+-        context.ruleWarning(errorMessage);
+-      } else {
+-        // Oddly enough, we use reportError rather than ruleError here.
+-        errorMessage =
+-            String.format(
+-                "%s is not visible from target '%s'. Check "
+-                    + "the visibility declaration of the former target if you think "
+-                    + "the dependency is legitimate",
+-                AliasProvider.describeTargetWithAliases(prerequisite, TargetMode.WITHOUT_KIND),
+-                rule.getLabel());
+-        context.ruleError(errorMessage);
+-      }
+-      // We can always post the visibility error as, regardless of the value of keep going,
+-      // that target will not be built.
+-      context.post(
+-          new VisibilityErrorEvent(context.getConfiguration(), rule.getLabel(), errorMessage));
+-    }
+-
+-    if (prerequisiteTarget instanceof PackageGroup) {
+-      RequiredProviders requiredProviders =
+-          RawAttributeMapper.of(rule).getAttributeDefinition(attrName).getRequiredProviders();
+-      boolean containsPackageSpecificationProvider =
+-          requiredProviders.getDescription().contains("PackageSpecificationProvider");
+-      // TODO(plf): Add the PackageSpecificationProvider to the 'visibility' attribute.
+-      if (!attrName.equals("visibility")
+-          && !attrName.equals(FunctionSplitTransitionWhitelist.WHITELIST_ATTRIBUTE_NAME)
+-          && !containsPackageSpecificationProvider) {
+-        context.attributeError(
+-            attrName,
+-            "in "
+-                + attrName
+-                + " attribute of "
+-                + rule.getRuleClass()
+-                + " rule "
+-                + rule.getLabel()
+-                + ": "
+-                + AliasProvider.describeTargetWithAliases(prerequisite, TargetMode.WITH_KIND)
+-                + " is misplaced here "
+-                + "(they are only allowed in the visibility attribute)");
+-      }
+-    }
+-  }
+-
+-  private void validateDirectPrerequisiteForTestOnly(
++    private void validateDirectPrerequisiteForTestOnly(
+       RuleContext.Builder context, ConfiguredTargetAndData prerequisite) {
+     Rule rule = context.getRule();
+ 
+diff --git a/src/main/java/com/google/devtools/build/lib/bazel/rules/java/BazelJavaSemantics.java b/src/main/java/com/google/devtools/build/lib/bazel/rules/java/BazelJavaSemantics.java
+index cba7b1d..83479fb 100644
+--- a/src/main/java/com/google/devtools/build/lib/bazel/rules/java/BazelJavaSemantics.java
++++ b/src/main/java/com/google/devtools/build/lib/bazel/rules/java/BazelJavaSemantics.java
+@@ -107,12 +107,7 @@ public class BazelJavaSemantics implements JavaSemantics {
+   private BazelJavaSemantics() {
+   }
+ 
+-  private boolean isJavaBinaryOrJavaTest(RuleContext ruleContext) {
+-    String ruleClass = ruleContext.getRule().getRuleClass();
+-    return ruleClass.equals("java_binary") || ruleClass.equals("java_test");
+-  }
+-
+-  @Override
++    @Override
+   public void checkRule(RuleContext ruleContext, JavaCommon javaCommon) {
+   }
+ 
+@@ -500,7 +495,7 @@ public class BazelJavaSemantics implements JavaSemantics {
+ 
+   @Nullable
+   private TransitiveInfoCollection getTestSupport(RuleContext ruleContext) {
+-    if (!isJavaBinaryOrJavaTest(ruleContext)) {
++    if (!ruleContext.isJavaBinaryOrJavaTest(this)) {
+       return null;
+     }
+     if (useLegacyJavaTest(ruleContext)) {
+diff --git a/src/main/java/com/google/devtools/build/lib/cmdline/Label.java b/src/main/java/com/google/devtools/build/lib/cmdline/Label.java
+index c9204b3..ce78c1e 100644
+--- a/src/main/java/com/google/devtools/build/lib/cmdline/Label.java
++++ b/src/main/java/com/google/devtools/build/lib/cmdline/Label.java
+@@ -19,11 +19,17 @@ import com.google.common.collect.ImmutableMap;
+ import com.google.common.collect.ImmutableSet;
+ import com.google.common.collect.Interner;
+ import com.google.devtools.build.lib.actions.CommandLineItem;
++import com.google.devtools.build.lib.analysis.RuleContext;
++import com.google.devtools.build.lib.analysis.TransitiveInfoCollection;
++import com.google.devtools.build.lib.analysis.platform.ToolchainInfo;
+ import com.google.devtools.build.lib.analysis.skylark.BazelStarlarkContext;
+ import com.google.devtools.build.lib.cmdline.LabelValidator.BadLabelException;
+ import com.google.devtools.build.lib.concurrent.BlazeInterners;
+ import com.google.devtools.build.lib.concurrent.ThreadSafety.Immutable;
+ import com.google.devtools.build.lib.concurrent.ThreadSafety.ThreadSafe;
++import com.google.devtools.build.lib.packages.RuleClass;
++import com.google.devtools.build.lib.rules.cpp.CcToolchainSuite;
++import com.google.devtools.build.lib.rules.cpp.HasCcToolchainLabel;
+ import com.google.devtools.build.lib.skyframe.serialization.autocodec.AutoCodec;
+ import com.google.devtools.build.lib.skylarkinterface.Param;
+ import com.google.devtools.build.lib.skylarkinterface.SkylarkCallable;
+@@ -694,4 +700,33 @@ public final class Label
+     int result = 31 + (obj1 == null ? 0 : obj1.hashCode());
+     return 31 * result + (obj2 == null ? 0 : obj2.hashCode());
+   }
++
++    public <T extends HasCcToolchainLabel> T selectCcToolchain(
++            Class<T> clazz,
++            RuleContext ruleContext,
++            String cpu,
++            String compiler, CcToolchainSuite ccToolchainSuite)
++        throws RuleClass.ConfiguredTargetFactory.RuleErrorException {
++        T selectedAttributes = null;
++      for (TransitiveInfoCollection dep : ruleContext.getPrerequisiteMap("toolchains").values()) {
++        T attributes = (T) dep.get(ToolchainInfo.PROVIDER);
++        if (attributes != null && attributes.getCcToolchainLabel().equals(this)) {
++          selectedAttributes = attributes;
++          break;
++        }
++      }
++      if (selectedAttributes != null) {
++        return clazz.cast(selectedAttributes);
++      }
++
++      String errorMessage =
++          String.format(
++              "cc_toolchain_suite '%s' does not contain a toolchain for cpu '%s'",
++              ruleContext.getLabel(), cpu);
++      if (compiler != null) {
++        errorMessage = errorMessage + " and compiler '" + compiler + "'.";
++      }
++      ruleContext.throwWithRuleError(errorMessage);
++      throw new IllegalStateException("Should not be reached");
++    }
+ }
+diff --git a/src/main/java/com/google/devtools/build/lib/cmdline/RepositoryName.java b/src/main/java/com/google/devtools/build/lib/cmdline/RepositoryName.java
+index af92bdf..9965fb7 100644
+--- a/src/main/java/com/google/devtools/build/lib/cmdline/RepositoryName.java
++++ b/src/main/java/com/google/devtools/build/lib/cmdline/RepositoryName.java
+@@ -18,6 +18,12 @@ import com.google.common.base.Throwables;
+ import com.google.common.cache.CacheBuilder;
+ import com.google.common.cache.CacheLoader;
+ import com.google.common.cache.LoadingCache;
++import com.google.devtools.build.lib.actions.Artifact;
++import com.google.devtools.build.lib.actions.ArtifactRoot;
++import com.google.devtools.build.lib.analysis.buildinfo.BuildInfoFactory;
++import com.google.devtools.build.lib.analysis.config.BuildConfiguration;
++import com.google.devtools.build.lib.rules.cpp.CppBuildInfo;
++import com.google.devtools.build.lib.rules.cpp.WriteBuildInfoHeaderAction;
+ import com.google.devtools.build.lib.skyframe.serialization.autocodec.AutoCodec;
+ import com.google.devtools.build.lib.util.OS;
+ import com.google.devtools.build.lib.util.Pair;
+@@ -29,6 +35,7 @@ import java.io.ObjectInputStream;
+ import java.io.ObjectOutputStream;
+ import java.io.ObjectStreamException;
+ import java.io.Serializable;
++import java.util.Collection;
+ import java.util.concurrent.ExecutionException;
+ import java.util.regex.Pattern;
+ 
+@@ -40,7 +47,20 @@ public final class RepositoryName implements Serializable {
+   @AutoCodec public static final RepositoryName MAIN;
+   private static final Pattern VALID_REPO_NAME = Pattern.compile("@[\\w\\-.]*");
+ 
+-  /** Helper for serializing {@link RepositoryName}. */
++    public WriteBuildInfoHeaderAction getHeader(BuildInfoFactory.BuildInfoContext buildInfoContext,
++                                                BuildConfiguration config, PathFragment headerName,
++                                                Collection<Artifact> inputs,
++                                                boolean writeVolatileInfo, boolean writeNonVolatileInfo, CppBuildInfo cppBuildInfo) {
++        ArtifactRoot outputPath = config.getIncludeDirectory(this);
++      final Artifact header =
++          buildInfoContext.getBuildInfoArtifact(headerName, outputPath,
++              writeVolatileInfo && !inputs.isEmpty()
++              ? BuildInfoFactory.BuildInfoType.NO_REBUILD : BuildInfoFactory.BuildInfoType.FORCE_REBUILD_IF_CHANGED);
++      return new WriteBuildInfoHeaderAction(
++          inputs, header, writeVolatileInfo, writeNonVolatileInfo);
++    }
++
++    /** Helper for serializing {@link RepositoryName}. */
+   private static final class SerializationProxy implements Serializable {
+     private RepositoryName repositoryName;
+ 
+diff --git a/src/main/java/com/google/devtools/build/lib/dynamic/DynamicSpawnStrategy.java b/src/main/java/com/google/devtools/build/lib/dynamic/DynamicSpawnStrategy.java
+index 38802b3..2aa3e87 100644
+--- a/src/main/java/com/google/devtools/build/lib/dynamic/DynamicSpawnStrategy.java
++++ b/src/main/java/com/google/devtools/build/lib/dynamic/DynamicSpawnStrategy.java
+@@ -278,7 +278,7 @@ public class DynamicSpawnStrategy implements SpawnActionContext {
+     }
+ 
+     try {
+-      moveFileOutErr(actionExecutionContext, fileOutErr);
++      fileOutErr.moveFileOutErr(actionExecutionContext, this);
+     } catch (IOException e) {
+       String strategyName = winningStrategy.name().toLowerCase();
+       if (exceptionDuringExecution == null) {
+@@ -323,21 +323,7 @@ public class DynamicSpawnStrategy implements SpawnActionContext {
+         || localStrategy.canExec(spawn);
+   }
+ 
+-  private void moveFileOutErr(ActionExecutionContext actionExecutionContext, FileOutErr outErr)
+-      throws IOException {
+-    if (outErr.getOutputPath().exists()) {
+-      Files.move(
+-          outErr.getOutputPath().getPathFile(),
+-          actionExecutionContext.getFileOutErr().getOutputPath().getPathFile());
+-    }
+-    if (outErr.getErrorPath().exists()) {
+-      Files.move(
+-          outErr.getErrorPath().getPathFile(),
+-          actionExecutionContext.getFileOutErr().getErrorPath().getPathFile());
+-    }
+-  }
+-
+-  private static FileOutErr getSuffixedFileOutErr(FileOutErr fileOutErr, String suffix) {
++    private static FileOutErr getSuffixedFileOutErr(FileOutErr fileOutErr, String suffix) {
+     Path outDir = Preconditions.checkNotNull(fileOutErr.getOutputPath().getParentDirectory());
+     String outBaseName = fileOutErr.getOutputPath().getBaseName();
+     Path errDir = Preconditions.checkNotNull(fileOutErr.getErrorPath().getParentDirectory());
+diff --git a/src/main/java/com/google/devtools/build/lib/events/Event.java b/src/main/java/com/google/devtools/build/lib/events/Event.java
+index c4a80ce..476ece8 100644
+--- a/src/main/java/com/google/devtools/build/lib/events/Event.java
++++ b/src/main/java/com/google/devtools/build/lib/events/Event.java
+@@ -17,6 +17,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
+ 
+ import com.google.common.base.Preconditions;
+ import java.io.Serializable;
++import java.nio.charset.StandardCharsets;
+ import java.util.Arrays;
+ import java.util.Objects;
+ import javax.annotation.Nullable;
+@@ -260,4 +261,17 @@ public final class Event implements Serializable {
+   public static Event debug(String message) {
+     return debug(null, message);
+   }
++
++    public void handleFollowUpEvents(PrintingEventHandler printingEventHandler) {
++        if (getStdErr() != null) {
++        printingEventHandler.handle(
++            of(
++                EventKind.STDERR, null, getStdErr().getBytes(StandardCharsets.ISO_8859_1)));
++      }
++      if (getStdOut() != null) {
++        printingEventHandler.handle(
++            of(
++                EventKind.STDOUT, null, getStdOut().getBytes(StandardCharsets.ISO_8859_1)));
++      }
++    }
+ }
+diff --git a/src/main/java/com/google/devtools/build/lib/events/Location.java b/src/main/java/com/google/devtools/build/lib/events/Location.java
+index 30224dc..6ffd9ed 100644
+--- a/src/main/java/com/google/devtools/build/lib/events/Location.java
++++ b/src/main/java/com/google/devtools/build/lib/events/Location.java
+@@ -15,10 +15,13 @@
+ package com.google.devtools.build.lib.events;
+ 
+ import com.google.devtools.build.lib.concurrent.ThreadSafety.Immutable;
++import com.google.devtools.build.lib.rules.cpp.CcModule;
+ import com.google.devtools.build.lib.skyframe.serialization.autocodec.AutoCodec;
++import com.google.devtools.build.lib.syntax.EvalException;
+ import com.google.devtools.build.lib.vfs.Path;
+ import com.google.devtools.build.lib.vfs.PathFragment;
+ import java.io.Serializable;
++import java.util.Arrays;
+ import java.util.Objects;
+ 
+ /**
+@@ -32,7 +35,16 @@ import java.util.Objects;
+  * error messages.
+  */
+ public abstract class Location implements Serializable {
+-  @AutoCodec
++    public void validateLanguage(String language, CcModule ccModule) throws EvalException {
++        if (!Arrays.stream(CcModule.Language.values())
++          .map(CcModule.Language::getRepresentation)
++          .collect(ImmutableList.toImmutableList())
++          .contains(language)) {
++        throw new EvalException(this, "Language '" + language + "' is not supported");
++      }
++    }
++
++    @AutoCodec
+   @Immutable
+   static final class LocationWithPathAndStartColumn extends Location {
+     private final PathFragment path;
+diff --git a/src/main/java/com/google/devtools/build/lib/events/PrintingEventHandler.java b/src/main/java/com/google/devtools/build/lib/events/PrintingEventHandler.java
+index 1f7a121..7f9ed0c 100644
+--- a/src/main/java/com/google/devtools/build/lib/events/PrintingEventHandler.java
++++ b/src/main/java/com/google/devtools/build/lib/events/PrintingEventHandler.java
+@@ -82,7 +82,7 @@ public class PrintingEventHandler extends AbstractEventHandler
+   @Override
+   public void handle(Event event) {
+     if (!getEventMask().contains(event.getKind())) {
+-      handleFollowUpEvents(event);
++      event.handleFollowUpEvents(this);
+       return;
+     }
+     try {
+@@ -114,20 +114,7 @@ public class PrintingEventHandler extends AbstractEventHandler
+        */
+       outErr.printErrLn(e.getMessage());
+     }
+-    handleFollowUpEvents(event);
+-  }
+-
+-  private void handleFollowUpEvents(Event event) {
+-    if (event.getStdErr() != null) {
+-      handle(
+-          Event.of(
+-              EventKind.STDERR, null, event.getStdErr().getBytes(StandardCharsets.ISO_8859_1)));
+-    }
+-    if (event.getStdOut() != null) {
+-      handle(
+-          Event.of(
+-              EventKind.STDOUT, null, event.getStdOut().getBytes(StandardCharsets.ISO_8859_1)));
+-    }
++    event.handleFollowUpEvents(this);
+   }
+ 
+ }
+diff --git a/src/main/java/com/google/devtools/build/lib/events/Reporter.java b/src/main/java/com/google/devtools/build/lib/events/Reporter.java
+index 1e0bf85..c63fafa 100644
+--- a/src/main/java/com/google/devtools/build/lib/events/Reporter.java
++++ b/src/main/java/com/google/devtools/build/lib/events/Reporter.java
+@@ -16,9 +16,15 @@ package com.google.devtools.build.lib.events;
+ import static com.google.common.base.Preconditions.checkNotNull;
+ 
+ import com.google.common.eventbus.EventBus;
++import com.google.devtools.build.lib.remote.RemoteModule;
++import com.google.devtools.build.lib.remote.RemoteServerCapabilities;
++import com.google.devtools.build.lib.remote.options.RemoteOptions;
++import com.google.devtools.build.lib.util.AbruptExitException;
++import com.google.devtools.build.lib.util.ExitCode;
+ import com.google.devtools.build.lib.util.io.OutErr;
+ import java.io.PrintStream;
+ import java.util.HashSet;
++import java.util.List;
+ import java.util.concurrent.ConcurrentLinkedQueue;
+ 
+ /**
+@@ -229,4 +235,24 @@ public final class Reporter implements ExtendedEventHandler, ExceptionListener {
+       ansiAllowingHandlerRegistered = false;
+     }
+   }
++
++    public void checkClientServerCompatibility(
++            ServerCapabilities capabilities,
++            RemoteOptions remoteOptions,
++            DigestFunction digestFunction, RemoteModule remoteModule)
++        throws AbruptExitException {
++        RemoteServerCapabilities.ClientServerCompatibilityStatus st =
++          RemoteServerCapabilities.checkClientServerCompatibility(
++              capabilities, remoteOptions, digestFunction);
++      for (String warning : st.getWarnings()) {
++        handle(Event.warn(warning));
++      }
++      List<String> errors = st.getErrors();
++      for (int i = 0; i < errors.size() - 1; ++i) {
++        handle(Event.error(errors.get(i)));
++      }
++      if (!errors.isEmpty()) {
++        throw new AbruptExitException(errors.get(errors.size() - 1), ExitCode.REMOTE_ERROR);
++      }
++    }
+ }
+diff --git a/src/main/java/com/google/devtools/build/lib/exec/StandaloneTestStrategy.java b/src/main/java/com/google/devtools/build/lib/exec/StandaloneTestStrategy.java
+index ccdb206..cc4f2f1 100644
+--- a/src/main/java/com/google/devtools/build/lib/exec/StandaloneTestStrategy.java
++++ b/src/main/java/com/google/devtools/build/lib/exec/StandaloneTestStrategy.java
+@@ -144,54 +144,7 @@ public class StandaloneTestStrategy extends TestStrategy {
+         action, actionExecutionContext, spawn, tmpDir, workingDirectory, execRoot);
+   }
+ 
+-  private ImmutableList<Pair<String, Path>> renameOutputs(
+-      ActionExecutionContext actionExecutionContext,
+-      TestRunnerAction action,
+-      ImmutableList<Pair<String, Path>> testOutputs,
+-      int attemptId)
+-      throws IOException {
+-    // Rename outputs
+-    String namePrefix =
+-        FileSystemUtils.removeExtension(action.getTestLog().getExecPath().getBaseName());
+-    Path testRoot = actionExecutionContext.getInputPath(action.getTestLog()).getParentDirectory();
+-    Path attemptsDir = testRoot.getChild(namePrefix + "_attempts");
+-    attemptsDir.createDirectory();
+-    String attemptPrefix = "attempt_" + attemptId;
+-    Path testLog = attemptsDir.getChild(attemptPrefix + ".log");
+-
+-    // Get the normal test output paths, and then update them to use "attempt_N" names, and
+-    // attemptDir, before adding them to the outputs.
+-    ImmutableList.Builder<Pair<String, Path>> testOutputsBuilder = new ImmutableList.Builder<>();
+-    for (Pair<String, Path> testOutput : testOutputs) {
+-      // e.g. /testRoot/test.dir/file, an example we follow throughout this loop's comments.
+-      Path testOutputPath = testOutput.getSecond();
+-      Path destinationPath;
+-      if (testOutput.getFirst().equals(TestFileNameConstants.TEST_LOG)) {
+-        // The rename rules for the test log are different than for all the other files.
+-        destinationPath = testLog;
+-      } else {
+-        // e.g. test.dir/file
+-        PathFragment relativeToTestDirectory = testOutputPath.relativeTo(testRoot);
+-
+-        // e.g. attempt_1.dir/file
+-        String destinationPathFragmentStr =
+-            relativeToTestDirectory.getSafePathString().replaceFirst("test", attemptPrefix);
+-        PathFragment destinationPathFragment = PathFragment.create(destinationPathFragmentStr);
+-
+-        // e.g. /attemptsDir/attempt_1.dir/file
+-        destinationPath = attemptsDir.getRelative(destinationPathFragment);
+-        destinationPath.getParentDirectory().createDirectory();
+-      }
+-
+-      // Move to the destination.
+-      testOutputPath.renameTo(destinationPath);
+-
+-      testOutputsBuilder.add(Pair.of(testOutput.getFirst(), destinationPath));
+-    }
+-    return testOutputsBuilder.build();
+-  }
+-
+-  private StandaloneFailedAttemptResult processFailedTestAttempt(
++    private StandaloneFailedAttemptResult processFailedTestAttempt(
+       int attemptId,
+       ActionExecutionContext actionExecutionContext,
+       TestRunnerAction action,
+@@ -241,7 +194,7 @@ public class StandaloneTestStrategy extends TestStrategy {
+         action.getTestOutputsMapping(
+             actionExecutionContext.getPathResolver(), actionExecutionContext.getExecRoot());
+     if (!isLastAttempt) {
+-      testOutputs = renameOutputs(actionExecutionContext, action, testOutputs, attemptId);
++      testOutputs = actionExecutionContext.renameOutputs(action, testOutputs, attemptId, this);
+     }
+ 
+     TestResultData.Builder dataBuilder = result.testResultDataBuilder();
+diff --git a/src/main/java/com/google/devtools/build/lib/exec/TestStrategy.java b/src/main/java/com/google/devtools/build/lib/exec/TestStrategy.java
+index 523af64..22c0caf 100644
+--- a/src/main/java/com/google/devtools/build/lib/exec/TestStrategy.java
++++ b/src/main/java/com/google/devtools/build/lib/exec/TestStrategy.java
+@@ -71,7 +71,7 @@ public abstract class TestStrategy implements TestActionContext {
+       TestRunnerAction testAction, Path execRoot, Path tmpDir, Path workingDirectory)
+       throws IOException {
+     if (tmpDir != null) {
+-      recreateDirectory(tmpDir);
++      tmpDir.recreateDirectory(this);
+     }
+     if (workingDirectory != null) {
+       workingDirectory.createDirectoryAndParents();
+@@ -79,7 +79,7 @@ public abstract class TestStrategy implements TestActionContext {
+ 
+     ResolvedPaths resolvedPaths = testAction.resolve(execRoot);
+     if (testAction.isCoverageMode()) {
+-      recreateDirectory(resolvedPaths.getCoverageDirectory());
++      resolvedPaths.getCoverageDirectory().recreateDirectory(this);
+     }
+ 
+     resolvedPaths.getBaseDir().createDirectoryAndParents();
+@@ -96,13 +96,7 @@ public abstract class TestStrategy implements TestActionContext {
+     prepareFileSystem(testAction, execRoot, null, null);
+   }
+ 
+-  /** Removes directory if it exists and recreates it. */
+-  private void recreateDirectory(Path directory) throws IOException {
+-    directory.deleteTree();
+-    directory.createDirectoryAndParents();
+-  }
+-
+-  /** An enum for specifying different formats of test output. */
++    /** An enum for specifying different formats of test output. */
+   public enum TestOutputFormat {
+     SUMMARY, // Provide summary output only.
+     ERRORS, // Print output from failed tests to the stderr after the test failure.
+diff --git a/src/main/java/com/google/devtools/build/lib/packages/PackageFactory.java b/src/main/java/com/google/devtools/build/lib/packages/PackageFactory.java
+index 54cc3b2..baf6d86 100644
+--- a/src/main/java/com/google/devtools/build/lib/packages/PackageFactory.java
++++ b/src/main/java/com/google/devtools/build/lib/packages/PackageFactory.java
+@@ -1773,7 +1773,7 @@ public final class PackageFactory {
+ 
+       if (maxDirectoriesToEagerlyVisitInGlobbing == -2) {
+         GlobPatternExtractor extractor = new GlobPatternExtractor();
+-        extractor.visit(buildFileAST);
++        buildFileAST.visit();
+         try {
+           globber.runAsync(
+               extractor.getIncludeDirectoriesPatterns(),
+diff --git a/src/main/java/com/google/devtools/build/lib/packages/RawAttributeMapper.java b/src/main/java/com/google/devtools/build/lib/packages/RawAttributeMapper.java
+index dffc107..ac225ec 100644
+--- a/src/main/java/com/google/devtools/build/lib/packages/RawAttributeMapper.java
++++ b/src/main/java/com/google/devtools/build/lib/packages/RawAttributeMapper.java
+@@ -20,9 +20,11 @@ import com.google.devtools.build.lib.cmdline.Label;
+ import com.google.devtools.build.lib.packages.Attribute.ComputedDefault;
+ import com.google.devtools.build.lib.packages.BuildType.Selector;
+ import com.google.devtools.build.lib.packages.BuildType.SelectorList;
++import com.google.devtools.build.lib.query2.query.output.ConditionalEdges;
+ import com.google.devtools.build.lib.syntax.Type;
+ import java.util.Collection;
+ import java.util.List;
++import java.util.Map;
+ import javax.annotation.Nullable;
+ 
+ /**
+@@ -152,4 +154,69 @@ public class RawAttributeMapper extends AbstractAttributeMapper {
+     }
+     return get(attr.getName(), attr.getType());
+   }
++
++    /**
++     * Returns map of dependency to list of condition-labels.
++     *
++     * <p>Example: For a rule like below,
++     *
++     * <pre>
++     *  some_rule(
++     *    ...
++     *    deps = [
++     *      ... default dependencies ...
++     *    ] + select ({
++     *      "//some:config1": [ "//some:a", "//some:common" ],
++     *      "//some:config2": [ "//other:a", "//some:common" ],
++     *      "//conditions:default": [ "//some:default" ],
++     *    })
++     *  )
++     * </pre>
++     *
++     * it returns following map:
++     *
++     * <pre>
++     *  {
++     *    "//some:a": ["//some:config1" ]
++     *    "//other:a": ["//some:config2" ]
++     *    "//some:common": ["//some:config1", "//some:config2" ]
++     *    "//some:default": [ "//conditions:default" ]
++     *  }
++     * </pre>
++     * @param rule
++     * @param conditionalEdges
++     */
++    public SetMultimap<Label, Label> getAllConditions(Rule rule, ConditionalEdges conditionalEdges) {
++        SetMultimap<Label, Label> conditions = HashMultimap.create();
++      for (Attribute attr : rule.getAttributes()) {
++        // TODO(bazel-team): Handle the case where dependency exists through both configurable as well
++        // as non-configurable attributes. Currently this prints such an edge as a conditional one.
++        if (!isConfigurable(attr.getName())) {
++          // skip non configurable attributes
++          continue;
++        }
++
++        for (Selector<?> selector :
++            ((SelectorList<?>) getRawAttributeValue(rule, attr))
++                .getSelectors()) {
++          if (selector.isUnconditional()) {
++            // skip unconditional selectors
++            continue;
++          }
++          for (Map.Entry<Label, ?> entry : selector.getEntries().entrySet()) {
++            if (entry.getValue() instanceof List<?>) {
++              List<?> deps = (List<?>) entry.getValue();
++              for (Object dep : deps) {
++                if (dep instanceof Label) {
++                  conditions.put((Label) dep, entry.getKey());
++                }
++              }
++            } else if (entry.getValue() instanceof Label) {
++              conditions.put((Label) entry.getValue(), entry.getKey());
++            }
++          }
++        }
++      }
++      return conditions;
++    }
+ }
+diff --git a/src/main/java/com/google/devtools/build/lib/packages/Rule.java b/src/main/java/com/google/devtools/build/lib/packages/Rule.java
+index 8de293a..072558a 100644
+--- a/src/main/java/com/google/devtools/build/lib/packages/Rule.java
++++ b/src/main/java/com/google/devtools/build/lib/packages/Rule.java
+@@ -26,14 +26,18 @@ import com.google.common.collect.ListMultimap;
+ import com.google.common.collect.Lists;
+ import com.google.common.collect.Multimap;
+ import com.google.common.collect.SetMultimap;
++import com.google.devtools.build.lib.bazel.commands.SyncCommand;
+ import com.google.devtools.build.lib.cmdline.Label;
+ import com.google.devtools.build.lib.cmdline.LabelSyntaxException;
+ import com.google.devtools.build.lib.cmdline.RepositoryName;
+ import com.google.devtools.build.lib.events.Event;
+ import com.google.devtools.build.lib.events.EventHandler;
++import com.google.devtools.build.lib.events.ExtendedEventHandler;
+ import com.google.devtools.build.lib.events.Location;
+ import com.google.devtools.build.lib.packages.License.DistributionType;
++import com.google.devtools.build.lib.rules.repository.ResolvedHashesFunction;
+ import com.google.devtools.build.lib.syntax.EvalException;
++import com.google.devtools.build.lib.syntax.Printer;
+ import com.google.devtools.build.lib.syntax.Type;
+ import com.google.devtools.build.lib.util.BinaryPredicate;
+ import java.util.Collection;
+@@ -751,4 +755,33 @@ public final class Rule implements Target, DependencyFilter.AttributeInfoProvide
+   public static String targetKindSuffix() {
+     return " rule";
+   }
++
++    public ExtendedEventHandler.ResolvedEvent resolveBind(SyncCommand syncCommand) {
++        String name = getName();
++      Object actual = getAttributeContainer().getAttr("actual");
++      String nativeCommand =
++          "bind(name = "
++              + Printer.getPrinter().repr(name)
++              + ", actual = "
++              + Printer.getWorkspacePrettyPrinter().repr(actual)
++              + ")";
++
++      return new ExtendedEventHandler.ResolvedEvent() {
++        @Override
++        public String getName() {
++          return name;
++        }
++
++        @Override
++        public Object getResolvedInformation() {
++          return ImmutableMap.<String, Object>builder()
++              .put(ResolvedHashesFunction.ORIGINAL_RULE_CLASS, "bind")
++              .put(
++                  ResolvedHashesFunction.ORIGINAL_ATTRIBUTES,
++                  ImmutableMap.<String, Object>of("name", name, "actual", actual))
++              .put(ResolvedHashesFunction.NATIVE, nativeCommand)
++              .build();
++        }
++      };
++    }
+ }
+diff --git a/src/main/java/com/google/devtools/build/lib/profiler/analysis/ProfileInfo.java b/src/main/java/com/google/devtools/build/lib/profiler/analysis/ProfileInfo.java
+index 7dcbca6..d491bfe 100644
+--- a/src/main/java/com/google/devtools/build/lib/profiler/analysis/ProfileInfo.java
++++ b/src/main/java/com/google/devtools/build/lib/profiler/analysis/ProfileInfo.java
+@@ -30,6 +30,7 @@ import com.google.common.collect.Sets;
+ import com.google.devtools.build.lib.profiler.ProfilePhase;
+ import com.google.devtools.build.lib.profiler.Profiler;
+ import com.google.devtools.build.lib.profiler.ProfilerTask;
++import com.google.devtools.build.lib.runtime.commands.ProfileCommand;
+ import com.google.devtools.build.lib.util.VarInt;
+ import com.google.devtools.build.lib.vfs.Path;
+ import java.io.BufferedInputStream;
+@@ -65,7 +66,40 @@ import java.util.zip.InflaterInputStream;
+  */
+ public class ProfileInfo {
+ 
+-  /**
++    /**
++     * Prints trees rooted at tasks with a description matching a pattern.
++     * @see Task#printTaskTree(PrintStream, long)
++     * @param out
++     * @param fileName
++     * @param taskPattern
++     * @param taskDurationThreshold
++     * @param profileCommand
++     */
++    public void printTaskTree(
++            PrintStream out,
++            String fileName,
++            Pattern taskPattern,
++            long taskDurationThreshold, ProfileCommand profileCommand) {
++        profileCommand.getClass();
++        Iterable<Task> tasks = findTasksByDescription(taskPattern);
++      if (Iterables.isEmpty(tasks)) {
++        out.printf("No tasks matching %s found in profile file %s.", taskPattern, fileName);
++        out.println();
++      } else {
++        int skipped = 0;
++        for (Task task : tasks) {
++          if (!task.printTaskTree(out, taskDurationThreshold)) {
++            skipped++;
++          }
++        }
++        if (skipped > 0) {
++          out.printf("Skipped %d matching task(s) below the duration threshold.", skipped);
++        }
++        out.println();
++      }
++    }
++
++    /**
+    * Immutable container for the aggregated stats.
+    */
+   public static final class AggregateAttr {
+diff --git a/src/main/java/com/google/devtools/build/lib/query2/SkyQueryEnvironment.java b/src/main/java/com/google/devtools/build/lib/query2/SkyQueryEnvironment.java
+index 5a1d7f5..652161f 100644
+--- a/src/main/java/com/google/devtools/build/lib/query2/SkyQueryEnvironment.java
++++ b/src/main/java/com/google/devtools/build/lib/query2/SkyQueryEnvironment.java
+@@ -252,7 +252,7 @@ public class SkyQueryEnvironment extends AbstractBlazeQueryEnvironment<Target>
+               .setNumThreads(loadingPhaseThreads)
+               .setEventHander(universeEvalEventHandler)
+               .build();
+-      result = graphFactory.prepareAndGet(roots, configureEvaluationContext(evaluationContext));
++      result = graphFactory.prepareAndGet(roots, evaluationContext.configureEvaluationContext(this));
+     }
+ 
+     if (graph == null || graph != result.getWalkableGraph()) {
+@@ -283,15 +283,7 @@ public class SkyQueryEnvironment extends AbstractBlazeQueryEnvironment<Target>
+             packageSemaphore);
+   }
+ 
+-  /**
+-   * Configures the default {@link EvaluationContext} to change the behavior of how evaluations in
+-   * {@link WalkableGraphFactory#prepareAndGet} work.
+-   */
+-  protected EvaluationContext configureEvaluationContext(EvaluationContext evaluationContext) {
+-    return evaluationContext;
+-  }
+-
+-  protected MultisetSemaphore<PackageIdentifier> makeFreshPackageMultisetSemaphore() {
++    protected MultisetSemaphore<PackageIdentifier> makeFreshPackageMultisetSemaphore() {
+     return MultisetSemaphore.unbounded();
+   }
+ 
+diff --git a/src/main/java/com/google/devtools/build/lib/query2/query/output/ConditionalEdges.java b/src/main/java/com/google/devtools/build/lib/query2/query/output/ConditionalEdges.java
+index 42e084b..9772bf8 100644
+--- a/src/main/java/com/google/devtools/build/lib/query2/query/output/ConditionalEdges.java
++++ b/src/main/java/com/google/devtools/build/lib/query2/query/output/ConditionalEdges.java
+@@ -18,14 +18,10 @@ import com.google.common.collect.SetMultimap;
+ import com.google.devtools.build.lib.cmdline.Label;
+ import com.google.devtools.build.lib.graph.Digraph;
+ import com.google.devtools.build.lib.graph.Node;
+-import com.google.devtools.build.lib.packages.Attribute;
+-import com.google.devtools.build.lib.packages.BuildType;
+ import com.google.devtools.build.lib.packages.RawAttributeMapper;
+ import com.google.devtools.build.lib.packages.Rule;
+ import com.google.devtools.build.lib.packages.Target;
+ import java.util.HashMap;
+-import java.util.List;
+-import java.util.Map;
+ import java.util.Optional;
+ import java.util.Set;
+ 
+@@ -52,7 +48,7 @@ public class ConditionalEdges {
+         continue;
+       }
+ 
+-      SetMultimap<Label, Label> conditions = getAllConditions(rule, RawAttributeMapper.of(rule));
++      SetMultimap<Label, Label> conditions = RawAttributeMapper.of(rule).getAllConditions(rule, this);
+       if (conditions.isEmpty()) {
+         // bail early for most common case of no conditions in the rule.
+         continue;
+@@ -86,66 +82,4 @@ public class ConditionalEdges {
+     return Optional.of(map.get(src).get(dest));
+   }
+ 
+-  /**
+-   * Returns map of dependency to list of condition-labels.
+-   *
+-   * <p>Example: For a rule like below,
+-   *
+-   * <pre>
+-   *  some_rule(
+-   *    ...
+-   *    deps = [
+-   *      ... default dependencies ...
+-   *    ] + select ({
+-   *      "//some:config1": [ "//some:a", "//some:common" ],
+-   *      "//some:config2": [ "//other:a", "//some:common" ],
+-   *      "//conditions:default": [ "//some:default" ],
+-   *    })
+-   *  )
+-   * </pre>
+-   *
+-   * it returns following map:
+-   *
+-   * <pre>
+-   *  {
+-   *    "//some:a": ["//some:config1" ]
+-   *    "//other:a": ["//some:config2" ]
+-   *    "//some:common": ["//some:config1", "//some:config2" ]
+-   *    "//some:default": [ "//conditions:default" ]
+-   *  }
+-   * </pre>
+-   */
+-  private SetMultimap<Label, Label> getAllConditions(Rule rule, RawAttributeMapper attributeMap) {
+-    SetMultimap<Label, Label> conditions = HashMultimap.create();
+-    for (Attribute attr : rule.getAttributes()) {
+-      // TODO(bazel-team): Handle the case where dependency exists through both configurable as well
+-      // as non-configurable attributes. Currently this prints such an edge as a conditional one.
+-      if (!attributeMap.isConfigurable(attr.getName())) {
+-        // skip non configurable attributes
+-        continue;
+-      }
+-
+-      for (BuildType.Selector<?> selector :
+-          ((BuildType.SelectorList<?>) attributeMap.getRawAttributeValue(rule, attr))
+-              .getSelectors()) {
+-        if (selector.isUnconditional()) {
+-          // skip unconditional selectors
+-          continue;
+-        }
+-        for (Map.Entry<Label, ?> entry : selector.getEntries().entrySet()) {
+-          if (entry.getValue() instanceof List<?>) {
+-            List<?> deps = (List<?>) entry.getValue();
+-            for (Object dep : deps) {
+-              if (dep instanceof Label) {
+-                conditions.put((Label) dep, entry.getKey());
+-              }
+-            }
+-          } else if (entry.getValue() instanceof Label) {
+-            conditions.put((Label) entry.getValue(), entry.getKey());
+-          }
+-        }
+-      }
+-    }
+-    return conditions;
+-  }
+ };
+diff --git a/src/main/java/com/google/devtools/build/lib/remote/RemoteModule.java b/src/main/java/com/google/devtools/build/lib/remote/RemoteModule.java
+index 894b767..ce935c7 100644
+--- a/src/main/java/com/google/devtools/build/lib/remote/RemoteModule.java
++++ b/src/main/java/com/google/devtools/build/lib/remote/RemoteModule.java
+@@ -32,7 +32,6 @@ import com.google.devtools.build.lib.buildeventstream.BuildEventArtifactUploader
+ import com.google.devtools.build.lib.buildeventstream.LocalFilesArtifactUploader;
+ import com.google.devtools.build.lib.buildtool.BuildRequest;
+ import com.google.devtools.build.lib.events.Event;
+-import com.google.devtools.build.lib.events.Reporter;
+ import com.google.devtools.build.lib.exec.ExecutorBuilder;
+ import com.google.devtools.build.lib.remote.logging.LoggingInterceptor;
+ import com.google.devtools.build.lib.remote.options.RemoteOptions;
+@@ -235,8 +234,8 @@ public final class RemoteModule extends BlazeModule {
+           Thread.currentThread().interrupt();
+           return;
+         }
+-        checkClientServerCompatibility(
+-            capabilities, remoteOptions, digestUtil.getDigestFunction(), env.getReporter());
++        env.getReporter().checkClientServerCompatibility(
++            capabilities, remoteOptions, digestUtil.getDigestFunction(), this);
+         executeRetrier = createExecuteRetrier(remoteOptions, retryScheduler);
+         ByteStreamUploader uploader =
+             new ByteStreamUploader(
+@@ -366,28 +365,7 @@ public final class RemoteModule extends BlazeModule {
+     }
+   }
+ 
+-  private void checkClientServerCompatibility(
+-      ServerCapabilities capabilities,
+-      RemoteOptions remoteOptions,
+-      DigestFunction digestFunction,
+-      Reporter reporter)
+-      throws AbruptExitException {
+-    RemoteServerCapabilities.ClientServerCompatibilityStatus st =
+-        RemoteServerCapabilities.checkClientServerCompatibility(
+-            capabilities, remoteOptions, digestFunction);
+-    for (String warning : st.getWarnings()) {
+-      reporter.handle(Event.warn(warning));
+-    }
+-    List<String> errors = st.getErrors();
+-    for (int i = 0; i < errors.size() - 1; ++i) {
+-      reporter.handle(Event.error(errors.get(i)));
+-    }
+-    if (!errors.isEmpty()) {
+-      throw new AbruptExitException(errors.get(errors.size() - 1), ExitCode.REMOTE_ERROR);
+-    }
+-  }
+-
+-  @Override
++    @Override
+   public void afterCommand() throws AbruptExitException {
+     IOException failure = null;
+ 
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/android/AndroidDataContext.java b/src/main/java/com/google/devtools/build/lib/rules/android/AndroidDataContext.java
+index af819b4..79b5b28 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/android/AndroidDataContext.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/android/AndroidDataContext.java
+@@ -21,6 +21,7 @@ import com.google.devtools.build.lib.analysis.RuleContext;
+ import com.google.devtools.build.lib.analysis.Whitelist;
+ import com.google.devtools.build.lib.analysis.actions.ActionConstructionContext;
+ import com.google.devtools.build.lib.analysis.actions.SpawnAction;
++import com.google.devtools.build.lib.analysis.actions.SymlinkAction;
+ import com.google.devtools.build.lib.analysis.config.CompilationMode;
+ import com.google.devtools.build.lib.analysis.configuredtargets.RuleConfiguredTarget.Mode;
+ import com.google.devtools.build.lib.cmdline.Label;
+@@ -172,4 +173,24 @@ public class AndroidDataContext implements AndroidDataContextApi {
+   public boolean useDataBindingV2() {
+     return useDataBindingV2;
+   }
++
++    public AndroidManifest renameManifestIfNeeded(AndroidManifest androidManifest)
++        throws InterruptedException {
++        if (androidManifest.getManifest().getFilename().equals("AndroidManifest.xml")) {
++        return androidManifest;
++      } else {
++        /*
++         * If the manifest file is not named AndroidManifest.xml, we create a symlink named
++         * AndroidManifest.xml to it. aapt requires the manifest to be named as such.
++         */
++        Artifact manifestSymlink =
++            createOutputArtifact(AndroidRuleClasses.ANDROID_SYMLINKED_MANIFEST);
++        registerAction(SymlinkAction.toArtifact(
++            getActionConstructionContext().getActionOwner(),
++                androidManifest.getManifest(),
++            manifestSymlink,
++            "Renaming Android manifest for " + getLabel()));
++        return androidManifest.updateManifest(manifestSymlink);
++      }
++    }
+ }
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/android/AndroidManifest.java b/src/main/java/com/google/devtools/build/lib/rules/android/AndroidManifest.java
+index fbc9773..40a5592 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/android/AndroidManifest.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/android/AndroidManifest.java
+@@ -20,7 +20,6 @@ import com.google.common.collect.ImmutableSortedMap;
+ import com.google.devtools.build.lib.actions.Artifact;
+ import com.google.devtools.build.lib.analysis.RuleContext;
+ import com.google.devtools.build.lib.analysis.actions.ActionConstructionContext;
+-import com.google.devtools.build.lib.analysis.actions.SymlinkAction;
+ import com.google.devtools.build.lib.analysis.configuredtargets.RuleConfiguredTarget.Mode;
+ import com.google.devtools.build.lib.cmdline.Label;
+ import com.google.devtools.build.lib.concurrent.ThreadSafety.Immutable;
+@@ -151,30 +150,10 @@ public class AndroidManifest {
+     if (androidSemantics != null) {
+       return androidSemantics.renameManifest(dataContext, raw);
+     }
+-    return raw.renameManifestIfNeeded(dataContext);
++    return dataContext.renameManifestIfNeeded(raw);
+   }
+ 
+-  AndroidManifest renameManifestIfNeeded(AndroidDataContext dataContext)
+-      throws InterruptedException {
+-    if (manifest.getFilename().equals("AndroidManifest.xml")) {
+-      return this;
+-    } else {
+-      /*
+-       * If the manifest file is not named AndroidManifest.xml, we create a symlink named
+-       * AndroidManifest.xml to it. aapt requires the manifest to be named as such.
+-       */
+-      Artifact manifestSymlink =
+-          dataContext.createOutputArtifact(AndroidRuleClasses.ANDROID_SYMLINKED_MANIFEST);
+-      dataContext.registerAction(SymlinkAction.toArtifact(
+-          dataContext.getActionConstructionContext().getActionOwner(),
+-          manifest,
+-          manifestSymlink,
+-          "Renaming Android manifest for " + dataContext.getLabel()));
+-      return updateManifest(manifestSymlink);
+-    }
+-  }
+-
+-  public AndroidManifest updateManifest(Artifact manifest) {
++    public AndroidManifest updateManifest(Artifact manifest) {
+     return new AndroidManifest(manifest, pkg, exported);
+   }
+ 
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/android/AndroidResources.java b/src/main/java/com/google/devtools/build/lib/rules/android/AndroidResources.java
+index 9af441e..4cbd78a 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/android/AndroidResources.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/android/AndroidResources.java
+@@ -357,23 +357,7 @@ public class AndroidResources {
+     return resourceRoots;
+   }
+ 
+-  /**
+-   * Filters this object, assuming it contains the resources of the current target.
+-   *
+-   * <p>If this object contains the resources from a dependency of this target, use {@link
+-   * #maybeFilter(RuleErrorConsumer, ResourceFilter, boolean)} instead.
+-   *
+-   * @return a filtered {@link AndroidResources} object. If no filtering was done, this object will
+-   *     be returned.
+-   */
+-  public AndroidResources filterLocalResources(
+-      RuleErrorConsumer errorConsumer, ResourceFilter resourceFilter) throws RuleErrorException {
+-    Optional<? extends AndroidResources> filtered =
+-        maybeFilter(errorConsumer, resourceFilter, /* isDependency = */ false);
+-    return filtered.isPresent() ? filtered.get() : this;
+-  }
+-
+-  /**
++    /**
+    * Filters this object.
+    *
+    * @return an optional wrapping a new {@link AndroidResources} with resources filtered by the
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/android/AndroidSemantics.java b/src/main/java/com/google/devtools/build/lib/rules/android/AndroidSemantics.java
+index 2f7470c..0805061 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/android/AndroidSemantics.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/android/AndroidSemantics.java
+@@ -39,7 +39,7 @@ public interface AndroidSemantics {
+ 
+   default AndroidManifest renameManifest(
+       AndroidDataContext dataContext, AndroidManifest rawManifest) throws InterruptedException {
+-    return rawManifest.renameManifestIfNeeded(dataContext);
++    return dataContext.renameManifestIfNeeded(rawManifest);
+   }
+ 
+   default Optional<Artifact> maybeDoLegacyManifestMerging(
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/android/ProcessedAndroidData.java b/src/main/java/com/google/devtools/build/lib/rules/android/ProcessedAndroidData.java
+index fd3a7bc..afa6f6b 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/android/ProcessedAndroidData.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/android/ProcessedAndroidData.java
+@@ -156,7 +156,7 @@ public class ProcessedAndroidData {
+         resourceFilterFactory.getResourceFilter(errorConsumer, resourceDeps, resources);
+ 
+     // Filter unwanted resources out
+-    resources = resources.filterLocalResources(errorConsumer, resourceFilter);
++    resources = resourceFilter.filterLocalResources(errorConsumer, resources);
+     resourceDeps = resourceDeps.filter(errorConsumer, resourceFilter);
+ 
+     return builder
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/android/ResourceFilter.java b/src/main/java/com/google/devtools/build/lib/rules/android/ResourceFilter.java
+index 51688cd..0284d1e 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/android/ResourceFilter.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/android/ResourceFilter.java
+@@ -109,4 +109,22 @@ public class ResourceFilter {
+ 
+     return Optional.of(filtered.build());
+   }
++
++    /**
++     * Filters this object, assuming it contains the resources of the current target.
++     *
++     * <p>If this object contains the resources from a dependency of this target, use {@link
++     * #maybeFilter(RuleErrorConsumer, ResourceFilter, boolean)} instead.
++     *
++     * @return a filtered {@link AndroidResources} object. If no filtering was done, this object will
++     *     be returned.
++     * @param errorConsumer
++     * @param androidResources
++     */
++    public AndroidResources filterLocalResources(
++            RuleErrorConsumer errorConsumer, AndroidResources androidResources) throws RuleErrorException {
++        Optional<? extends AndroidResources> filtered =
++          androidResources.maybeFilter(errorConsumer, this, /* isDependency = */ false);
++      return filtered.isPresent() ? filtered.get() : androidResources;
++    }
+ }
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/apple/AppleCommandLineOptions.java b/src/main/java/com/google/devtools/build/lib/rules/apple/AppleCommandLineOptions.java
+index 57c8cf9..6b8dab1 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/apple/AppleCommandLineOptions.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/apple/AppleCommandLineOptions.java
+@@ -18,11 +18,13 @@ import com.google.common.annotations.VisibleForTesting;
+ import com.google.common.collect.ImmutableList;
+ import com.google.devtools.build.lib.analysis.config.CoreOptionConverters.DefaultLabelConverter;
+ import com.google.devtools.build.lib.analysis.config.CoreOptionConverters.LabelConverter;
++import com.google.devtools.build.lib.analysis.config.CoreOptions;
+ import com.google.devtools.build.lib.analysis.config.FragmentOptions;
+ import com.google.devtools.build.lib.cmdline.Label;
+ import com.google.devtools.build.lib.concurrent.ThreadSafety.Immutable;
+ import com.google.devtools.build.lib.rules.apple.AppleConfiguration.ConfigurationDistinguisher;
+ import com.google.devtools.build.lib.rules.apple.ApplePlatform.PlatformType;
++import com.google.devtools.build.lib.rules.objc.AppleCrosstoolTransition;
+ import com.google.devtools.build.lib.skyframe.serialization.DeserializationContext;
+ import com.google.devtools.build.lib.skyframe.serialization.SerializationContext;
+ import com.google.devtools.build.lib.skyframe.serialization.SerializationException;
+@@ -328,7 +330,43 @@ public class AppleCommandLineOptions extends FragmentOptions {
+   @VisibleForTesting
+   public static final String DEFAULT_XCODE_VERSION_CONFIG_LABEL = "//tools/objc:host_xcodes";
+ 
+-  /** Converter for --default_ios_provisioning_profile. */
++    /** Returns the Apple architecture implied by AppleCommandLineOptions and CoreOptions
++     * @param configOptions
++     * @param appleCrosstoolTransition*/
++    public String determineSingleArchitecture(
++            CoreOptions configOptions, AppleCrosstoolTransition appleCrosstoolTransition) {
++        if (!Strings.isNullOrEmpty(appleSplitCpu)) {
++        return appleSplitCpu;
++      }
++      switch (applePlatformType) {
++        case IOS:
++          if (!iosMultiCpus.isEmpty()) {
++            return iosMultiCpus.get(0);
++          } else {
++            return AppleConfiguration.iosCpuFromCpu(configOptions.cpu);
++          }
++        case WATCHOS:
++          if (watchosCpus.isEmpty()) {
++            return DEFAULT_WATCHOS_CPU;
++          }
++          return watchosCpus.get(0);
++        case TVOS:
++          if (tvosCpus.isEmpty()) {
++            return DEFAULT_TVOS_CPU;
++          }
++          return tvosCpus.get(0);
++        case MACOS:
++          if (macosCpus.isEmpty()) {
++            return DEFAULT_MACOS_CPU;
++          }
++          return macosCpus.get(0);
++        default:
++          throw new IllegalArgumentException(
++              "Unhandled platform type " + applePlatformType);
++      }
++    }
++
++    /** Converter for --default_ios_provisioning_profile. */
+   public static class DefaultProvisioningProfileConverter extends DefaultLabelConverter {
+     public DefaultProvisioningProfileConverter() {
+       super("//tools/objc:default_provisioning_profile");
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/cpp/CcBinary.java b/src/main/java/com/google/devtools/build/lib/rules/cpp/CcBinary.java
+index 69067a6..5f2e297 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/cpp/CcBinary.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/cpp/CcBinary.java
+@@ -1135,7 +1135,7 @@ public abstract class CcBinary implements RuleConfiguredTargetFactory {
+       CppConfiguration cppConfiguration,
+       FeatureConfiguration featureConfiguration) {
+     if (isLinkShared(ruleContext)) {
+-      return ccToolchainProvider.usePicForDynamicLibraries(cppConfiguration, featureConfiguration);
++      return cppConfiguration.usePicForDynamicLibraries(featureConfiguration, ccToolchainProvider);
+     } else {
+       return CppHelper.usePicForBinaries(
+           ccToolchainProvider, cppConfiguration, featureConfiguration);
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/cpp/CcCompilationHelper.java b/src/main/java/com/google/devtools/build/lib/rules/cpp/CcCompilationHelper.java
+index e65f09b..6d35368 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/cpp/CcCompilationHelper.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/cpp/CcCompilationHelper.java
+@@ -297,10 +297,10 @@ public final class CcCompilationHelper {
+     this.configuration = buildConfiguration;
+     this.cppConfiguration = configuration.getFragment(CppConfiguration.class);
+     setGenerateNoPicAction(
+-        !ccToolchain.usePicForDynamicLibraries(cppConfiguration, featureConfiguration)
++        !cppConfiguration.usePicForDynamicLibraries(featureConfiguration, ccToolchain)
+             || !CppHelper.usePicForBinaries(ccToolchain, cppConfiguration, featureConfiguration));
+     setGeneratePicAction(
+-        ccToolchain.usePicForDynamicLibraries(cppConfiguration, featureConfiguration)
++        cppConfiguration.usePicForDynamicLibraries(featureConfiguration, ccToolchain)
+             || CppHelper.usePicForBinaries(ccToolchain, cppConfiguration, featureConfiguration));
+     this.ruleErrorConsumer = actionConstructionContext.getRuleErrorConsumer();
+     this.actionRegistry = Preconditions.checkNotNull(actionRegistry);
+@@ -723,7 +723,7 @@ public final class CcCompilationHelper {
+     ImmutableMap.Builder<String, NestedSet<Artifact>> outputGroupsBuilder = ImmutableMap.builder();
+     outputGroupsBuilder.put(OutputGroupInfo.TEMP_FILES, ccCompilationOutputs.getTemps());
+     boolean processHeadersInDependencies = cppConfiguration.processHeadersInDependencies();
+-    boolean usePic = ccToolchain.usePicForDynamicLibraries(cppConfiguration, featureConfiguration);
++    boolean usePic = cppConfiguration.usePicForDynamicLibraries(featureConfiguration, ccToolchain);
+     outputGroupsBuilder.put(
+         OutputGroupInfo.FILES_TO_COMPILE,
+         ccCompilationOutputs.getFilesToCompile(processHeadersInDependencies, usePic));
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/cpp/CcImport.java b/src/main/java/com/google/devtools/build/lib/rules/cpp/CcImport.java
+index 152768a..fcfcad8 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/cpp/CcImport.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/cpp/CcImport.java
+@@ -83,7 +83,7 @@ public abstract class CcImport implements RuleConfiguredTargetFactory {
+     Artifact sharedLibrary = ruleContext.getPrerequisiteArtifact("shared_library", Mode.TARGET);
+     Artifact interfaceLibrary =
+         ruleContext.getPrerequisiteArtifact("interface_library", Mode.TARGET);
+-    performErrorChecks(ruleContext, systemProvided, sharedLibrary, interfaceLibrary);
++    sharedLibrary.performErrorChecks(ruleContext, systemProvided, interfaceLibrary, this);
+ 
+     Artifact resolvedSymlinkDynamicLibrary = null;
+     Artifact resolvedSymlinkInterfaceLibrary = null;
+@@ -187,22 +187,4 @@ public abstract class CcImport implements RuleConfiguredTargetFactory {
+     return result.build();
+   }
+ 
+-  private void performErrorChecks(
+-      RuleContext ruleContext,
+-      boolean systemProvided,
+-      Artifact sharedLibrary,
+-      Artifact interfaceLibrary) {
+-    // If the shared library will be provided by system during runtime, users are not supposed to
+-    // specify shared_library.
+-    if (systemProvided && sharedLibrary != null) {
+-      ruleContext.ruleError(
+-          "'shared_library' shouldn't be specified when 'system_provided' is true");
+-    }
+-    // If a shared library won't be provided by system during runtime and we are linking the shared
+-    // library through interface library, the shared library must be specified.
+-    if (!systemProvided && sharedLibrary == null && interfaceLibrary != null) {
+-      ruleContext.ruleError(
+-          "'shared_library' should be specified when 'system_provided' is false");
+-    }
+-  }
+ }
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/cpp/CcLibrary.java b/src/main/java/com/google/devtools/build/lib/rules/cpp/CcLibrary.java
+index ced185c..51a2c3d 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/cpp/CcLibrary.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/cpp/CcLibrary.java
+@@ -491,7 +491,7 @@ public abstract class CcLibrary implements RuleConfiguredTargetFactory {
+     NestedSetBuilder<Artifact> artifactsToForceBuilder = NestedSetBuilder.stableOrder();
+     CppConfiguration cppConfiguration = ruleContext.getFragment(CppConfiguration.class);
+     boolean processHeadersInDependencies = cppConfiguration.processHeadersInDependencies();
+-    boolean usePic = toolchain.usePicForDynamicLibraries(cppConfiguration, featureConfiguration);
++    boolean usePic = cppConfiguration.usePicForDynamicLibraries(featureConfiguration, toolchain);
+     artifactsToForceBuilder.addTransitive(
+         ccCompilationOutputs.getFilesToCompile(processHeadersInDependencies, usePic));
+     for (OutputGroupInfo dep :
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/cpp/CcLinkingHelper.java b/src/main/java/com/google/devtools/build/lib/rules/cpp/CcLinkingHelper.java
+index ae95378..97b4792 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/cpp/CcLinkingHelper.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/cpp/CcLinkingHelper.java
+@@ -425,7 +425,7 @@ public final class CcLinkingHelper {
+     boolean usePicForBinaries =
+         CppHelper.usePicForBinaries(ccToolchain, cppConfiguration, featureConfiguration);
+     boolean usePicForDynamicLibs =
+-        ccToolchain.usePicForDynamicLibraries(cppConfiguration, featureConfiguration);
++        cppConfiguration.usePicForDynamicLibraries(featureConfiguration, ccToolchain);
+ 
+     PathFragment labelName = PathFragment.create(label.getName());
+     String libraryIdentifier =
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/cpp/CcModule.java b/src/main/java/com/google/devtools/build/lib/rules/cpp/CcModule.java
+index f7a93a1..8dcf04e 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/cpp/CcModule.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/cpp/CcModule.java
+@@ -74,7 +74,7 @@ import com.google.devtools.build.lib.vfs.PathFragment;
+ import com.google.devtools.build.lib.view.config.crosstool.CrosstoolConfig;
+ import com.google.devtools.build.lib.view.config.crosstool.CrosstoolConfig.CToolchain;
+ import com.google.devtools.build.lib.view.config.crosstool.CrosstoolConfig.ToolPath;
+-import java.util.Arrays;
++
+ import java.util.HashSet;
+ import java.util.List;
+ import java.util.Locale;
+@@ -1350,7 +1350,7 @@ public abstract class CcModule
+       Location location,
+       StarlarkContext starlarkContext)
+       throws InterruptedException, EvalException {
+-    validateLanguage(location, language);
++    location.validateLanguage(language, this);
+     SkylarkActionFactory actions = skylarkActionFactoryApi;
+     CcToolchainProvider ccToolchainProvider = convertFromNoneable(skylarkCcToolchainProvider, null);
+     FeatureConfigurationForStarlark featureConfiguration =
+@@ -1421,16 +1421,7 @@ public abstract class CcModule
+     }
+   }
+ 
+-  protected void validateLanguage(Location location, String language) throws EvalException {
+-    if (!Arrays.stream(Language.values())
+-        .map(Language::getRepresentation)
+-        .collect(ImmutableList.toImmutableList())
+-        .contains(language)) {
+-      throw new EvalException(location, "Language '" + language + "' is not supported");
+-    }
+-  }
+-
+-  protected void validateOutputType(Location location, String outputType) throws EvalException {
++    protected void validateOutputType(Location location, String outputType) throws EvalException {
+     if (!SUPPORTED_OUTPUT_TYPES.contains(outputType)) {
+       throw new EvalException(location, "Output type '" + outputType + "' is not supported");
+     }
+@@ -1574,7 +1565,7 @@ public abstract class CcModule
+           location,
+           environment.getGlobals().getLabel().getPackageIdentifier().toString());
+     }
+-    validateLanguage(location, language);
++    location.validateLanguage(language, this);
+     validateOutputType(location, outputType);
+     CcToolchainProvider ccToolchainProvider = convertFromNoneable(skylarkCcToolchainProvider, null);
+     FeatureConfigurationForStarlark featureConfiguration =
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/cpp/CcToolchainProvider.java b/src/main/java/com/google/devtools/build/lib/rules/cpp/CcToolchainProvider.java
+index 33f0c4a..dd3f16d 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/cpp/CcToolchainProvider.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/cpp/CcToolchainProvider.java
+@@ -219,28 +219,12 @@ public final class CcToolchainProvider extends ToolchainInfo
+   @Override
+   public boolean usePicForDynamicLibrariesFromStarlark(
+       FeatureConfigurationForStarlark featureConfiguration) {
+-    return usePicForDynamicLibraries(
+-        featureConfiguration
+-            .getCppConfigurationFromFeatureConfigurationCreatedForStarlark_andIKnowWhatImDoing(),
+-        featureConfiguration.getFeatureConfiguration());
++    return featureConfiguration
++        .getCppConfigurationFromFeatureConfigurationCreatedForStarlark_andIKnowWhatImDoing().usePicForDynamicLibraries(
++                    featureConfiguration.getFeatureConfiguration(), this);
+   }
+ 
+-  /**
+-   * Determines if we should apply -fPIC for this rule's C++ compilations. This determination is
+-   * generally made by the global C++ configuration settings "needsPic" and "usePicForBinaries".
+-   * However, an individual rule may override these settings by applying -fPIC" to its "nocopts"
+-   * attribute. This allows incompatible rules to "opt out" of global PIC settings (see bug:
+-   * "Provide a way to turn off -fPIC for targets that can't be built that way").
+-   *
+-   * @return true if this rule's compilations should apply -fPIC, false otherwise
+-   */
+-  public boolean usePicForDynamicLibraries(
+-      CppConfiguration cppConfiguration, FeatureConfiguration featureConfiguration) {
+-    return cppConfiguration.forcePic()
+-        || featureConfiguration.isEnabled(CppRuleClasses.SUPPORTS_PIC);
+-  }
+-
+-  /**
++    /**
+    * Returns true if PER_OBJECT_DEBUG_INFO are specified and supported by the CROSSTOOL for the
+    * build implied by the given configuration, toolchain and feature configuration.
+    */
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/cpp/CcToolchainSuite.java b/src/main/java/com/google/devtools/build/lib/rules/cpp/CcToolchainSuite.java
+index 5075713..d5975f4 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/cpp/CcToolchainSuite.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/cpp/CcToolchainSuite.java
+@@ -24,8 +24,6 @@ import com.google.devtools.build.lib.analysis.RuleContext;
+ import com.google.devtools.build.lib.analysis.Runfiles;
+ import com.google.devtools.build.lib.analysis.RunfilesProvider;
+ import com.google.devtools.build.lib.analysis.TemplateVariableInfo;
+-import com.google.devtools.build.lib.analysis.TransitiveInfoCollection;
+-import com.google.devtools.build.lib.analysis.platform.ToolchainInfo;
+ import com.google.devtools.build.lib.cmdline.Label;
+ import com.google.devtools.build.lib.packages.BuildType;
+ import java.util.Map;
+@@ -57,22 +55,22 @@ public class CcToolchainSuite implements RuleConfiguredTargetFactory {
+       // Cc_toolchains provide CcToolchainInfo already. Let's select the CcToolchainProvider from
+       // toolchains and provide it here as well.
+       ccToolchainProvider =
+-          selectCcToolchain(
++          selectedCcToolchain.selectCcToolchain(
+               CcToolchainProvider.class,
+               ruleContext,
+               transformedCpu,
+               compiler,
+-              selectedCcToolchain);
++                  this);
+     } else {
+       // This is not a platforms build, and cc_toolchain_suite is the one responsible for creating
+       // and providing CcToolchainInfo.
+       CcToolchainAttributesProvider selectedAttributes =
+-          selectCcToolchain(
++          selectedCcToolchain.selectCcToolchain(
+               CcToolchainAttributesProvider.class,
+               ruleContext,
+               transformedCpu,
+               compiler,
+-              selectedCcToolchain);
++                  this);
+       ccToolchainProvider =
+           CcToolchainProviderHelper.getCcToolchainProvider(ruleContext, selectedAttributes);
+ 
+@@ -104,33 +102,4 @@ public class CcToolchainSuite implements RuleConfiguredTargetFactory {
+     return builder.build();
+   }
+ 
+-  private <T extends HasCcToolchainLabel> T selectCcToolchain(
+-      Class<T> clazz,
+-      RuleContext ruleContext,
+-      String cpu,
+-      String compiler,
+-      Label selectedCcToolchain)
+-      throws RuleErrorException {
+-    T selectedAttributes = null;
+-    for (TransitiveInfoCollection dep : ruleContext.getPrerequisiteMap("toolchains").values()) {
+-      T attributes = (T) dep.get(ToolchainInfo.PROVIDER);
+-      if (attributes != null && attributes.getCcToolchainLabel().equals(selectedCcToolchain)) {
+-        selectedAttributes = attributes;
+-        break;
+-      }
+-    }
+-    if (selectedAttributes != null) {
+-      return clazz.cast(selectedAttributes);
+-    }
+-
+-    String errorMessage =
+-        String.format(
+-            "cc_toolchain_suite '%s' does not contain a toolchain for cpu '%s'",
+-            ruleContext.getLabel(), cpu);
+-    if (compiler != null) {
+-      errorMessage = errorMessage + " and compiler '" + compiler + "'.";
+-    }
+-    ruleContext.throwWithRuleError(errorMessage);
+-    throw new IllegalStateException("Should not be reached");
+-  }
+ }
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/cpp/CcToolchainVariables.java b/src/main/java/com/google/devtools/build/lib/rules/cpp/CcToolchainVariables.java
+index bc7ebed..2057126 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/cpp/CcToolchainVariables.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/cpp/CcToolchainVariables.java
+@@ -25,6 +25,7 @@ import com.google.common.collect.Sets;
+ import com.google.common.collect.Sets.SetView;
+ import com.google.devtools.build.lib.actions.Artifact;
+ import com.google.devtools.build.lib.actions.Artifact.ArtifactExpander;
++import com.google.devtools.build.lib.actions.CommandLineExpansionException;
+ import com.google.devtools.build.lib.collect.nestedset.NestedSet;
+ import com.google.devtools.build.lib.concurrent.BlazeInterners;
+ import com.google.devtools.build.lib.concurrent.ThreadSafety.Immutable;
+@@ -35,6 +36,8 @@ import com.google.devtools.build.lib.skyframe.serialization.autocodec.AutoCodec.
+ import com.google.devtools.build.lib.skylarkbuildapi.cpp.CcToolchainVariablesApi;
+ import com.google.devtools.build.lib.syntax.EvalException;
+ import com.google.devtools.build.lib.util.Pair;
++import com.google.devtools.build.lib.vfs.PathFragment;
++
+ import java.io.Serializable;
+ import java.util.ArrayList;
+ import java.util.LinkedHashMap;
+@@ -51,7 +54,28 @@ import javax.annotation.Nullable;
+  * instance could serve as a top level View used to expand all flag_groups.
+  */
+ public abstract class CcToolchainVariables implements CcToolchainVariablesApi {
+-  /**
++    /**
++     * @param parameterFilePath
++     * @param compileCommandLine
++     */
++    public List<String> getArguments(
++            @Nullable PathFragment parameterFilePath, CompileCommandLine compileCommandLine)
++        throws CommandLineExpansionException {
++        List<String> commandLine = new ArrayList<>();
++
++      // first: The command name.
++      commandLine.add(compileCommandLine.getToolPath());
++
++      // second: The compiler options.
++      if (parameterFilePath != null) {
++        commandLine.add("@" + parameterFilePath.getSafePathString());
++      } else {
++        commandLine.addAll(compileCommandLine.getCompilerOptions(this));
++      }
++      return commandLine;
++    }
++
++    /**
+    * A piece of a single string value.
+    *
+    * <p>A single value can contain a combination of text and variables (for example "-f
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/cpp/CompileCommandLine.java b/src/main/java/com/google/devtools/build/lib/rules/cpp/CompileCommandLine.java
+index a61ebe7..0706863 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/cpp/CompileCommandLine.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/cpp/CompileCommandLine.java
+@@ -24,7 +24,7 @@ import com.google.devtools.build.lib.rules.cpp.CcToolchainFeatures.FeatureConfig
+ import com.google.devtools.build.lib.skyframe.serialization.autocodec.AutoCodec;
+ import com.google.devtools.build.lib.skyframe.serialization.autocodec.AutoCodec.VisibleForSerialization;
+ import com.google.devtools.build.lib.util.Pair;
+-import com.google.devtools.build.lib.vfs.PathFragment;
++
+ import java.util.ArrayList;
+ import java.util.List;
+ import java.util.Map;
+@@ -82,28 +82,7 @@ public final class CompileCommandLine {
+     return featureConfiguration.getToolPathForAction(actionName);
+   }
+ 
+-  /**
+-   * @param overwrittenVariables: Variables that will overwrite original build variables. When null,
+-   *     unmodified original variables are used.
+-   */
+-  protected List<String> getArguments(
+-      @Nullable PathFragment parameterFilePath, @Nullable CcToolchainVariables overwrittenVariables)
+-      throws CommandLineExpansionException {
+-    List<String> commandLine = new ArrayList<>();
+-
+-    // first: The command name.
+-    commandLine.add(getToolPath());
+-
+-    // second: The compiler options.
+-    if (parameterFilePath != null) {
+-      commandLine.add("@" + parameterFilePath.getSafePathString());
+-    } else {
+-      commandLine.addAll(getCompilerOptions(overwrittenVariables));
+-    }
+-    return commandLine;
+-  }
+-
+-  public List<String> getCompilerOptions(@Nullable CcToolchainVariables overwrittenVariables)
++    public List<String> getCompilerOptions(@Nullable CcToolchainVariables overwrittenVariables)
+       throws CommandLineExpansionException {
+     try {
+       List<String> options = new ArrayList<>();
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/cpp/CppBuildInfo.java b/src/main/java/com/google/devtools/build/lib/rules/cpp/CppBuildInfo.java
+index 1c68580..43bd4ad 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/cpp/CppBuildInfo.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/cpp/CppBuildInfo.java
+@@ -16,14 +16,12 @@ package com.google.devtools.build.lib.rules.cpp;
+ import com.google.common.collect.ImmutableList;
+ import com.google.devtools.build.lib.actions.Action;
+ import com.google.devtools.build.lib.actions.Artifact;
+-import com.google.devtools.build.lib.actions.ArtifactRoot;
+ import com.google.devtools.build.lib.analysis.buildinfo.BuildInfoCollection;
+ import com.google.devtools.build.lib.analysis.buildinfo.BuildInfoFactory;
+ import com.google.devtools.build.lib.analysis.config.BuildConfiguration;
+ import com.google.devtools.build.lib.cmdline.RepositoryName;
+ import com.google.devtools.build.lib.vfs.PathFragment;
+ import java.util.ArrayList;
+-import java.util.Collection;
+ import java.util.List;
+ 
+ /**
+@@ -45,17 +43,17 @@ public final class CppBuildInfo implements BuildInfoFactory {
+   public BuildInfoCollection create(BuildInfoContext buildInfoContext, BuildConfiguration config,
+       Artifact buildInfo, Artifact buildChangelist, RepositoryName repositoryName) {
+     List<Action> actions = new ArrayList<>();
+-    WriteBuildInfoHeaderAction redactedInfo = getHeader(buildInfoContext, config,
++    WriteBuildInfoHeaderAction redactedInfo = repositoryName.getHeader(buildInfoContext, config,
+         BUILD_INFO_REDACTED_HEADER_NAME,
+-        Artifact.NO_ARTIFACTS, true, true, repositoryName);
+-    WriteBuildInfoHeaderAction nonvolatileInfo = getHeader(buildInfoContext, config,
++        Artifact.NO_ARTIFACTS, true, true, this);
++    WriteBuildInfoHeaderAction nonvolatileInfo = repositoryName.getHeader(buildInfoContext, config,
+         BUILD_INFO_NONVOLATILE_HEADER_NAME,
+         ImmutableList.of(buildInfo),
+-        false, true, repositoryName);
+-    WriteBuildInfoHeaderAction volatileInfo = getHeader(buildInfoContext, config,
++        false, true, this);
++    WriteBuildInfoHeaderAction volatileInfo = repositoryName.getHeader(buildInfoContext, config,
+         BUILD_INFO_VOLATILE_HEADER_NAME,
+         ImmutableList.of(buildChangelist),
+-        true, false, repositoryName);
++        true, false, this);
+     actions.add(redactedInfo);
+     actions.add(nonvolatileInfo);
+     actions.add(volatileInfo);
+@@ -64,20 +62,7 @@ public final class CppBuildInfo implements BuildInfoFactory {
+         ImmutableList.of(redactedInfo.getPrimaryOutput()));
+   }
+ 
+-  private WriteBuildInfoHeaderAction getHeader(BuildInfoContext buildInfoContext,
+-      BuildConfiguration config, PathFragment headerName,
+-      Collection<Artifact> inputs,
+-      boolean writeVolatileInfo, boolean writeNonVolatileInfo, RepositoryName repositoryName) {
+-    ArtifactRoot outputPath = config.getIncludeDirectory(repositoryName);
+-    final Artifact header =
+-        buildInfoContext.getBuildInfoArtifact(headerName, outputPath,
+-            writeVolatileInfo && !inputs.isEmpty()
+-            ? BuildInfoType.NO_REBUILD : BuildInfoType.FORCE_REBUILD_IF_CHANGED);
+-    return new WriteBuildInfoHeaderAction(
+-        inputs, header, writeVolatileInfo, writeNonVolatileInfo);
+-  }
+-
+-  @Override
++    @Override
+   public BuildInfoKey getKey() {
+     return KEY;
+   }
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/cpp/CppCompileAction.java b/src/main/java/com/google/devtools/build/lib/rules/cpp/CppCompileAction.java
+index 3aeff9b..6dc35b8 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/cpp/CppCompileAction.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/cpp/CppCompileAction.java
+@@ -759,7 +759,7 @@ public class CppCompileAction extends AbstractAction
+ 
+   @Override
+   public List<String> getArguments() throws CommandLineExpansionException {
+-    return compileCommandLine.getArguments(paramFilePath, overwrittenVariables);
++    return overwrittenVariables.getArguments(paramFilePath, compileCommandLine);
+   }
+ 
+   public ParamFileActionInput getParamFileActionInput() {
+@@ -1165,7 +1165,7 @@ public class CppCompileAction extends AbstractAction
+       List<PathFragment> builtInIncludeDirectories,
+       Iterable<Artifact> inputsForInvalidation) {
+     fp.addUUID(actionClassId);
+-    env.addTo(fp);
++    fp.addTo(env);
+     fp.addStringMap(environmentVariables);
+     fp.addStringMap(executionInfo);
+     fp.addBytes(commandLineKey);
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/cpp/CppConfiguration.java b/src/main/java/com/google/devtools/build/lib/rules/cpp/CppConfiguration.java
+index 3b2e034..9ce83f8 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/cpp/CppConfiguration.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/cpp/CppConfiguration.java
+@@ -53,7 +53,24 @@ public final class CppConfiguration extends BuildConfiguration.Fragment
+   /** String constant for CC_FLAGS make variable name */
+   public static final String CC_FLAGS_MAKE_VARIABLE_NAME = "CC_FLAGS";
+ 
+-  /**
++    /**
++     * Determines if we should apply -fPIC for this rule's C++ compilations. This determination is
++     * generally made by the global C++ configuration settings "needsPic" and "usePicForBinaries".
++     * However, an individual rule may override these settings by applying -fPIC" to its "nocopts"
++     * attribute. This allows incompatible rules to "opt out" of global PIC settings (see bug:
++     * "Provide a way to turn off -fPIC for targets that can't be built that way").
++     *
++     * @return true if this rule's compilations should apply -fPIC, false otherwise
++     * @param featureConfiguration
++     * @param ccToolchainProvider
++     */
++    public boolean usePicForDynamicLibraries(
++            CcToolchainFeatures.FeatureConfiguration featureConfiguration, CcToolchainProvider ccToolchainProvider) {
++        return forcePic()
++          || featureConfiguration.isEnabled(CppRuleClasses.SUPPORTS_PIC);
++    }
++
++    /**
+    * An enumeration of all the tools that comprise a toolchain.
+    */
+   public enum Tool {
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/cpp/CppHelper.java b/src/main/java/com/google/devtools/build/lib/rules/cpp/CppHelper.java
+index 4b8e27d..f5c8c34 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/cpp/CppHelper.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/cpp/CppHelper.java
+@@ -494,7 +494,7 @@ public class CppHelper {
+       CppConfiguration cppConfiguration,
+       FeatureConfiguration featureConfiguration) {
+     return cppConfiguration.forcePic()
+-        || (toolchain.usePicForDynamicLibraries(cppConfiguration, featureConfiguration)
++        || (cppConfiguration.usePicForDynamicLibraries(featureConfiguration, toolchain)
+             && cppConfiguration.getCompilationMode() != CompilationMode.OPT);
+   }
+ 
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/cpp/CppLinkActionBuilder.java b/src/main/java/com/google/devtools/build/lib/rules/cpp/CppLinkActionBuilder.java
+index 262e5e1..27cd41e 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/cpp/CppLinkActionBuilder.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/cpp/CppLinkActionBuilder.java
+@@ -1055,8 +1055,8 @@ public class CppLinkActionBuilder {
+                 featureConfiguration,
+                 cppConfiguration.forcePic()
+                     || (linkType.isDynamicLibrary()
+-                        && toolchain.usePicForDynamicLibraries(
+-                            cppConfiguration, featureConfiguration)),
++                        && cppConfiguration.usePicForDynamicLibraries(
++                        featureConfiguration, toolchain)),
+                 Matcher.quoteReplacement(
+                     isNativeDeps && cppConfiguration.shareNativeDeps()
+                         ? output.getExecPathString()
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/cpp/LtoBackendAction.java b/src/main/java/com/google/devtools/build/lib/rules/cpp/LtoBackendAction.java
+index 3fe9cea..0c765d5 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/cpp/LtoBackendAction.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/cpp/LtoBackendAction.java
+@@ -201,7 +201,7 @@ public final class LtoBackendAction extends SpawnAction {
+       bitcodeFiles.addToFingerprint(fp);
+       fp.addPath(imports.getExecPath());
+     }
+-    env.addTo(fp);
++    fp.addTo(env);
+     fp.addStringMap(getExecutionInfo());
+   }
+ 
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/java/ClasspathConfiguredFragment.java b/src/main/java/com/google/devtools/build/lib/rules/java/ClasspathConfiguredFragment.java
+index 707e75e..76537a1 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/java/ClasspathConfiguredFragment.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/java/ClasspathConfiguredFragment.java
+@@ -41,7 +41,7 @@ public final class ClasspathConfiguredFragment {
+       boolean isNeverLink,
+       ImmutableList<Artifact> bootClasspath) {
+     if (!isNeverLink) {
+-      runtimeClasspath = getRuntimeClasspathList(attributes, javaArtifacts);
++      runtimeClasspath = attributes.getRuntimeClasspathList(javaArtifacts, this);
+     } else {
+       runtimeClasspath = NestedSetBuilder.emptySet(Order.NAIVE_LINK_ORDER);
+     }
+@@ -55,22 +55,7 @@ public final class ClasspathConfiguredFragment {
+     bootClasspath = ImmutableList.of();
+   }
+ 
+-  /**
+-   * Returns the runtime class path. It consists of the concatenation of the instrumentation class
+-   * path, output jars and the runtime time class path of the transitive dependencies of this rule.
+-   *
+-   * @param attributes the processed attributes of this Java target
+-   * @return a {@List} of artifacts that comprise the runtime class path.
+-   */
+-  private NestedSet<Artifact> getRuntimeClasspathList(
+-      JavaTargetAttributes attributes, JavaCompilationArtifacts javaArtifacts) {
+-    NestedSetBuilder<Artifact> builder = NestedSetBuilder.naiveLinkOrder();
+-    builder.addAll(javaArtifacts.getRuntimeJars());
+-    builder.addTransitive(attributes.getRuntimeClassPath());
+-    return builder.build();
+-  }
+-
+-  /**
++    /**
+    * Returns the classpath to be passed to the JVM when running a target containing this fragment.
+    */
+   public NestedSet<Artifact> getRuntimeClasspath() {
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/java/JavaCompileAction.java b/src/main/java/com/google/devtools/build/lib/rules/java/JavaCompileAction.java
+index bc7b604..12e5b39 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/java/JavaCompileAction.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/java/JavaCompileAction.java
+@@ -177,7 +177,7 @@ public class JavaCompileAction extends AbstractAction
+     for (Artifact runfilesManifest : runfilesManifests) {
+       fp.addPath(runfilesManifest.getExecPath());
+     }
+-    env.addTo(fp);
++    fp.addTo(env);
+     fp.addStringMap(executionInfo);
+   }
+ 
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/java/JavaSkylarkApiProvider.java b/src/main/java/com/google/devtools/build/lib/rules/java/JavaSkylarkApiProvider.java
+index 4506b0d..eb132ac 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/java/JavaSkylarkApiProvider.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/java/JavaSkylarkApiProvider.java
+@@ -74,7 +74,7 @@ public final class JavaSkylarkApiProvider extends SkylarkApiProvider
+   @Override
+   public NestedSet<Artifact> getSourceJars(Location location, StarlarkSemantics semantics)
+       throws EvalException {
+-    checkLegacyJavaProviderFlag(location, semantics);
++    semantics.checkLegacyJavaProviderFlag(location, this);
+     JavaSourceJarsProvider sourceJarsProvider = getProvider(JavaSourceJarsProvider.class);
+     if (sourceJarsProvider == null) {
+       return NestedSetBuilder.emptySet(Order.STABLE_ORDER);
+@@ -85,7 +85,7 @@ public final class JavaSkylarkApiProvider extends SkylarkApiProvider
+   @Override
+   public NestedSet<Artifact> getTransitiveDeps(Location location, StarlarkSemantics semantics)
+       throws EvalException {
+-    checkLegacyJavaProviderFlag(location, semantics);
++    semantics.checkLegacyJavaProviderFlag(location, this);
+     JavaCompilationArgsProvider compilationArgsProvider =
+         getProvider(JavaCompilationArgsProvider.class);
+     if (compilationArgsProvider == null) {
+@@ -97,7 +97,7 @@ public final class JavaSkylarkApiProvider extends SkylarkApiProvider
+   @Override
+   public NestedSet<Artifact> getTransitiveRuntimeDeps(
+       Location location, StarlarkSemantics semantics) throws EvalException {
+-    checkLegacyJavaProviderFlag(location, semantics);
++    semantics.checkLegacyJavaProviderFlag(location, this);
+     JavaCompilationArgsProvider compilationArgsProvider =
+         getProvider(JavaCompilationArgsProvider.class);
+     if (compilationArgsProvider == null) {
+@@ -109,7 +109,7 @@ public final class JavaSkylarkApiProvider extends SkylarkApiProvider
+   @Override
+   public NestedSet<Artifact> getTransitiveSourceJars(Location location, StarlarkSemantics semantics)
+       throws EvalException {
+-    checkLegacyJavaProviderFlag(location, semantics);
++    semantics.checkLegacyJavaProviderFlag(location, this);
+     JavaSourceJarsProvider sourceJarsProvider = getProvider(JavaSourceJarsProvider.class);
+     if (sourceJarsProvider == null) {
+       return NestedSetBuilder.emptySet(Order.STABLE_ORDER);
+@@ -120,14 +120,14 @@ public final class JavaSkylarkApiProvider extends SkylarkApiProvider
+   @Override
+   public JavaRuleOutputJarsProvider getOutputJars(Location location, StarlarkSemantics semantics)
+       throws EvalException {
+-    checkLegacyJavaProviderFlag(location, semantics);
++    semantics.checkLegacyJavaProviderFlag(location, this);
+     return getProvider(JavaRuleOutputJarsProvider.class);
+   }
+ 
+   @Override
+   public NestedSet<Label> getTransitiveExports(Location location, StarlarkSemantics semantics)
+       throws EvalException {
+-    checkLegacyJavaProviderFlag(location, semantics);
++    semantics.checkLegacyJavaProviderFlag(location, this);
+     JavaExportsProvider exportsProvider = getProvider(JavaExportsProvider.class);
+     if (exportsProvider != null) {
+       return exportsProvider.getTransitiveExports();
+@@ -139,25 +139,15 @@ public final class JavaSkylarkApiProvider extends SkylarkApiProvider
+   @Override
+   public JavaGenJarsProvider getGenJarsProvider(Location location, StarlarkSemantics semantics)
+       throws EvalException {
+-    checkLegacyJavaProviderFlag(location, semantics);
++    semantics.checkLegacyJavaProviderFlag(location, this);
+     return getProvider(JavaGenJarsProvider.class);
+   }
+ 
+   @Override
+   public JavaCompilationInfoProvider getCompilationInfoProvider(
+       Location location, StarlarkSemantics semantics) throws EvalException {
+-    checkLegacyJavaProviderFlag(location, semantics);
++    semantics.checkLegacyJavaProviderFlag(location, this);
+     return getProvider(JavaCompilationInfoProvider.class);
+   }
+ 
+-  private void checkLegacyJavaProviderFlag(Location location, StarlarkSemantics semantics)
+-      throws EvalException {
+-    if (semantics.incompatibleDisallowLegacyJavaProvider()) {
+-      throw new EvalException(
+-          location,
+-          "The .java provider is deprecated and cannot be used "
+-              + "when --incompatible_disallow_legacy_java_provider is set. "
+-              + "Please migrate to the JavaInfo Skylark provider.");
+-    }
+-  }
+ }
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/java/JavaTargetAttributes.java b/src/main/java/com/google/devtools/build/lib/rules/java/JavaTargetAttributes.java
+index d07f3f7..d4991e4 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/java/JavaTargetAttributes.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/java/JavaTargetAttributes.java
+@@ -47,7 +47,24 @@ public class JavaTargetAttributes {
+     }
+   }
+ 
+-  /** A builder class for JavaTargetAttributes. */
++    /**
++     * Returns the runtime class path. It consists of the concatenation of the instrumentation class
++     * path, output jars and the runtime time class path of the transitive dependencies of this rule.
++     *
++     *
++     * @param javaArtifacts
++     * @param classpathConfiguredFragment
++     * @return a {@List} of artifacts that comprise the runtime class path.
++     */
++    public NestedSet<Artifact> getRuntimeClasspathList(
++            JavaCompilationArtifacts javaArtifacts, ClasspathConfiguredFragment classpathConfiguredFragment) {
++        NestedSetBuilder<Artifact> builder = NestedSetBuilder.naiveLinkOrder();
++      builder.addAll(javaArtifacts.getRuntimeJars());
++      builder.addTransitive(getRuntimeClassPath());
++      return builder.build();
++    }
++
++    /** A builder class for JavaTargetAttributes. */
+   public static class Builder {
+ 
+     // The order of source files is important, and there must not be duplicates.
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/objc/AppleCrosstoolTransition.java b/src/main/java/com/google/devtools/build/lib/rules/objc/AppleCrosstoolTransition.java
+index 399412d..aec4f4b 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/objc/AppleCrosstoolTransition.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/objc/AppleCrosstoolTransition.java
+@@ -22,7 +22,6 @@ import com.google.devtools.build.lib.analysis.config.CoreOptions;
+ import com.google.devtools.build.lib.analysis.config.transitions.PatchTransition;
+ import com.google.devtools.build.lib.cmdline.Label;
+ import com.google.devtools.build.lib.rules.apple.AppleCommandLineOptions;
+-import com.google.devtools.build.lib.rules.apple.AppleConfiguration;
+ import com.google.devtools.build.lib.rules.apple.AppleConfiguration.ConfigurationDistinguisher;
+ import com.google.devtools.build.lib.rules.apple.ApplePlatform;
+ import com.google.devtools.build.lib.rules.cpp.CppOptions;
+@@ -55,7 +54,7 @@ public class AppleCrosstoolTransition implements PatchTransition {
+     String cpu =
+         ApplePlatform.cpuStringForTarget(
+             appleOptions.applePlatformType,
+-            determineSingleArchitecture(appleOptions, configOptions));
++            appleOptions.determineSingleArchitecture(configOptions, this));
+     setAppleCrosstoolTransitionConfiguration(buildOptions, result, cpu);
+     return result;
+   }
+@@ -102,37 +101,4 @@ public class AppleCrosstoolTransition implements PatchTransition {
+     to.get(PlatformOptions.class).platforms = ImmutableList.of();
+   }
+ 
+-  /** Returns the Apple architecture implied by AppleCommandLineOptions and CoreOptions */
+-  private String determineSingleArchitecture(
+-      AppleCommandLineOptions appleOptions, CoreOptions configOptions) {
+-    if (!Strings.isNullOrEmpty(appleOptions.appleSplitCpu)) {
+-      return appleOptions.appleSplitCpu;
+-    }
+-    switch (appleOptions.applePlatformType) {
+-      case IOS:
+-        if (!appleOptions.iosMultiCpus.isEmpty()) {
+-          return appleOptions.iosMultiCpus.get(0);
+-        } else {
+-          return AppleConfiguration.iosCpuFromCpu(configOptions.cpu);
+-        }
+-      case WATCHOS:
+-        if (appleOptions.watchosCpus.isEmpty()) {
+-          return AppleCommandLineOptions.DEFAULT_WATCHOS_CPU;
+-        }
+-        return appleOptions.watchosCpus.get(0);
+-      case TVOS:
+-        if (appleOptions.tvosCpus.isEmpty()) {
+-          return AppleCommandLineOptions.DEFAULT_TVOS_CPU;
+-        }
+-        return appleOptions.tvosCpus.get(0);
+-      case MACOS:
+-        if (appleOptions.macosCpus.isEmpty()) {
+-          return AppleCommandLineOptions.DEFAULT_MACOS_CPU;
+-        }
+-        return appleOptions.macosCpus.get(0);
+-      default:
+-        throw new IllegalArgumentException(
+-            "Unhandled platform type " + appleOptions.applePlatformType);
+-    }
+-  }
+ }
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/objc/AppleSkylarkCommon.java b/src/main/java/com/google/devtools/build/lib/rules/objc/AppleSkylarkCommon.java
+index ea014b2..44d021f 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/objc/AppleSkylarkCommon.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/objc/AppleSkylarkCommon.java
+@@ -25,12 +25,9 @@ import com.google.devtools.build.lib.analysis.skylark.SkylarkRuleContext;
+ import com.google.devtools.build.lib.collect.nestedset.NestedSet;
+ import com.google.devtools.build.lib.collect.nestedset.NestedSetBuilder;
+ import com.google.devtools.build.lib.collect.nestedset.Order;
+-import com.google.devtools.build.lib.events.Location;
+-import com.google.devtools.build.lib.packages.NativeProvider;
+ import com.google.devtools.build.lib.packages.Provider;
+ import com.google.devtools.build.lib.packages.RuleClass.ConfiguredTargetFactory.RuleErrorException;
+ import com.google.devtools.build.lib.packages.SkylarkAspect;
+-import com.google.devtools.build.lib.packages.SkylarkInfo;
+ import com.google.devtools.build.lib.packages.StructImpl;
+ import com.google.devtools.build.lib.rules.apple.AppleConfiguration;
+ import com.google.devtools.build.lib.rules.apple.ApplePlatform;
+@@ -45,7 +42,6 @@ import com.google.devtools.build.lib.skylarkbuildapi.FileApi;
+ import com.google.devtools.build.lib.skylarkbuildapi.SkylarkRuleContextApi;
+ import com.google.devtools.build.lib.skylarkbuildapi.SplitTransitionProviderApi;
+ import com.google.devtools.build.lib.skylarkbuildapi.apple.AppleCommonApi;
+-import com.google.devtools.build.lib.skylarkinterface.SkylarkValue;
+ import com.google.devtools.build.lib.syntax.Environment;
+ import com.google.devtools.build.lib.syntax.EvalException;
+ import com.google.devtools.build.lib.syntax.Runtime;
+@@ -246,7 +242,7 @@ public class AppleSkylarkCommon
+               ruleContext,
+               extraLinkopts.getImmutableList(),
+               SkylarkList.castList(extraLinkInputs, Artifact.class, "extra_link_inputs"));
+-      return createAppleBinaryOutputSkylarkStruct(appleBinaryOutput, environment);
++      return environment.createAppleBinaryOutputSkylarkStruct(appleBinaryOutput, this);
+     } catch (RuleErrorException | ActionConflictException exception) {
+       throw new EvalException(null, exception);
+     }
+@@ -262,25 +258,4 @@ public class AppleSkylarkCommon
+     return objcProtoAspect;
+   }
+ 
+-  /**
+-   * Creates a Skylark struct that contains the results of the {@code link_multi_arch_binary}
+-   * function.
+-   */
+-  private StructImpl createAppleBinaryOutputSkylarkStruct(
+-      AppleBinaryOutput output, Environment environment) {
+-    Provider constructor =
+-        new NativeProvider<StructImpl>(StructImpl.class, "apple_binary_output") {};
+-    // We have to transform the output group dictionary into one that contains SkylarkValues instead
+-    // of plain NestedSets because the Skylark caller may want to return this directly from their
+-    // implementation function.
+-    Map<String, SkylarkValue> outputGroups =
+-        Maps.transformValues(output.getOutputGroups(), v -> SkylarkNestedSet.of(Artifact.class, v));
+-
+-    ImmutableMap<String, Object> fields =
+-        ImmutableMap.of(
+-            "binary_provider", output.getBinaryInfoProvider(),
+-            "debug_outputs_provider", output.getDebugOutputsProvider(),
+-            "output_groups", SkylarkDict.copyOf(environment, outputGroups));
+-    return SkylarkInfo.createSchemaless(constructor, fields, Location.BUILTIN);
+-  }
+ }
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/objc/CompilationSupport.java b/src/main/java/com/google/devtools/build/lib/rules/objc/CompilationSupport.java
+index ff5c600..97d20d0 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/objc/CompilationSupport.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/objc/CompilationSupport.java
+@@ -29,7 +29,6 @@ import static com.google.devtools.build.lib.rules.objc.ObjcProvider.INCLUDE;
+ import static com.google.devtools.build.lib.rules.objc.ObjcProvider.INCLUDE_SYSTEM;
+ import static com.google.devtools.build.lib.rules.objc.ObjcProvider.LIBRARY;
+ import static com.google.devtools.build.lib.rules.objc.ObjcProvider.LINK_INPUTS;
+-import static com.google.devtools.build.lib.rules.objc.ObjcProvider.SDK_DYLIB;
+ import static com.google.devtools.build.lib.rules.objc.ObjcProvider.SDK_FRAMEWORK;
+ import static com.google.devtools.build.lib.rules.objc.ObjcProvider.STATIC_FRAMEWORK_FILE;
+ import static com.google.devtools.build.lib.rules.objc.ObjcRuleClasses.COMPILABLE_SRCS_TYPE;
+@@ -1222,7 +1221,7 @@ public class CompilationSupport {
+             .setFrameworkNames(frameworkNames(objcProvider))
+             .setFrameworkSearchPath(
+                 frameworkLibrarySearchPaths(objcProvider, ruleContext, buildConfiguration))
+-            .setLibraryNames(libraryNames(objcProvider))
++            .setLibraryNames(objcProvider.libraryNames(this))
+             .setForceLoadArtifacts(getForceLoadArtifacts(objcProvider))
+             .setAttributeLinkopts(attributes.linkopts())
+             .addVariableCategory(VariableCategory.EXECUTABLE_LINKING_VARIABLES);
+@@ -1469,21 +1468,7 @@ public class CompilationSupport {
+     return names;
+   }
+ 
+-  /** Returns libraries that should be passed to the linker. */
+-  private ImmutableList<String> libraryNames(ObjcProvider objcProvider) {
+-    ImmutableList.Builder<String> args = new ImmutableList.Builder<>();
+-    for (String dylib : objcProvider.get(SDK_DYLIB)) {
+-      if (dylib.startsWith("lib")) {
+-        // remove lib prefix if it exists which is standard
+-        // for libraries (libxml.dylib -> -lxml).
+-        dylib = dylib.substring(3);
+-      }
+-      args.add(dylib);
+-    }
+-    return args.build();
+-  }
+-
+-  /** Returns libraries that should be passed into the linker with {@code -force_load}. */
++    /** Returns libraries that should be passed into the linker with {@code -force_load}. */
+   private ImmutableSet<Artifact> getForceLoadArtifacts(ObjcProvider objcProvider) {
+     List<Artifact> ccLibraries = objcProvider.getCcLibraries();
+     Iterable<Artifact> ccLibrariesToForceLoad =
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/objc/ObjcProvider.java b/src/main/java/com/google/devtools/build/lib/rules/objc/ObjcProvider.java
+index a5a8d92..7ce7145 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/objc/ObjcProvider.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/objc/ObjcProvider.java
+@@ -93,7 +93,22 @@ public final class ObjcProvider extends Info implements ObjcProviderApi<Artifact
+   /** Expected suffix for a framework-containing directory. */
+   public static final String FRAMEWORK_SUFFIX = ".framework";
+ 
+-  /**
++    /** Returns libraries that should be passed to the linker.
++     * @param compilationSupport*/
++    public ImmutableList<String> libraryNames(CompilationSupport compilationSupport) {
++        ImmutableList.Builder<String> args = new ImmutableList.Builder<>();
++      for (String dylib : get(SDK_DYLIB)) {
++        if (dylib.startsWith("lib")) {
++          // remove lib prefix if it exists which is standard
++          // for libraries (libxml.dylib -> -lxml).
++          dylib = dylib.substring(3);
++        }
++        args.add(dylib);
++      }
++      return args.build();
++    }
++
++    /**
+    * Represents one of the things this provider can provide transitively. Things are provided as
+    * {@link NestedSet}s of type E.
+    */
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/python/PythonOptions.java b/src/main/java/com/google/devtools/build/lib/rules/python/PythonOptions.java
+index 11a4cc0..826c866 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/python/PythonOptions.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/python/PythonOptions.java
+@@ -323,42 +323,16 @@ public class PythonOptions extends FragmentOptions {
+     }
+   }
+ 
+-  /**
+-   * Returns whether a Python version transition to {@code version} is allowed and not a no-op.
+-   *
+-   * <p>Under the new semantics ({@link #incompatibleAllowPythonVersionTransitions} is true),
+-   * version transitions are always allowed, so this essentially returns whether the new version is
+-   * different from the existing one.
+-   *
+-   * <p>Under the old semantics ({@link #incompatibleAllowPythonVersionTransitions} is false),
+-   * version transitions are not allowed once the version has already been set ({@link #forcePython}
+-   * or {@link #pythonVersion} is non-null). Due to a historical bug, it is also not allowed to
+-   * transition the version to the hard-coded default value. Under these constraints, there is only
+-   * one transition possible, from null to the non-default value, and it is never a no-op.
+-   *
+-   * @throws IllegalArgumentException if {@code version} is not {@code PY2} or {@code PY3}
+-   */
+-  public boolean canTransitionPythonVersion(PythonVersion version) {
+-    Preconditions.checkArgument(version.isTargetValue());
+-    if (incompatibleAllowPythonVersionTransitions) {
+-      return !version.equals(getPythonVersion());
+-    } else {
+-      boolean currentlyUnset = forcePython == null && pythonVersion == null;
+-      boolean transitioningToNonDefault = !version.equals(getDefaultPythonVersion());
+-      return currentlyUnset && transitioningToNonDefault;
+-    }
+-  }
+-
+-  /**
++    /**
+    * Manipulates the Python version fields so that {@link #getPythonVersion()} returns {@code
+    * version}.
+    *
+    * <p>This method is a mutation on the current instance, so it should only be invoked on a newly
+    * constructed instance. The mutation does not depend on whether or not {@link
+-   * #canTransitionPythonVersion} would return true.
++   * PythonVersion#canTransitionPythonVersion} would return true.
+    *
+    * <p>If the old semantics are in effect ({@link #incompatibleAllowPythonVersionTransitions} is
+-   * false), after this method is called {@link #canTransitionPythonVersion} will return false.
++   * false), after this method is called {@link PythonVersion#canTransitionPythonVersion} will return false.
+    *
+    * <p>To help avoid breaking old-API {@code select()} expressions that check the value of {@code
+    * "force_python"}, both the old and new flags are updated even though {@code --python_version}
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/python/PythonVersion.java b/src/main/java/com/google/devtools/build/lib/rules/python/PythonVersion.java
+index 3d5cca8..b27888b 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/python/PythonVersion.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/python/PythonVersion.java
+@@ -166,5 +166,32 @@ public enum PythonVersion {
+     }
+     return PythonVersion.valueOf(str);
+   }
++
++    /**
++     * Returns whether a Python version transition to {@code version} is allowed and not a no-op.
++     *
++     * <p>Under the new semantics ({@link #incompatibleAllowPythonVersionTransitions} is true),
++     * version transitions are always allowed, so this essentially returns whether the new version is
++     * different from the existing one.
++     *
++     * <p>Under the old semantics ({@link #incompatibleAllowPythonVersionTransitions} is false),
++     * version transitions are not allowed once the version has already been set ({@link #forcePython}
++     * or {@link #pythonVersion} is non-null). Due to a historical bug, it is also not allowed to
++     * transition the version to the hard-coded default value. Under these constraints, there is only
++     * one transition possible, from null to the non-default value, and it is never a no-op.
++     *
++     * @throws IllegalArgumentException if {@code version} is not {@code PY2} or {@code PY3}
++     * @param pythonOptions
++     */
++    public boolean canTransitionPythonVersion(PythonOptions pythonOptions) {
++        Preconditions.checkArgument(isTargetValue());
++      if (pythonOptions.incompatibleAllowPythonVersionTransitions) {
++        return !equals(pythonOptions.getPythonVersion());
++      } else {
++        boolean currentlyUnset = pythonOptions.forcePython == null && pythonOptions.pythonVersion == null;
++        boolean transitioningToNonDefault = !equals(pythonOptions.getDefaultPythonVersion());
++        return currentlyUnset && transitioningToNonDefault;
++      }
++    }
+ }
+ 
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/python/PythonVersionTransition.java b/src/main/java/com/google/devtools/build/lib/rules/python/PythonVersionTransition.java
+index 0248bc9..5502b84 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/python/PythonVersionTransition.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/python/PythonVersionTransition.java
+@@ -23,7 +23,7 @@ import java.util.Objects;
+  * An abstract configuration transition that sets the Python version as per its {@link
+  * #determineNewVersion} method, if transitioning is allowed.
+  *
+- * <p>See {@link PythonOptions#canTransitionPythonVersion} for information on when transitioning is
++ * <p>See {@link PythonVersion#canTransitionPythonVersion} for information on when transitioning is
+  * allowed.
+  *
+  * <p>Subclasses should override {@link #determineNewVersion}, as well as {@link #equals} and {@link
+@@ -65,7 +65,7 @@ public abstract class PythonVersionTransition implements PatchTransition {
+     Preconditions.checkArgument(newVersion.isTargetValue());
+ 
+     PythonOptions opts = options.get(PythonOptions.class);
+-    if (!opts.canTransitionPythonVersion(newVersion)) {
++    if (!newVersion.canTransitionPythonVersion(opts)) {
+       return options;
+     }
+     BuildOptions newOptions = options.clone();
+diff --git a/src/main/java/com/google/devtools/build/lib/rules/repository/WorkspaceAttributeMapper.java b/src/main/java/com/google/devtools/build/lib/rules/repository/WorkspaceAttributeMapper.java
+index 812c708..0cc02c4 100644
+--- a/src/main/java/com/google/devtools/build/lib/rules/repository/WorkspaceAttributeMapper.java
++++ b/src/main/java/com/google/devtools/build/lib/rules/repository/WorkspaceAttributeMapper.java
+@@ -17,6 +17,8 @@ package com.google.devtools.build.lib.rules.repository;
+ import static com.google.common.base.Preconditions.checkNotNull;
+ 
+ import com.google.common.base.Preconditions;
++import com.google.devtools.build.lib.bazel.repository.MavenDownloader;
++import com.google.devtools.build.lib.bazel.repository.cache.RepositoryCache;
+ import com.google.devtools.build.lib.cmdline.LabelConstants;
+ import com.google.devtools.build.lib.packages.AggregatingAttributeMapper;
+ import com.google.devtools.build.lib.packages.BuildType.SelectorList;
+@@ -24,6 +26,7 @@ import com.google.devtools.build.lib.packages.Rule;
+ import com.google.devtools.build.lib.syntax.EvalException;
+ import com.google.devtools.build.lib.syntax.Type;
+ import javax.annotation.Nullable;
++import java.io.IOException;
+ 
+ /**
+  * An attribute mapper for workspace rules. Similar to NonconfigurableAttributeWrapper, but throws
+@@ -85,4 +88,16 @@ public class WorkspaceAttributeMapper {
+   public Iterable<String> getAttributeNames() {
+     return AggregatingAttributeMapper.of(rule).getAttributeNames();
+   }
++
++    public String retrieveSha1(String name, String attribute, MavenDownloader mavenDownloader)
++        throws EvalException, IOException {
++        String sha1 =
++          isAttributeValueExplicitlySpecified(attribute)
++              ? get(attribute, Type.STRING)
++              : null;
++      if (sha1 != null && !RepositoryCache.KeyType.SHA1.isValid(sha1)) {
++        throw new IOException("Invalid SHA-1 for maven_jar " + name + ": '" + sha1 + "'");
++      }
++      return sha1;
++    }
+ }
+diff --git a/src/main/java/com/google/devtools/build/lib/runtime/BlazeRuntime.java b/src/main/java/com/google/devtools/build/lib/runtime/BlazeRuntime.java
+index 7e57e8b..6495e07 100644
+--- a/src/main/java/com/google/devtools/build/lib/runtime/BlazeRuntime.java
++++ b/src/main/java/com/google/devtools/build/lib/runtime/BlazeRuntime.java
+@@ -41,9 +41,8 @@ import com.google.devtools.build.lib.events.EventHandler;
+ import com.google.devtools.build.lib.events.ExtendedEventHandler;
+ import com.google.devtools.build.lib.events.OutputFilter;
+ import com.google.devtools.build.lib.exec.BinTools;
++import com.google.devtools.build.lib.packages.*;
+ import com.google.devtools.build.lib.packages.Package;
+-import com.google.devtools.build.lib.packages.PackageFactory;
+-import com.google.devtools.build.lib.packages.RuleClassProvider;
+ import com.google.devtools.build.lib.profiler.AutoProfiler;
+ import com.google.devtools.build.lib.profiler.MemoryProfiler;
+ import com.google.devtools.build.lib.profiler.ProfilePhase;
+@@ -56,6 +55,7 @@ import com.google.devtools.build.lib.query2.QueryEnvironmentFactory;
+ import com.google.devtools.build.lib.query2.engine.QueryEnvironment.QueryFunction;
+ import com.google.devtools.build.lib.query2.query.output.OutputFormatter;
+ import com.google.devtools.build.lib.runtime.BlazeCommandDispatcher.LockingMode;
++import com.google.devtools.build.lib.runtime.commands.DumpCommand;
+ import com.google.devtools.build.lib.runtime.commands.InfoItem;
+ import com.google.devtools.build.lib.runtime.proto.InvocationPolicyOuterClass.InvocationPolicy;
+ import com.google.devtools.build.lib.server.CommandProtos.EnvironmentVariable;
+@@ -100,15 +100,7 @@ import java.io.PrintStream;
+ import java.lang.reflect.Type;
+ import java.nio.charset.StandardCharsets;
+ import java.time.Duration;
+-import java.util.ArrayList;
+-import java.util.Arrays;
+-import java.util.Iterator;
+-import java.util.LinkedHashMap;
+-import java.util.List;
+-import java.util.Locale;
+-import java.util.Map;
+-import java.util.Optional;
+-import java.util.UUID;
++import java.util.*;
+ import java.util.concurrent.Future;
+ import java.util.concurrent.TimeUnit;
+ import java.util.concurrent.atomic.AtomicInteger;
+@@ -752,7 +744,33 @@ public final class BlazeRuntime implements BugReport.BlazeRuntimeInterface {
+     return ruleClassProvider.createBuildOptions(optionsProvider);
+   }
+ 
+-  /**
++    public void dumpRuleClasses(PrintStream out, DumpCommand dumpCommand) {
++        PackageFactory factory = getPackageFactory();
++      List<String> ruleClassNames = new ArrayList<>(factory.getRuleClassNames());
++      Collections.sort(ruleClassNames);
++      for (String name : ruleClassNames) {
++        if (name.startsWith("$")) {
++          continue;
++        }
++        RuleClass ruleClass = factory.getRuleClass(name);
++        out.print(ruleClass + "(");
++        boolean first = true;
++        for (Attribute attribute : ruleClass.getAttributes()) {
++          if (attribute.isImplicit()) {
++            continue;
++          }
++          if (first) {
++            first = false;
++          } else {
++            out.print(", ");
++          }
++          out.print(attribute.getName());
++        }
++        out.println(")");
++      }
++    }
++
++    /**
+    * An EventBus exception handler that will report the exception to a remote server, if a
+    * handler is registered.
+    */
+diff --git a/src/main/java/com/google/devtools/build/lib/runtime/CommandEnvironment.java b/src/main/java/com/google/devtools/build/lib/runtime/CommandEnvironment.java
+index 17851c0..4403da7 100644
+--- a/src/main/java/com/google/devtools/build/lib/runtime/CommandEnvironment.java
++++ b/src/main/java/com/google/devtools/build/lib/runtime/CommandEnvironment.java
+@@ -17,12 +17,14 @@ package com.google.devtools.build.lib.runtime;
+ import com.google.common.annotations.VisibleForTesting;
+ import com.google.common.base.Preconditions;
+ import com.google.common.eventbus.EventBus;
++import com.google.devtools.build.lib.actions.CommandLine;
++import com.google.devtools.build.lib.actions.CommandLineExpansionException;
+ import com.google.devtools.build.lib.actions.cache.ActionCache;
+-import com.google.devtools.build.lib.analysis.AnalysisOptions;
+-import com.google.devtools.build.lib.analysis.BlazeDirectories;
++import com.google.devtools.build.lib.analysis.*;
+ import com.google.devtools.build.lib.analysis.config.BuildConfiguration;
+ import com.google.devtools.build.lib.analysis.config.CoreOptions;
+ import com.google.devtools.build.lib.cmdline.Label;
++import com.google.devtools.build.lib.events.Event;
+ import com.google.devtools.build.lib.events.Reporter;
+ import com.google.devtools.build.lib.packages.StarlarkSemanticsOptions;
+ import com.google.devtools.build.lib.pkgcache.PackageCacheOptions;
+@@ -31,6 +33,7 @@ import com.google.devtools.build.lib.pkgcache.PathPackageLocator;
+ import com.google.devtools.build.lib.profiler.Profiler;
+ import com.google.devtools.build.lib.profiler.ProfilerTask;
+ import com.google.devtools.build.lib.profiler.SilentCloseable;
++import com.google.devtools.build.lib.runtime.commands.RunCommand;
+ import com.google.devtools.build.lib.runtime.proto.InvocationPolicyOuterClass.InvocationPolicy;
+ import com.google.devtools.build.lib.skyframe.SkyframeBuildView;
+ import com.google.devtools.build.lib.skyframe.SkyframeExecutor;
+@@ -92,7 +95,34 @@ public final class CommandEnvironment {
+ 
+   private AtomicReference<AbruptExitException> pendingException = new AtomicReference<>();
+ 
+-  private class BlazeModuleEnvironment implements BlazeModule.ModuleEnvironment {
++    /**
++     * Compute the arguments the binary should be run with by concatenating the arguments in its
++     * {@code args=} attribute and the arguments on the Blaze command line.
++     * @param targetToRun
++     * @param commandLineArgs
++     * @param runCommand
++     */
++    @Nullable
++    public List<String> computeArgs(ConfiguredTarget targetToRun,
++                                    List<String> commandLineArgs, RunCommand runCommand) {
++        List<String> args = Lists.newArrayList();
++
++      FilesToRunProvider provider = targetToRun.getProvider(FilesToRunProvider.class);
++      RunfilesSupport runfilesSupport = provider == null ? null : provider.getRunfilesSupport();
++      if (runfilesSupport != null && runfilesSupport.getArgs() != null) {
++        CommandLine targetArgs = runfilesSupport.getArgs();
++        try {
++          Iterables.addAll(args, targetArgs.arguments());
++        } catch (CommandLineExpansionException e) {
++          getReporter().handle(Event.error("Could not expand target command line: " + e));
++          return null;
++        }
++      }
++      args.addAll(commandLineArgs);
++      return args;
++    }
++
++    private class BlazeModuleEnvironment implements BlazeModule.ModuleEnvironment {
+     @Override
+     public Path getFileFromWorkspace(Label label) {
+       Path buildFile = getPackageManager().getBuildFileForPackage(label.getPackageIdentifier());
+diff --git a/src/main/java/com/google/devtools/build/lib/runtime/commands/DumpCommand.java b/src/main/java/com/google/devtools/build/lib/runtime/commands/DumpCommand.java
+index 6609bfc..c8338ad 100644
+--- a/src/main/java/com/google/devtools/build/lib/runtime/commands/DumpCommand.java
++++ b/src/main/java/com/google/devtools/build/lib/runtime/commands/DumpCommand.java
+@@ -20,9 +20,6 @@ import com.google.devtools.build.lib.actions.CommandLineExpansionException;
+ import com.google.devtools.build.lib.analysis.AnalysisProtos.ActionGraphContainer;
+ import com.google.devtools.build.lib.events.Event;
+ import com.google.devtools.build.lib.events.ExtendedEventHandler;
+-import com.google.devtools.build.lib.packages.Attribute;
+-import com.google.devtools.build.lib.packages.PackageFactory;
+-import com.google.devtools.build.lib.packages.RuleClass;
+ import com.google.devtools.build.lib.profiler.memory.AllocationTracker;
+ import com.google.devtools.build.lib.profiler.memory.AllocationTracker.RuleBytes;
+ import com.google.devtools.build.lib.runtime.BlazeCommand;
+@@ -48,7 +45,6 @@ import java.io.IOException;
+ import java.io.PrintStream;
+ import java.util.ArrayList;
+ import java.util.Collection;
+-import java.util.Collections;
+ import java.util.Comparator;
+ import java.util.HashMap;
+ import java.util.List;
+@@ -262,7 +258,7 @@ public class DumpCommand implements BlazeCommand {
+       }
+ 
+       if (dumpOptions.dumpRuleClasses) {
+-        dumpRuleClasses(runtime, out);
++        runtime.dumpRuleClasses(out, this);
+         out.println();
+       }
+ 
+@@ -327,33 +323,7 @@ public class DumpCommand implements BlazeCommand {
+     return true;
+   }
+ 
+-  private void dumpRuleClasses(BlazeRuntime runtime, PrintStream out) {
+-    PackageFactory factory = runtime.getPackageFactory();
+-    List<String> ruleClassNames = new ArrayList<>(factory.getRuleClassNames());
+-    Collections.sort(ruleClassNames);
+-    for (String name : ruleClassNames) {
+-      if (name.startsWith("$")) {
+-        continue;
+-      }
+-      RuleClass ruleClass = factory.getRuleClass(name);
+-      out.print(ruleClass + "(");
+-      boolean first = true;
+-      for (Attribute attribute : ruleClass.getAttributes()) {
+-        if (attribute.isImplicit()) {
+-          continue;
+-        }
+-        if (first) {
+-          first = false;
+-        } else {
+-          out.print(", ");
+-        }
+-        out.print(attribute.getName());
+-      }
+-      out.println(")");
+-    }
+-  }
+-
+-  private void dumpRuleStats(
++    private void dumpRuleStats(
+       ExtendedEventHandler eventHandler,
+       BlazeWorkspace workspace,
+       SkyframeExecutor executor,
+diff --git a/src/main/java/com/google/devtools/build/lib/runtime/commands/HelpCommand.java b/src/main/java/com/google/devtools/build/lib/runtime/commands/HelpCommand.java
+index 8aa762d..fbb1185 100644
+--- a/src/main/java/com/google/devtools/build/lib/runtime/commands/HelpCommand.java
++++ b/src/main/java/com/google/devtools/build/lib/runtime/commands/HelpCommand.java
+@@ -23,7 +23,6 @@ import com.google.common.collect.ImmutableSortedMap;
+ import com.google.common.collect.Iterables;
+ import com.google.common.escape.Escaper;
+ import com.google.common.html.HtmlEscapers;
+-import com.google.devtools.build.lib.analysis.BlazeVersionInfo;
+ import com.google.devtools.build.lib.analysis.ConfiguredRuleClassProvider;
+ import com.google.devtools.build.lib.analysis.NoBuildEvent;
+ import com.google.devtools.build.lib.events.Event;
+@@ -126,7 +125,7 @@ public final class HelpCommand implements BlazeCommand {
+     OutErr outErr = env.getReporter().getOutErr();
+     Options helpOptions = options.getOptions(Options.class);
+     if (options.getResidue().isEmpty()) {
+-      emitBlazeVersionInfo(outErr, runtime.getProductName());
++      outErr.emitBlazeVersionInfo(runtime.getProductName(), this);
+       emitGenericHelp(outErr, runtime);
+       return BlazeCommandResult.exitCode(ExitCode.SUCCESS);
+     }
+@@ -139,11 +138,11 @@ public final class HelpCommand implements BlazeCommand {
+     // Go through the custom subjects before going through Bazel commands.
+     switch (helpSubject) {
+       case "startup_options":
+-        emitBlazeVersionInfo(outErr, runtime.getProductName());
++        outErr.emitBlazeVersionInfo(runtime.getProductName(), this);
+         emitStartupOptions(outErr, helpOptions.helpVerbosity, runtime);
+         return BlazeCommandResult.exitCode(ExitCode.SUCCESS);
+       case "target-syntax":
+-        emitBlazeVersionInfo(outErr, runtime.getProductName());
++        outErr.emitBlazeVersionInfo(runtime.getProductName(), this);
+         emitTargetSyntaxHelp(outErr, productName);
+ 
+         return BlazeCommandResult.exitCode(ExitCode.SUCCESS);
+@@ -167,7 +166,7 @@ public final class HelpCommand implements BlazeCommand {
+       env.getReporter().handle(Event.error(null, "'" + helpSubject + "' is not a known command"));
+         return BlazeCommandResult.exitCode(ExitCode.COMMAND_LINE_ERROR);
+     }
+-    emitBlazeVersionInfo(outErr, productName);
++    outErr.emitBlazeVersionInfo(productName, this);
+     outErr.printOut(
+         BlazeCommandUtils.getUsage(
+             command.getClass(),
+@@ -179,13 +178,7 @@ public final class HelpCommand implements BlazeCommand {
+     return BlazeCommandResult.exitCode(ExitCode.SUCCESS);
+   }
+ 
+-  private void emitBlazeVersionInfo(OutErr outErr, String productName) {
+-    String releaseInfo = BlazeVersionInfo.instance().getReleaseName();
+-    String line = String.format("[%s %s]", productName, releaseInfo);
+-    outErr.printOut(String.format("%80s\n", line));
+-  }
+-
+-  private void emitStartupOptions(
++    private void emitStartupOptions(
+       OutErr outErr, HelpVerbosity helpVerbosity, BlazeRuntime runtime) {
+     outErr.printOut(
+         BlazeCommandUtils.expandHelpTopic(
+diff --git a/src/main/java/com/google/devtools/build/lib/runtime/commands/ProfileCommand.java b/src/main/java/com/google/devtools/build/lib/runtime/commands/ProfileCommand.java
+index 6a4e034..2aead0b 100644
+--- a/src/main/java/com/google/devtools/build/lib/runtime/commands/ProfileCommand.java
++++ b/src/main/java/com/google/devtools/build/lib/runtime/commands/ProfileCommand.java
+@@ -22,7 +22,6 @@ import com.google.devtools.build.lib.profiler.ProfilePhase;
+ import com.google.devtools.build.lib.profiler.ProfilerTask;
+ import com.google.devtools.build.lib.profiler.analysis.ProfileInfo;
+ import com.google.devtools.build.lib.profiler.analysis.ProfileInfo.InfoListener;
+-import com.google.devtools.build.lib.profiler.analysis.ProfileInfo.Task;
+ import com.google.devtools.build.lib.profiler.output.HtmlCreator;
+ import com.google.devtools.build.lib.profiler.output.PhaseText;
+ import com.google.devtools.build.lib.profiler.statistics.CriticalPathStatistics;
+@@ -49,7 +48,6 @@ import java.io.BufferedOutputStream;
+ import java.io.IOException;
+ import java.io.PrintStream;
+ import java.util.EnumMap;
+-import java.util.regex.Pattern;
+ 
+ /** Command line wrapper for analyzing Blaze build profiles. */
+ @Command(
+@@ -273,7 +271,7 @@ public final class ProfileCommand implements BlazeCommand {
+             }
+ 
+             if (opts.taskTree != null) {
+-              printTaskTree(out, name, info, opts.taskTree.regexPattern(), opts.taskTreeThreshold);
++              info.printTaskTree(out, name, opts.taskTree.regexPattern(), opts.taskTreeThreshold, this);
+               continue;
+             }
+ 
+@@ -344,35 +342,7 @@ public final class ProfileCommand implements BlazeCommand {
+         new BufferedOutputStream(env.getReporter().getOutErr().getOutputStream()), false);
+   }
+ 
+-  /**
+-   * Prints trees rooted at tasks with a description matching a pattern.
+-   * @see Task#printTaskTree(PrintStream, long)
+-   */
+-  private void printTaskTree(
+-      PrintStream out,
+-      String fileName,
+-      ProfileInfo info,
+-      Pattern taskPattern,
+-      long taskDurationThreshold) {
+-    Iterable<Task> tasks = info.findTasksByDescription(taskPattern);
+-    if (Iterables.isEmpty(tasks)) {
+-      out.printf("No tasks matching %s found in profile file %s.", taskPattern, fileName);
+-      out.println();
+-    } else {
+-      int skipped = 0;
+-      for (Task task : tasks) {
+-        if (!task.printTaskTree(out, taskDurationThreshold)) {
+-          skipped++;
+-        }
+-      }
+-      if (skipped > 0) {
+-        out.printf("Skipped %d matching task(s) below the duration threshold.", skipped);
+-      }
+-      out.println();
+-    }
+-  }
+-
+-  /**
++    /**
+    * Dumps all tasks in the requested format.
+    */
+   private void dumpProfile(ProfileInfo info, PrintStream out, String dumpMode) {
+diff --git a/src/main/java/com/google/devtools/build/lib/runtime/commands/RunCommand.java b/src/main/java/com/google/devtools/build/lib/runtime/commands/RunCommand.java
+index f3e92ab..74f002e 100644
+--- a/src/main/java/com/google/devtools/build/lib/runtime/commands/RunCommand.java
++++ b/src/main/java/com/google/devtools/build/lib/runtime/commands/RunCommand.java
+@@ -21,8 +21,6 @@ import com.google.common.collect.ImmutableMap;
+ import com.google.common.collect.Iterables;
+ import com.google.common.collect.Lists;
+ import com.google.devtools.build.lib.actions.Artifact;
+-import com.google.devtools.build.lib.actions.CommandLine;
+-import com.google.devtools.build.lib.actions.CommandLineExpansionException;
+ import com.google.devtools.build.lib.actions.ExecException;
+ import com.google.devtools.build.lib.analysis.ConfiguredTarget;
+ import com.google.devtools.build.lib.analysis.FilesToRunProvider;
+@@ -180,31 +178,7 @@ public class RunCommand implements BlazeCommand  {
+   @Override
+   public void editOptions(OptionsParser optionsParser) { }
+ 
+-  /**
+-   * Compute the arguments the binary should be run with by concatenating the arguments in its
+-   * {@code args=} attribute and the arguments on the Blaze command line.
+-   */
+-  @Nullable
+-  private List<String> computeArgs(CommandEnvironment env, ConfiguredTarget targetToRun,
+-      List<String> commandLineArgs) {
+-    List<String> args = Lists.newArrayList();
+-
+-    FilesToRunProvider provider = targetToRun.getProvider(FilesToRunProvider.class);
+-    RunfilesSupport runfilesSupport = provider == null ? null : provider.getRunfilesSupport();
+-    if (runfilesSupport != null && runfilesSupport.getArgs() != null) {
+-      CommandLine targetArgs = runfilesSupport.getArgs();
+-      try {
+-        Iterables.addAll(args, targetArgs.arguments());
+-      } catch (CommandLineExpansionException e) {
+-        env.getReporter().handle(Event.error("Could not expand target command line: " + e));
+-        return null;
+-      }
+-    }
+-    args.addAll(commandLineArgs);
+-    return args;
+-  }
+-
+-  private void constructCommandLine(
++    private void constructCommandLine(
+       List<String> cmdLine,
+       List<String> prettyCmdLine,
+       CommandEnvironment env,
+@@ -440,7 +414,7 @@ public class RunCommand implements BlazeCommand  {
+       }
+     } else {
+       workingDir = runfilesDir;
+-      List<String> args = computeArgs(env, targetToRun, commandLineArgs);
++      List<String> args = env.computeArgs(targetToRun, commandLineArgs, this);
+       try {
+         constructCommandLine(
+             cmdLine, prettyCmdLine, env, configuration, targetToRun, runUnderTarget, args);
+diff --git a/src/main/java/com/google/devtools/build/lib/skyframe/ConfiguredTargetAndData.java b/src/main/java/com/google/devtools/build/lib/skyframe/ConfiguredTargetAndData.java
+index d583220..f8c89fe 100644
+--- a/src/main/java/com/google/devtools/build/lib/skyframe/ConfiguredTargetAndData.java
++++ b/src/main/java/com/google/devtools/build/lib/skyframe/ConfiguredTargetAndData.java
+@@ -17,11 +17,14 @@ package com.google.devtools.build.lib.skyframe;
+ import com.google.common.annotations.VisibleForTesting;
+ import com.google.common.base.Preconditions;
+ import com.google.common.collect.ImmutableSet;
++import com.google.devtools.build.lib.analysis.AliasProvider;
+ import com.google.devtools.build.lib.analysis.ConfiguredTarget;
++import com.google.devtools.build.lib.analysis.RuleContext;
+ import com.google.devtools.build.lib.analysis.config.BuildConfiguration;
+-import com.google.devtools.build.lib.packages.NoSuchTargetException;
++import com.google.devtools.build.lib.bazel.rules.BazelPrerequisiteValidator;
++import com.google.devtools.build.lib.bazel.rules.VisibilityErrorEvent;
++import com.google.devtools.build.lib.packages.*;
+ import com.google.devtools.build.lib.packages.Package;
+-import com.google.devtools.build.lib.packages.Target;
+ import com.google.devtools.build.skyframe.SkyFunction;
+ import com.google.devtools.build.skyframe.SkyKey;
+ import com.google.devtools.build.skyframe.SkyValue;
+@@ -132,4 +135,67 @@ public class ConfiguredTargetAndData {
+   public ConfiguredTarget getConfiguredTarget() {
+     return configuredTarget;
+   }
++
++    public void validateDirectPrerequisiteVisibility(
++            RuleContext.Builder context, String attrName, BazelPrerequisiteValidator bazelPrerequisiteValidator) {
++        Rule rule = context.getRule();
++      Target prerequisiteTarget = getTarget();
++      if (!context
++              .getRule()
++              .getLabel()
++              .getPackageIdentifier()
++              .equals(
++                  AliasProvider.getDependencyLabel(getConfiguredTarget())
++                      .getPackageIdentifier())
++          && !context.isVisible(getConfiguredTarget())) {
++        String errorMessage;
++        if (!context.getConfiguration().checkVisibility()) {
++          errorMessage =
++              String.format(
++                  "Target '%s' violates visibility of "
++                      + "%s. Continuing because --nocheck_visibility is active",
++                  rule.getLabel(), AliasProvider.describeTargetWithAliases(this,
++                      AliasProvider.TargetMode.WITHOUT_KIND));
++          context.ruleWarning(errorMessage);
++        } else {
++          // Oddly enough, we use reportError rather than ruleError here.
++          errorMessage =
++              String.format(
++                  "%s is not visible from target '%s'. Check "
++                      + "the visibility declaration of the former target if you think "
++                      + "the dependency is legitimate",
++                  AliasProvider.describeTargetWithAliases(this, AliasProvider.TargetMode.WITHOUT_KIND),
++                  rule.getLabel());
++          context.ruleError(errorMessage);
++        }
++        // We can always post the visibility error as, regardless of the value of keep going,
++        // that target will not be built.
++        context.post(
++            new VisibilityErrorEvent(context.getConfiguration(), rule.getLabel(), errorMessage));
++      }
++
++      if (prerequisiteTarget instanceof PackageGroup) {
++        RequiredProviders requiredProviders =
++            RawAttributeMapper.of(rule).getAttributeDefinition(attrName).getRequiredProviders();
++        boolean containsPackageSpecificationProvider =
++            requiredProviders.getDescription().contains("PackageSpecificationProvider");
++        // TODO(plf): Add the PackageSpecificationProvider to the 'visibility' attribute.
++        if (!attrName.equals("visibility")
++            && !attrName.equals(FunctionSplitTransitionWhitelist.WHITELIST_ATTRIBUTE_NAME)
++            && !containsPackageSpecificationProvider) {
++          context.attributeError(
++              attrName,
++              "in "
++                  + attrName
++                  + " attribute of "
++                  + rule.getRuleClass()
++                  + " rule "
++                  + rule.getLabel()
++                  + ": "
++                  + AliasProvider.describeTargetWithAliases(this, AliasProvider.TargetMode.WITH_KIND)
++                  + " is misplaced here "
++                  + "(they are only allowed in the visibility attribute)");
++        }
++      }
++    }
+ }
+diff --git a/src/main/java/com/google/devtools/build/lib/syntax/BaseFunction.java b/src/main/java/com/google/devtools/build/lib/syntax/BaseFunction.java
+index 8904f9d..6c15c96 100644
+--- a/src/main/java/com/google/devtools/build/lib/syntax/BaseFunction.java
++++ b/src/main/java/com/google/devtools/build/lib/syntax/BaseFunction.java
+@@ -606,4 +606,12 @@ public abstract class BaseFunction implements StarlarkFunction {
+   public void repr(SkylarkPrinter printer) {
+     printer.append("<function " + getName() + ">");
+   }
++
++    public Object callLegacyBuiltinRegistryFunction(Object objValue, ArrayList<Object> posargs, Map<String, Object> kwargs, Environment env, FuncallExpression funcallExpression)
++        throws EvalException, InterruptedException {
++        if (!funcallExpression.isNamespace(objValue.getClass())) {
++        posargs.add(0, objValue);
++      }
++      return call(posargs, kwargs, funcallExpression, env);
++    }
+ }
+diff --git a/src/main/java/com/google/devtools/build/lib/syntax/BuildFileAST.java b/src/main/java/com/google/devtools/build/lib/syntax/BuildFileAST.java
+index 47beaf1..6d8a8ee 100644
+--- a/src/main/java/com/google/devtools/build/lib/syntax/BuildFileAST.java
++++ b/src/main/java/com/google/devtools/build/lib/syntax/BuildFileAST.java
+@@ -300,7 +300,7 @@ public class BuildFileAST extends ASTNode {
+ 
+   @Override
+   public void accept(SyntaxTreeVisitor visitor) {
+-    visitor.visit(this);
++    visit(visitor);
+   }
+ 
+   /**
+@@ -476,4 +476,9 @@ public class BuildFileAST extends ASTNode {
+   @Nullable public String getContentHashCode() {
+     return contentHashCode;
+   }
++
++    public void visit(SyntaxTreeVisitor syntaxTreeVisitor) {
++        syntaxTreeVisitor.visitBlock(getStatements());
++      syntaxTreeVisitor.visitAll(getComments());
++    }
+ }
+diff --git a/src/main/java/com/google/devtools/build/lib/syntax/Environment.java b/src/main/java/com/google/devtools/build/lib/syntax/Environment.java
+index 4a6d014..cf0c9e0 100644
+--- a/src/main/java/com/google/devtools/build/lib/syntax/Environment.java
++++ b/src/main/java/com/google/devtools/build/lib/syntax/Environment.java
+@@ -20,12 +20,19 @@ import com.google.common.collect.ImmutableList;
+ import com.google.common.collect.ImmutableMap;
+ import com.google.common.collect.Maps;
+ import com.google.common.collect.Sets;
++import com.google.devtools.build.lib.actions.Artifact;
+ import com.google.devtools.build.lib.cmdline.Label;
+ import com.google.devtools.build.lib.concurrent.ThreadSafety.Immutable;
+ import com.google.devtools.build.lib.events.Event;
+ import com.google.devtools.build.lib.events.EventHandler;
+ import com.google.devtools.build.lib.events.EventKind;
+ import com.google.devtools.build.lib.events.Location;
++import com.google.devtools.build.lib.packages.NativeProvider;
++import com.google.devtools.build.lib.packages.Provider;
++import com.google.devtools.build.lib.packages.SkylarkInfo;
++import com.google.devtools.build.lib.packages.StructImpl;
++import com.google.devtools.build.lib.rules.objc.AppleBinary;
++import com.google.devtools.build.lib.rules.objc.AppleSkylarkCommon;
+ import com.google.devtools.build.lib.skyframe.serialization.autocodec.AutoCodec;
+ import com.google.devtools.build.lib.skylarkinterface.SkylarkValue;
+ import com.google.devtools.build.lib.skylarkinterface.StarlarkContext;
+@@ -85,7 +92,31 @@ import javax.annotation.Nullable;
+  */
+ public final class Environment implements Freezable, Debuggable {
+ 
+-  /**
++    /**
++     * Creates a Skylark struct that contains the results of the {@code link_multi_arch_binary}
++     * function.
++     * @param output
++     * @param appleSkylarkCommon
++     */
++    public StructImpl createAppleBinaryOutputSkylarkStruct(
++            AppleBinary.AppleBinaryOutput output, AppleSkylarkCommon appleSkylarkCommon) {
++        Provider constructor =
++          new NativeProvider<StructImpl>(StructImpl.class, "apple_binary_output") {};
++      // We have to transform the output group dictionary into one that contains SkylarkValues instead
++      // of plain NestedSets because the Skylark caller may want to return this directly from their
++      // implementation function.
++      Map<String, SkylarkValue> outputGroups =
++          Maps.transformValues(output.getOutputGroups(), v -> SkylarkNestedSet.of(Artifact.class, v));
++
++      ImmutableMap<String, Object> fields =
++          ImmutableMap.of(
++              "binary_provider", output.getBinaryInfoProvider(),
++              "debug_outputs_provider", output.getDebugOutputsProvider(),
++              "output_groups", SkylarkDict.copyOf(this, outputGroups));
++      return SkylarkInfo.createSchemaless(constructor, fields, Location.BUILTIN);
++    }
++
++    /**
+    * A mapping of bindings, either mutable or immutable according to an associated {@link
+    * Mutability}. The order of the bindings within a single {@link Frame} is deterministic but
+    * unspecified.
+diff --git a/src/main/java/com/google/devtools/build/lib/syntax/FuncallExpression.java b/src/main/java/com/google/devtools/build/lib/syntax/FuncallExpression.java
+index cc2ae1f..5bc5b49 100644
+--- a/src/main/java/com/google/devtools/build/lib/syntax/FuncallExpression.java
++++ b/src/main/java/com/google/devtools/build/lib/syntax/FuncallExpression.java
+@@ -934,8 +934,8 @@ public final class FuncallExpression extends Expression {
+     BaseFunction legacyRuntimeFunction =
+         Runtime.getBuiltinRegistry().getFunction(objValue.getClass(), methodName);
+     if (legacyRuntimeFunction != null) {
+-      return callLegacyBuiltinRegistryFunction(
+-          legacyRuntimeFunction, objValue, posargs, kwargs, env);
++      return legacyRuntimeFunction.callLegacyBuiltinRegistryFunction(
++              objValue, posargs, kwargs, env, this);
+     }
+ 
+     // Case 4: All other cases. Evaluate "foo.bar" as a dot expression, then try to invoke it
+@@ -948,16 +948,7 @@ public final class FuncallExpression extends Expression {
+     }
+   }
+ 
+-  private Object callLegacyBuiltinRegistryFunction(BaseFunction legacyRuntimeFunction,
+-      Object objValue, ArrayList<Object> posargs, Map<String, Object> kwargs, Environment env)
+-      throws EvalException, InterruptedException {
+-    if (!isNamespace(objValue.getClass())) {
+-      posargs.add(0, objValue);
+-    }
+-    return legacyRuntimeFunction.call(posargs, kwargs, this, env);
+-  }
+-
+-  private Object callStringMethod(String objValue, String methodName,
++    private Object callStringMethod(String objValue, String methodName,
+       ArrayList<Object> posargs, Map<String, Object> kwargs, Environment env)
+       throws InterruptedException, EvalException {
+     // String is a special case, since it can't be subclassed. Methods on strings defer
+diff --git a/src/main/java/com/google/devtools/build/lib/syntax/Mutability.java b/src/main/java/com/google/devtools/build/lib/syntax/Mutability.java
+index a6554e6..94b2642 100644
+--- a/src/main/java/com/google/devtools/build/lib/syntax/Mutability.java
++++ b/src/main/java/com/google/devtools/build/lib/syntax/Mutability.java
+@@ -274,7 +274,26 @@ public final class Mutability implements AutoCloseable, Serializable {
+     return allowsUnsafeShallowFreeze;
+   }
+ 
+-  /** Indicates an illegal attempt to mutate a frozen or locked {@link Freezable}. */
++    /**
++     * Checks whether this object is currently mutable using the given {@link Mutability}, and throws
++     * an exception if it is not.
++     *
++     * @throws EvalException if the object is not mutable. This may be because the object (i.e., its
++     *     {@code Mutability} was frozen, or because it is temporarily locked from mutation (due to
++     *     being iterated over by a loop), or because it is associated with a different {@code
++     *     Mutability} than the one given.
++     * @param loc
++     * @param skylarkMutable
++     */
++    public void checkMutableOther(Location loc, SkylarkMutable skylarkMutable) throws EvalException {
++        try {
++        checkMutable(skylarkMutable, this);
++      } catch (MutabilityException ex) {
++        throw new EvalException(loc, ex);
++      }
++    }
++
++    /** Indicates an illegal attempt to mutate a frozen or locked {@link Freezable}. */
+   static class MutabilityException extends Exception {
+     MutabilityException(String message) {
+       super(message);
+diff --git a/src/main/java/com/google/devtools/build/lib/syntax/SkylarkDict.java b/src/main/java/com/google/devtools/build/lib/syntax/SkylarkDict.java
+index d396ff4..d591ef3 100644
+--- a/src/main/java/com/google/devtools/build/lib/syntax/SkylarkDict.java
++++ b/src/main/java/com/google/devtools/build/lib/syntax/SkylarkDict.java
+@@ -306,13 +306,13 @@ public final class SkylarkDict<K, V> extends MutableMap<K, V>
+     return SkylarkDict.<K, V>of(env).putAllUnsafe(m);
+   }
+ 
+-  /** Puts the given entry into the dict, without calling {@link #checkMutable}. */
++  /** Puts the given entry into the dict, without calling {@link Mutability#checkMutableOther}. */
+   private SkylarkDict<K, V> putUnsafe(K k, V v) {
+     contents.put(k, v);
+     return this;
+   }
+ 
+-  /** Puts all entries of the given map into the dict, without calling {@link #checkMutable}. */
++  /** Puts all entries of the given map into the dict, without calling {@link Mutability#checkMutableOther}. */
+   @SuppressWarnings("unchecked")
+   private <KK extends K, VV extends V> SkylarkDict<K, V> putAllUnsafe(Map<KK, VV> m) {
+     for (Map.Entry<KK, VV> e : m.entrySet()) {
+@@ -347,7 +347,7 @@ public final class SkylarkDict<K, V> extends MutableMap<K, V>
+    * @throws EvalException if the key is invalid or the dict is frozen
+    */
+   public void put(K key, V value, Location loc, Mutability mutability) throws EvalException {
+-    checkMutable(loc, mutability);
++    mutability.checkMutableOther(loc, this);
+     EvalUtils.checkValidDictKey(key);
+     contents.put(key, value);
+   }
+@@ -371,7 +371,7 @@ public final class SkylarkDict<K, V> extends MutableMap<K, V>
+    */
+   public <KK extends K, VV extends V> void putAll(
+       Map<KK, VV> map, Location loc, Mutability mutability) throws EvalException {
+-    checkMutable(loc, mutability);
++    mutability.checkMutableOther(loc, this);
+     for (Map.Entry<KK, VV> e : map.entrySet()) {
+       KK k = e.getKey();
+       EvalUtils.checkValidDictKey(k);
+@@ -389,7 +389,7 @@ public final class SkylarkDict<K, V> extends MutableMap<K, V>
+    * @throws EvalException if the dict is frozen
+    */
+   V remove(Object key, Location loc, Mutability mutability) throws EvalException {
+-    checkMutable(loc, mutability);
++    mutability.checkMutableOther(loc, this);
+     return contents.remove(key);
+   }
+ 
+@@ -414,7 +414,7 @@ public final class SkylarkDict<K, V> extends MutableMap<K, V>
+    * @throws EvalException if the dict is frozen
+    */
+   void clear(Location loc, Mutability mutability) throws EvalException {
+-    checkMutable(loc, mutability);
++    mutability.checkMutableOther(loc, this);
+     contents.clear();
+   }
+ 
+diff --git a/src/main/java/com/google/devtools/build/lib/syntax/SkylarkList.java b/src/main/java/com/google/devtools/build/lib/syntax/SkylarkList.java
+index 0ef4e28..e594f97 100644
+--- a/src/main/java/com/google/devtools/build/lib/syntax/SkylarkList.java
++++ b/src/main/java/com/google/devtools/build/lib/syntax/SkylarkList.java
+@@ -390,7 +390,7 @@ public abstract class SkylarkList<E> extends BaseMutableList<E>
+      * @param mutability the {@link Mutability} associated with the operation
+      */
+     public void add(E element, Location loc, Mutability mutability) throws EvalException {
+-      checkMutable(loc, mutability);
++      mutability.checkMutableOther(loc, this);
+       contents.add(element);
+     }
+ 
+@@ -404,7 +404,7 @@ public abstract class SkylarkList<E> extends BaseMutableList<E>
+      */
+     public void add(int index, E element, Location loc, Mutability mutability)
+         throws EvalException {
+-      checkMutable(loc, mutability);
++      mutability.checkMutableOther(loc, this);
+       contents.add(index, element);
+     }
+ 
+@@ -417,7 +417,7 @@ public abstract class SkylarkList<E> extends BaseMutableList<E>
+      */
+     public void addAll(Iterable<? extends E> elements, Location loc, Mutability mutability)
+         throws EvalException {
+-      checkMutable(loc, mutability);
++      mutability.checkMutableOther(loc, this);
+       Iterables.addAll(contents, elements);
+     }
+ 
+@@ -430,7 +430,7 @@ public abstract class SkylarkList<E> extends BaseMutableList<E>
+      * @param mutability the {@link Mutability} associated with the operation
+      */
+     public void remove(int index, Location loc, Mutability mutability) throws EvalException {
+-      checkMutable(loc, mutability);
++      mutability.checkMutableOther(loc, this);
+       contents.remove(index);
+     }
+ 
+@@ -466,7 +466,7 @@ public abstract class SkylarkList<E> extends BaseMutableList<E>
+      * @param mutability the {@link Mutability} associated with the operation
+      */
+     public void set(int index, E value, Location loc, Mutability mutability) throws EvalException {
+-      checkMutable(loc, mutability);
++      mutability.checkMutableOther(loc, this);
+       contents.set(index, value);
+     }
+ 
+diff --git a/src/main/java/com/google/devtools/build/lib/syntax/SkylarkMutable.java b/src/main/java/com/google/devtools/build/lib/syntax/SkylarkMutable.java
+index 3532bfb..431f371 100644
+--- a/src/main/java/com/google/devtools/build/lib/syntax/SkylarkMutable.java
++++ b/src/main/java/com/google/devtools/build/lib/syntax/SkylarkMutable.java
+@@ -18,7 +18,7 @@ import com.google.common.collect.Iterators;
+ import com.google.devtools.build.lib.events.Location;
+ import com.google.devtools.build.lib.skylarkinterface.SkylarkValue;
+ import com.google.devtools.build.lib.syntax.Mutability.Freezable;
+-import com.google.devtools.build.lib.syntax.Mutability.MutabilityException;
++
+ import java.util.Collection;
+ import java.util.Collections;
+ import java.util.Iterator;
+@@ -37,31 +37,14 @@ public abstract class SkylarkMutable implements Freezable, SkylarkValue {
+    * Checks whether this object is currently mutable in the given {@link Environment}, and throws
+    * an exception if it is not.
+    *
+-   * @deprecated prefer {@link #checkMutable(Location, Mutability)} instead
++   * @deprecated prefer {@link Mutability#checkMutableOther(Location, SkylarkMutable)} instead
+    */
+   @Deprecated
+   protected void checkMutable(Location loc, Environment env) throws EvalException {
+-    checkMutable(loc, env.mutability());
++    env.mutability().checkMutableOther(loc, this);
+   }
+ 
+-  /**
+-   * Checks whether this object is currently mutable using the given {@link Mutability}, and throws
+-   * an exception if it is not.
+-   *
+-   * @throws EvalException if the object is not mutable. This may be because the object (i.e., its
+-   *     {@code Mutability} was frozen, or because it is temporarily locked from mutation (due to
+-   *     being iterated over by a loop), or because it is associated with a different {@code
+-   *     Mutability} than the one given.
+-   */
+-  protected void checkMutable(Location loc, Mutability mutability) throws EvalException {
+-    try {
+-      Mutability.checkMutable(this, mutability);
+-    } catch (MutabilityException ex) {
+-      throw new EvalException(loc, ex);
+-    }
+-  }
+-
+-  @Override
++    @Override
+   public boolean isImmutable() {
+     // By the Mutability invariants, if we're frozen and our Mutability is not SHALLOW_IMMUTABLE,
+     // then all contained values are also deeply frozen. Only tuples use SHALLOW_IMMUTABLE and they
+@@ -99,7 +82,7 @@ public abstract class SkylarkMutable implements Freezable, SkylarkValue {
+    * {@code @Deprecated} and throw {@link UnsupportedOperationException}.
+    *
+    * <p>A concrete subclass may provide alternative mutating methods that take in a {@link
+-   * Mutability} and validate that the mutation is allowed using {@link #checkMutable}. This
++   * Mutability} and validate that the mutation is allowed using {@link Mutability#checkMutableOther}. This
+    * validation must occur <em>before</em> the mutation, not after, in order to ensure that a frozen
+    * value cannot be mutated. (I.e., the fact that the check throws {@link EvalException} does not
+    * excuse us from illegally mutating a frozen value, since {@code EvalException} is not a fatal
+@@ -112,7 +95,7 @@ public abstract class SkylarkMutable implements Freezable, SkylarkValue {
+ 
+     /**
+      * The underlying contents, to which read access is forwarded. This object must not be modified
+-     * without first calling {@link #checkMutable}.
++     * without first calling {@link Mutability#checkMutableOther}.
+      */
+     protected abstract Object getContentsUnsafe();
+ 
+diff --git a/src/main/java/com/google/devtools/build/lib/syntax/StarlarkSemantics.java b/src/main/java/com/google/devtools/build/lib/syntax/StarlarkSemantics.java
+index bd34ac9..c8dce66 100644
+--- a/src/main/java/com/google/devtools/build/lib/syntax/StarlarkSemantics.java
++++ b/src/main/java/com/google/devtools/build/lib/syntax/StarlarkSemantics.java
+@@ -18,6 +18,9 @@ import com.google.auto.value.AutoValue;
+ import com.google.common.base.Ascii;
+ import com.google.common.base.Preconditions;
+ import com.google.common.collect.ImmutableList;
++import com.google.devtools.build.lib.events.Location;
++import com.google.devtools.build.lib.rules.java.JavaSkylarkApiProvider;
++
+ import java.util.List;
+ import java.util.function.Function;
+ 
+@@ -34,7 +37,18 @@ import java.util.function.Function;
+ @AutoValue
+ public abstract class StarlarkSemantics {
+ 
+-  /**
++    public void checkLegacyJavaProviderFlag(Location location, JavaSkylarkApiProvider javaSkylarkApiProvider)
++        throws EvalException {
++        if (incompatibleDisallowLegacyJavaProvider()) {
++        throw new EvalException(
++            location,
++            "The .java provider is deprecated and cannot be used "
++                + "when --incompatible_disallow_legacy_java_provider is set. "
++                + "Please migrate to the JavaInfo Skylark provider.");
++      }
++    }
++
++    /**
+    * Enum where each element represents a starlark semantics flag. The name of each value should be
+    * the exact name of the flag transformed to upper case (for error representation).
+    */
+diff --git a/src/main/java/com/google/devtools/build/lib/syntax/SyntaxTreeVisitor.java b/src/main/java/com/google/devtools/build/lib/syntax/SyntaxTreeVisitor.java
+index 117bbf0..f44fac4 100644
+--- a/src/main/java/com/google/devtools/build/lib/syntax/SyntaxTreeVisitor.java
++++ b/src/main/java/com/google/devtools/build/lib/syntax/SyntaxTreeVisitor.java
+@@ -58,12 +58,7 @@ public class SyntaxTreeVisitor {
+     }
+   }
+ 
+-  public void visit(BuildFileAST node) {
+-    visitBlock(node.getStatements());
+-    visitAll(node.getComments());
+-  }
+-
+-  public void visit(BinaryOperatorExpression node) {
++    public void visit(BinaryOperatorExpression node) {
+     visit(node.getLhs());
+     visit(node.getRhs());
+   }
+diff --git a/src/main/java/com/google/devtools/build/lib/util/BigIntegerFingerprint.java b/src/main/java/com/google/devtools/build/lib/util/BigIntegerFingerprint.java
+index 1acfbce..07756ad 100644
+--- a/src/main/java/com/google/devtools/build/lib/util/BigIntegerFingerprint.java
++++ b/src/main/java/com/google/devtools/build/lib/util/BigIntegerFingerprint.java
+@@ -14,6 +14,7 @@
+ 
+ package com.google.devtools.build.lib.util;
+ 
++import com.google.devtools.build.lib.actions.FileContentsProxy;
+ import com.google.devtools.build.lib.vfs.DigestHashFunction;
+ import com.google.devtools.build.lib.vfs.PathFragment;
+ import java.math.BigInteger;
+@@ -99,4 +100,9 @@ public class BigIntegerFingerprint {
+     seenNull = false;
+     alreadySmearedFingerprints.clear();
+   }
++
++    public void addToFingerprint(FileContentsProxy fileContentsProxy) {
++        addLong(fileContentsProxy.getCTime());
++      addLong(fileContentsProxy.getNodeId());
++    }
+ }
+diff --git a/src/main/java/com/google/devtools/build/lib/util/Fingerprint.java b/src/main/java/com/google/devtools/build/lib/util/Fingerprint.java
+index 79c8894..5af043c 100644
+--- a/src/main/java/com/google/devtools/build/lib/util/Fingerprint.java
++++ b/src/main/java/com/google/devtools/build/lib/util/Fingerprint.java
+@@ -15,6 +15,7 @@
+ package com.google.devtools.build.lib.util;
+ 
+ import com.google.common.io.ByteStreams;
++import com.google.devtools.build.lib.actions.ActionEnvironment;
+ import com.google.devtools.build.lib.vfs.DigestHashFunction;
+ import com.google.devtools.build.lib.vfs.Path;
+ import com.google.devtools.build.lib.vfs.PathFragment;
+@@ -291,4 +292,9 @@ public final class Fingerprint implements Consumer<String> {
+   public void accept(String s) {
+     addString(s);
+   }
++
++    public void addTo(ActionEnvironment actionEnvironment) {
++        addStringMap(actionEnvironment.getFixedEnv().toMap());
++      addStrings(actionEnvironment.getInheritedEnv());
++    }
+ }
+diff --git a/src/main/java/com/google/devtools/build/lib/util/io/FileOutErr.java b/src/main/java/com/google/devtools/build/lib/util/io/FileOutErr.java
+index 4946a51..f1b35e3 100644
+--- a/src/main/java/com/google/devtools/build/lib/util/io/FileOutErr.java
++++ b/src/main/java/com/google/devtools/build/lib/util/io/FileOutErr.java
+@@ -15,8 +15,10 @@ package com.google.devtools.build.lib.util.io;
+ 
+ import com.google.common.annotations.VisibleForTesting;
+ import com.google.common.io.ByteStreams;
++import com.google.devtools.build.lib.actions.ActionExecutionContext;
+ import com.google.devtools.build.lib.concurrent.ThreadSafety;
+ import com.google.devtools.build.lib.concurrent.ThreadSafety.ThreadSafe;
++import com.google.devtools.build.lib.dynamic.DynamicSpawnStrategy;
+ import com.google.devtools.build.lib.vfs.FileSystemUtils;
+ import com.google.devtools.build.lib.vfs.Path;
+ import java.io.IOException;
+@@ -200,7 +202,22 @@ public class FileOutErr extends OutErr {
+         outPath.getParentDirectory().getRelative(outPath.getBaseName() + "-" + index),
+         errPath.getParentDirectory().getRelative(errPath.getBaseName() + "-" + index));
+   }
+-  /**
++
++    public void moveFileOutErr(ActionExecutionContext actionExecutionContext, DynamicSpawnStrategy dynamicSpawnStrategy)
++        throws IOException {
++        if (getOutputPath().exists()) {
++        Files.move(
++            getOutputPath().getPathFile(),
++            actionExecutionContext.getFileOutErr().getOutputPath().getPathFile());
++      }
++      if (getErrorPath().exists()) {
++        Files.move(
++            getErrorPath().getPathFile(),
++            actionExecutionContext.getFileOutErr().getErrorPath().getPathFile());
++      }
++    }
++
++    /**
+    * An abstract supertype for the two other inner classes in this type
+    * to implement streams that can write to a file.
+    */
+diff --git a/src/main/java/com/google/devtools/build/lib/util/io/OutErr.java b/src/main/java/com/google/devtools/build/lib/util/io/OutErr.java
+index bad0c91..40a3fcf 100644
+--- a/src/main/java/com/google/devtools/build/lib/util/io/OutErr.java
++++ b/src/main/java/com/google/devtools/build/lib/util/io/OutErr.java
+@@ -14,6 +14,9 @@
+ 
+ package com.google.devtools.build.lib.util.io;
+ 
++import com.google.devtools.build.lib.analysis.BlazeVersionInfo;
++import com.google.devtools.build.lib.runtime.commands.HelpCommand;
++
+ import java.io.Closeable;
+ import java.io.IOException;
+ import java.io.OutputStream;
+@@ -138,4 +141,9 @@ public class OutErr implements Closeable {
+     printErr(s + "\n");
+   }
+ 
++    public void emitBlazeVersionInfo(String productName, HelpCommand helpCommand) {
++        String releaseInfo = BlazeVersionInfo.instance().getReleaseName();
++      String line = String.format("[%s %s]", productName, releaseInfo);
++      printOut(String.format("%80s\n", line));
++    }
+ }
+diff --git a/src/main/java/com/google/devtools/build/lib/vfs/Path.java b/src/main/java/com/google/devtools/build/lib/vfs/Path.java
+index 18851ea..b89bba5 100644
+--- a/src/main/java/com/google/devtools/build/lib/vfs/Path.java
++++ b/src/main/java/com/google/devtools/build/lib/vfs/Path.java
+@@ -16,6 +16,7 @@ package com.google.devtools.build.lib.vfs;
+ import com.google.common.base.Preconditions;
+ import com.google.common.hash.Hasher;
+ import com.google.devtools.build.lib.concurrent.ThreadSafety.ThreadSafe;
++import com.google.devtools.build.lib.exec.TestStrategy;
+ import com.google.devtools.build.lib.skyframe.serialization.autocodec.AutoCodec;
+ import com.google.devtools.build.lib.skylarkinterface.SkylarkPrintable;
+ import com.google.devtools.build.lib.skylarkinterface.SkylarkPrinter;
+@@ -977,4 +978,11 @@ public class Path
+     fileSystem = fileSystemForSerialization;
+     driveStrLength = OS.getDriveStrLength(path);
+   }
++
++    /** Removes directory if it exists and recreates it.
++     * @param testStrategy*/
++    public void recreateDirectory(TestStrategy testStrategy) throws IOException {
++        deleteTree();
++      createDirectoryAndParents();
++    }
+ }
+diff --git a/src/main/java/com/google/devtools/build/lib/vfs/PathFragment.java b/src/main/java/com/google/devtools/build/lib/vfs/PathFragment.java
+index 4c7e219..8679c32 100644
+--- a/src/main/java/com/google/devtools/build/lib/vfs/PathFragment.java
++++ b/src/main/java/com/google/devtools/build/lib/vfs/PathFragment.java
+@@ -25,6 +25,7 @@ import com.google.devtools.build.lib.skyframe.serialization.strings.StringCodecs
+ import com.google.devtools.build.lib.skylarkinterface.SkylarkPrintable;
+ import com.google.devtools.build.lib.skylarkinterface.SkylarkPrinter;
+ import com.google.devtools.build.lib.util.FileType;
++import com.google.devtools.build.lib.vfs.inmemoryfs.InMemoryFileSystem;
+ import com.google.protobuf.CodedInputStream;
+ import com.google.protobuf.CodedOutputStream;
+ import java.io.IOException;
+@@ -642,7 +643,25 @@ public final class PathFragment
+     return !isNormalizedImpl(path, /* lookForSameLevelReferences= */ false);
+   }
+ 
+-  private enum NormalizedImplState {
++    /**
++     * Given a path that's normalized (no ".." or "." segments), except for a possible prefix sequence
++     * of contiguous ".." segments, returns the size of that prefix sequence.
++     *
++     * <p>Example allowed inputs: "/absolute/path", "relative/path", "../../relative/path". Example
++     * disallowed inputs: "/absolute/path/../path2", "relative/../path", "../relative/../p".
++     * @param inMemoryFileSystem
++     */
++    public int leadingParentReferences(InMemoryFileSystem inMemoryFileSystem) {
++        int leadingParentReferences = 0;
++      for (int i = 0;
++          i < segmentCount() && getSegment(i).equals("..");
++          i++) {
++        leadingParentReferences++;
++      }
++      return leadingParentReferences;
++    }
++
++    private enum NormalizedImplState {
+     Base, /* No particular state, eg. an 'a' or 'L' character */
+     Separator, /* We just saw a separator */
+     Dot, /* We just saw a dot after a separator */
+diff --git a/src/main/java/com/google/devtools/build/lib/vfs/inmemoryfs/InMemoryFileSystem.java b/src/main/java/com/google/devtools/build/lib/vfs/inmemoryfs/InMemoryFileSystem.java
+index be9e9db..d0f14cb 100644
+--- a/src/main/java/com/google/devtools/build/lib/vfs/inmemoryfs/InMemoryFileSystem.java
++++ b/src/main/java/com/google/devtools/build/lib/vfs/inmemoryfs/InMemoryFileSystem.java
+@@ -101,24 +101,7 @@ public class InMemoryFileSystem extends AbstractFileSystemWithCustomStat {
+     return rootInode;
+   }
+ 
+-  /**
+-   * Given a path that's normalized (no ".." or "." segments), except for a possible prefix sequence
+-   * of contiguous ".." segments, returns the size of that prefix sequence.
+-   *
+-   * <p>Example allowed inputs: "/absolute/path", "relative/path", "../../relative/path". Example
+-   * disallowed inputs: "/absolute/path/../path2", "relative/../path", "../relative/../p".
+-   */
+-  private int leadingParentReferences(PathFragment normalizedPath) {
+-    int leadingParentReferences = 0;
+-    for (int i = 0;
+-        i < normalizedPath.segmentCount() && normalizedPath.getSegment(i).equals("..");
+-        i++) {
+-      leadingParentReferences++;
+-    }
+-    return leadingParentReferences;
+-  }
+-
+-  /**
++    /**
+    * The errors that {@link InMemoryFileSystem} might issue for different sorts of IO failures.
+    */
+   public enum Error {
+diff --git a/src/main/java/com/google/devtools/build/skyframe/EvaluationContext.java b/src/main/java/com/google/devtools/build/skyframe/EvaluationContext.java
+index efc5104..65305f2 100644
+--- a/src/main/java/com/google/devtools/build/skyframe/EvaluationContext.java
++++ b/src/main/java/com/google/devtools/build/skyframe/EvaluationContext.java
+@@ -16,6 +16,7 @@ package com.google.devtools.build.skyframe;
+ 
+ import com.google.common.base.Preconditions;
+ import com.google.devtools.build.lib.events.ExtendedEventHandler;
++import com.google.devtools.build.lib.query2.SkyQueryEnvironment;
+ import com.google.devtools.build.skyframe.WalkableGraph.WalkableGraphFactory;
+ import java.util.Optional;
+ import java.util.concurrent.ExecutorService;
+@@ -84,7 +85,16 @@ public class EvaluationContext {
+     return new Builder();
+   }
+ 
+-  /** Builder for {@link EvaluationContext}. */
++    /**
++     * Configures the default {@link EvaluationContext} to change the behavior of how evaluations in
++     * {@link WalkableGraphFactory#prepareAndGet} work.
++     * @param skyQueryEnvironment
++     */
++    public EvaluationContext configureEvaluationContext(SkyQueryEnvironment skyQueryEnvironment) {
++        return this;
++    }
++
++    /** Builder for {@link EvaluationContext}. */
+   public static class Builder {
+     private int numThreads;
+     private Supplier<ExecutorService> executorServiceSupplier;
+diff --git a/src/test/java/com/google/devtools/build/lib/packages/PackageFactoryTest.java b/src/test/java/com/google/devtools/build/lib/packages/PackageFactoryTest.java
+index 4caa852..c3a0d44 100644
+--- a/src/test/java/com/google/devtools/build/lib/packages/PackageFactoryTest.java
++++ b/src/test/java/com/google/devtools/build/lib/packages/PackageFactoryTest.java
+@@ -1221,19 +1221,19 @@ public class PackageFactoryTest extends PackageFactoryTestBase {
+   @Test
+   public void testGlobPatternExtractor() {
+     GlobPatternExtractor globPatternExtractor = new GlobPatternExtractor();
+-    globPatternExtractor.visit(
+-        BuildFileAST.parseString(
+-            event -> {
+-              throw new IllegalArgumentException(event.getMessage());
+-            },
+-            "pattern = '*'",
+-            "some_variable = glob([",
+-            "  '**/*',",
+-            "  'a' + 'b',",
+-            "  pattern,",
+-            "])",
+-            "other_variable = glob(include = ['a'], exclude = ['b'])",
+-            "third_variable = glob(['c'], exclude_directories = 0)"));
++    BuildFileAST.parseString(
++        event -> {
++          throw new IllegalArgumentException(event.getMessage());
++        },
++        "pattern = '*'",
++        "some_variable = glob([",
++        "  '**/*',",
++        "  'a' + 'b',",
++        "  pattern,",
++        "])",
++        "other_variable = glob(include = ['a'], exclude = ['b'])",
++        "third_variable = glob(['c'], exclude_directories = 0)").visit(
++    );
+     assertThat(globPatternExtractor.getExcludeDirectoriesPatterns())
+         .containsExactly("ab", "a", "**/*");
+     assertThat(globPatternExtractor.getIncludeDirectoriesPatterns()).containsExactly("c");
+diff --git a/src/test/java/com/google/devtools/build/lib/rules/android/ResourceFilterFactoryTest.java b/src/test/java/com/google/devtools/build/lib/rules/android/ResourceFilterFactoryTest.java
+index e23b3f2..b31906c 100644
+--- a/src/test/java/com/google/devtools/build/lib/rules/android/ResourceFilterFactoryTest.java
++++ b/src/test/java/com/google/devtools/build/lib/rules/android/ResourceFilterFactoryTest.java
+@@ -372,7 +372,7 @@ public class ResourceFilterFactoryTest extends ResourceTestBase {
+         resourceFilterFactory.getResourceFilter(
+             errorConsumer, resourceDependencies, localResources);
+ 
+-    assertThat(localResources.filterLocalResources(errorConsumer, filter).getResources())
++    assertThat(filter.filterLocalResources(errorConsumer, localResources).getResources())
+         .containsExactly(localResourceToKeep);
+ 
+     ResourceDependencies filteredResourceDeps = resourceDependencies.filter(errorConsumer, filter);
+@@ -492,6 +492,6 @@ public class ResourceFilterFactoryTest extends ResourceTestBase {
+ 
+     assertThat(resourceDeps.filter(errorConsumer, filter)).isSameInstanceAs(resourceDeps);
+ 
+-    return localResources.filterLocalResources(errorConsumer, filter).getResources();
++    return filter.filterLocalResources(errorConsumer, localResources).getResources();
+   }
+ }
+diff --git a/src/test/java/com/google/devtools/build/lib/rules/cpp/CompileCommandLineTest.java b/src/test/java/com/google/devtools/build/lib/rules/cpp/CompileCommandLineTest.java
+index dba5802..4842b89 100644
+--- a/src/test/java/com/google/devtools/build/lib/rules/cpp/CompileCommandLineTest.java
++++ b/src/test/java/com/google/devtools/build/lib/rules/cpp/CompileCommandLineTest.java
+@@ -100,8 +100,8 @@ public class CompileCommandLineTest extends BuildViewTestCase {
+                     "}"))
+             .build();
+     assertThat(
+-            compileCommandLine.getArguments(
+-                /* parameterFilePath= */ null, /* overwrittenVariables= */ null))
++            null.getArguments(
++                /* parameterFilePath= */ null, /* overwrittenVariables= */ compileCommandLine))
+         .contains("-some_foo_flag");
+   }
+ 
+@@ -144,8 +144,8 @@ public class CompileCommandLineTest extends BuildViewTestCase {
+                     "}"))
+             .setCoptsFilter(CoptsFilter.fromRegex(Pattern.compile(".*i_am_a_flag.*")))
+             .build();
+-    return compileCommandLine.getArguments(
+-        /* parameterFilePath= */ null, /* overwrittenVariables= */ null);
++    return null.getArguments(
++        /* parameterFilePath= */ null, /* overwrittenVariables= */ compileCommandLine);
+   }
+ 
+   private CompileCommandLine.Builder makeCompileCommandLineBuilder() throws Exception {
+diff --git a/src/test/java/com/google/devtools/build/lib/rules/python/PythonConfigurationTest.java b/src/test/java/com/google/devtools/build/lib/rules/python/PythonConfigurationTest.java
+index 3632960..bf00f3a 100644
+--- a/src/test/java/com/google/devtools/build/lib/rules/python/PythonConfigurationTest.java
++++ b/src/test/java/com/google/devtools/build/lib/rules/python/PythonConfigurationTest.java
+@@ -128,7 +128,7 @@ public class PythonConfigurationTest extends ConfigurationTestCase {
+     assumesDefaultIsPY2();
+     PythonOptions opts =
+         parsePythonOptions("--incompatible_allow_python_version_transitions=false");
+-    assertThat(opts.canTransitionPythonVersion(PythonVersion.PY3)).isTrue();
++    assertThat(PythonVersion.PY3.canTransitionPythonVersion(opts)).isTrue();
+   }
+ 
+   @Test
+@@ -142,8 +142,8 @@ public class PythonConfigurationTest extends ConfigurationTestCase {
+     PythonOptions optsWithNewFlag =
+         parsePythonOptions(
+             "--incompatible_allow_python_version_transitions=false", "--python_version=PY2");
+-    assertThat(optsWithOldFlag.canTransitionPythonVersion(PythonVersion.PY3)).isFalse();
+-    assertThat(optsWithNewFlag.canTransitionPythonVersion(PythonVersion.PY3)).isFalse();
++    assertThat(PythonVersion.PY3.canTransitionPythonVersion(optsWithOldFlag)).isFalse();
++    assertThat(PythonVersion.PY3.canTransitionPythonVersion(optsWithNewFlag)).isFalse();
+   }
+ 
+   @Test
+@@ -152,7 +152,7 @@ public class PythonConfigurationTest extends ConfigurationTestCase {
+     assumesDefaultIsPY2();
+     PythonOptions opts =
+         parsePythonOptions("--incompatible_allow_python_version_transitions=false");
+-    assertThat(opts.canTransitionPythonVersion(PythonVersion.PY2)).isFalse();
++    assertThat(PythonVersion.PY2.canTransitionPythonVersion(opts)).isFalse();
+   }
+ 
+   @Test
+@@ -160,7 +160,7 @@ public class PythonConfigurationTest extends ConfigurationTestCase {
+     PythonOptions opts =
+         parsePythonOptions(
+             "--incompatible_allow_python_version_transitions=true", "--python_version=PY3");
+-    assertThat(opts.canTransitionPythonVersion(PythonVersion.PY2)).isTrue();
++    assertThat(PythonVersion.PY2.canTransitionPythonVersion(opts)).isTrue();
+   }
+ 
+   @Test
+@@ -173,7 +173,7 @@ public class PythonConfigurationTest extends ConfigurationTestCase {
+             "--incompatible_remove_old_python_version_api=false",
+             "--force_python=PY3",
+             "--python_version=PY3");
+-    assertThat(opts.canTransitionPythonVersion(PythonVersion.PY3)).isFalse();
++    assertThat(PythonVersion.PY3.canTransitionPythonVersion(opts)).isFalse();
+   }
+ 
+   @Test
+@@ -186,7 +186,7 @@ public class PythonConfigurationTest extends ConfigurationTestCase {
+             // because getPythonVersion() would be unaffected by the transition.
+             "--force_python=PY2",
+             "--python_version=PY3");
+-    assertThat(opts.canTransitionPythonVersion(PythonVersion.PY3)).isFalse();
++    assertThat(PythonVersion.PY3.canTransitionPythonVersion(opts)).isFalse();
+   }
+ 
+   @Test
+diff --git a/src/test/java/com/google/devtools/build/lib/syntax/ParserTest.java b/src/test/java/com/google/devtools/build/lib/syntax/ParserTest.java
+index 15bbe94..7b038ae 100644
+--- a/src/test/java/com/google/devtools/build/lib/syntax/ParserTest.java
++++ b/src/test/java/com/google/devtools/build/lib/syntax/ParserTest.java
+@@ -1488,7 +1488,7 @@ public class ParserTest extends EvaluationTestCase {
+             uniqueStringInstances.add(stringLiteral.getValue());
+           }
+         };
+-    collectAllStringsInStringLiteralsVisitor.visit(buildFileAST);
++    buildFileAST.visit(collectAllStringsInStringLiteralsVisitor);
+     assertThat(uniqueStringInstances).containsExactly("cat", "dog", "fish");
+   }
+ }

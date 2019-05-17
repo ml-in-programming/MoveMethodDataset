@@ -1,0 +1,205 @@
+id,name,file,offset,containing_class_id,target_ids
+0,com.google.devtools.build.lib.vfs.inmemoryfs.InMemoryFileSystem.leadingParentReferences,src/main/java/com/google/devtools/build/lib/vfs/inmemoryfs/InMemoryFileSystem.java,3718,81,176
+1,com.google.devtools.build.lib.vfs.inmemoryfs.InMemoryFileSystem.isRootDirectory,src/main/java/com/google/devtools/build/lib/vfs/inmemoryfs/InMemoryFileSystem.java,27952,81,192
+2,com.google.devtools.build.lib.exec.TestStrategy.recreateDirectory,src/main/java/com/google/devtools/build/lib/exec/TestStrategy.java,4459,9,192
+3,com.google.devtools.build.lib.exec.SpawnInputExpander.addMapping,src/main/java/com/google/devtools/build/lib/exec/SpawnInputExpander.java,4620,101,176
+4,com.google.devtools.build.lib.exec.StandaloneTestStrategy.renameOutputs,src/main/java/com/google/devtools/build/lib/exec/StandaloneTestStrategy.java,6413,119,17
+5,com.google.devtools.build.lib.util.Fingerprint.addPath,src/main/java/com/google/devtools/build/lib/util/Fingerprint.java,6493,30,192
+6,com.google.devtools.build.lib.util.DependencySet.read,src/main/java/com/google/devtools/build/lib/util/DependencySet.java,3510,197,192
+7,com.google.devtools.build.lib.bazel.rules.java.BazelJavaSemantics.isJavaBinaryOrJavaTest,src/main/java/com/google/devtools/build/lib/bazel/rules/java/BazelJavaSemantics.java,5881,150,23
+8,com.google.devtools.build.lib.bazel.rules.java.BazelJavaSemantics.useLegacyJavaTest,src/main/java/com/google/devtools/build/lib/bazel/rules/java/BazelJavaSemantics.java,32905,150,23
+9,com.google.devtools.build.lib.bazel.rules.BazelPrerequisiteValidator.validateDirectPrerequisiteVisibility,src/main/java/com/google/devtools/build/lib/bazel/rules/BazelPrerequisiteValidator.java,2229,55,73
+10,com.google.devtools.build.lib.bazel.commands.SyncCommand.resolveBind,src/main/java/com/google/devtools/build/lib/bazel/commands/SyncCommand.java,9957,139,53
+11,com.google.devtools.build.lib.bazel.repository.cache.RepositoryCache.put,src/main/java/com/google/devtools/build/lib/bazel/repository/cache/RepositoryCache.java,6544,147,192
+12,com.google.devtools.build.lib.bazel.repository.skylark.SkylarkRepositoryContext.makeDirectories,src/main/java/com/google/devtools/build/lib/bazel/repository/skylark/SkylarkRepositoryContext.java,12560,198,192
+13,com.google.devtools.build.lib.bazel.repository.skylark.SkylarkRepositoryContext.calculateSha256,src/main/java/com/google/devtools/build/lib/bazel/repository/skylark/SkylarkRepositoryContext.java,24100,198,192
+14,com.google.devtools.build.lib.bazel.repository.downloader.HttpDownloader.getDownloadDestination,src/main/java/com/google/devtools/build/lib/bazel/repository/downloader/HttpDownloader.java,9145,103,192
+15,com.google.devtools.build.lib.bazel.repository.MavenDownloader.retrieveSha1,src/main/java/com/google/devtools/build/lib/bazel/repository/MavenDownloader.java,6179,177,116
+16,com.google.devtools.build.lib.bazel.repository.MavenDownloader.getDownloadDestination,src/main/java/com/google/devtools/build/lib/bazel/repository/MavenDownloader.java,6636,177,192
+17,com.google.devtools.build.lib.bazel.repository.MavenJarFunction.createDirectory,src/main/java/com/google/devtools/build/lib/bazel/repository/MavenJarFunction.java,5289,49,192
+18,com.google.devtools.build.lib.bazel.repository.MavenJarFunction.getDescriptorBuilder,src/main/java/com/google/devtools/build/lib/bazel/repository/MavenJarFunction.java,6881,49,192
+19,com.google.devtools.build.lib.rules.cpp.CcImport.performErrorChecks,src/main/java/com/google/devtools/build/lib/rules/cpp/CcImport.java,8272,180,23 189
+20,com.google.devtools.build.lib.rules.cpp.CcModule.validateLanguage,src/main/java/com/google/devtools/build/lib/rules/cpp/CcModule.java,61334,32,41
+21,com.google.devtools.build.lib.rules.cpp.CcModule.getCallerLabel,src/main/java/com/google/devtools/build/lib/rules/cpp/CcModule.java,61950,32,41 107
+22,com.google.devtools.build.lib.rules.cpp.CcModule.validateExtensions,src/main/java/com/google/devtools/build/lib/rules/cpp/CcModule.java,70779,32,41 137
+23,com.google.devtools.build.lib.rules.cpp.CppBuildInfo.getHeader,src/main/java/com/google/devtools/build/lib/rules/cpp/CppBuildInfo.java,3213,195,176 196 69
+24,com.google.devtools.build.lib.rules.cpp.CppLinkAction.createSpawn,src/main/java/com/google/devtools/build/lib/rules/cpp/CppLinkAction.java,11932,168,17
+25,com.google.devtools.build.lib.rules.cpp.CcToolchainSuite.selectCcToolchain,src/main/java/com/google/devtools/build/lib/rules/cpp/CcToolchainSuite.java,4701,117,23 135
+26,com.google.devtools.build.lib.rules.cpp.CppCompileAction.getPermittedSystemIncludePrefixes,src/main/java/com/google/devtools/build/lib/rules/cpp/CppCompileAction.java,59211,28,192
+27,com.google.devtools.build.lib.rules.cpp.CppCompileAction.ensureCoverageNotesFilesExist,src/main/java/com/google/devtools/build/lib/rules/cpp/CppCompileAction.java,59583,28,17
+28,com.google.devtools.build.lib.rules.cpp.CompileCommandLine.getArguments,src/main/java/com/google/devtools/build/lib/rules/cpp/CompileCommandLine.java,3589,25,176 62
+29,com.google.devtools.build.lib.rules.cpp.CcToolchainProvider.usePicForDynamicLibraries,src/main/java/com/google/devtools/build/lib/rules/cpp/CcToolchainProvider.java,11758,124,133
+30,com.google.devtools.build.lib.rules.cpp.CcToolchainProvider.shouldCreatePerObjectDebugInfo,src/main/java/com/google/devtools/build/lib/rules/cpp/CcToolchainProvider.java,12569,124,133
+31,com.google.devtools.build.lib.rules.cpp.CcToolchainProvider.shouldProcessHeaders,src/main/java/com/google/devtools/build/lib/rules/cpp/CcToolchainProvider.java,13192,124,133
+32,com.google.devtools.build.lib.rules.cpp.UmbrellaHeaderAction.appendHeader,src/main/java/com/google/devtools/build/lib/rules/cpp/UmbrellaHeaderAction.java,4004,91,176
+33,com.google.devtools.build.lib.rules.cpp.ExtraLinkTimeLibraries.buildLibraries,src/main/java/com/google/devtools/build/lib/rules/cpp/ExtraLinkTimeLibraries.java,3819,60,23
+34,com.google.devtools.build.lib.rules.java.JavaBinary.getDeployManifestLines,src/main/java/com/google/devtools/build/lib/rules/java/JavaBinary.java,25467,178,23
+35,com.google.devtools.build.lib.rules.java.JavaBinary.addTimezoneResourceForJavaBinaries,src/main/java/com/google/devtools/build/lib/rules/java/JavaBinary.java,26137,178,23
+36,com.google.devtools.build.lib.rules.java.JavaImport.collectTransitiveJavaSourceJars,src/main/java/com/google/devtools/build/lib/rules/java/JavaImport.java,7618,99,23 189
+37,com.google.devtools.build.lib.rules.java.JavaImport.collectJars,src/main/java/com/google/devtools/build/lib/rules/java/JavaImport.java,8619,99,23
+38,com.google.devtools.build.lib.rules.java.JavaToolchain.getJavacOpts,src/main/java/com/google/devtools/build/lib/rules/java/JavaToolchain.java,6719,120,23
+39,com.google.devtools.build.lib.rules.java.JavaCompilationHelper.createGenJar,src/main/java/com/google/devtools/build/lib/rules/java/JavaCompilationHelper.java,16279,19,189
+40,com.google.devtools.build.lib.rules.java.JavaCompilationHelper.createNativeHeaderJar,src/main/java/com/google/devtools/build/lib/rules/java/JavaCompilationHelper.java,16648,19,189
+41,com.google.devtools.build.lib.rules.java.JavaCompilationHelper.createGensrcJar,src/main/java/com/google/devtools/build/lib/rules/java/JavaCompilationHelper.java,17003,19,189
+42,com.google.devtools.build.lib.rules.java.JavaCompilationHelper.createManifestProtoOutput,src/main/java/com/google/devtools/build/lib/rules/java/JavaCompilationHelper.java,17640,19,189
+43,com.google.devtools.build.lib.rules.java.JavaSkylarkApiProvider.checkLegacyJavaProviderFlag,src/main/java/com/google/devtools/build/lib/rules/java/JavaSkylarkApiProvider.java,6378,88,41 140
+44,com.google.devtools.build.lib.rules.java.ClasspathConfiguredFragment.getRuntimeClasspathList,src/main/java/com/google/devtools/build/lib/rules/java/ClasspathConfiguredFragment.java,2386,163,56 21
+45,com.google.devtools.build.lib.rules.objc.J2ObjcSource.toPrunedSource,src/main/java/com/google/devtools/build/lib/rules/objc/J2ObjcSource.java,3029,154,23
+46,com.google.devtools.build.lib.rules.objc.AppleSkylarkCommon.createAppleBinaryOutputSkylarkStruct,src/main/java/com/google/devtools/build/lib/rules/objc/AppleSkylarkCommon.java,10251,10,161
+47,com.google.devtools.build.lib.rules.objc.CompilationSupport.libraryNames,src/main/java/com/google/devtools/build/lib/rules/objc/CompilationSupport.java,66194,2,24
+48,com.google.devtools.build.lib.rules.objc.ArtifactListAttribute.get,src/main/java/com/google/devtools/build/lib/rules/objc/ArtifactListAttribute.java,1132,22,23
+49,com.google.devtools.build.lib.rules.objc.AppleCrosstoolTransition.determineSingleArchitecture,src/main/java/com/google/devtools/build/lib/rules/objc/AppleCrosstoolTransition.java,4906,74,92 70
+50,com.google.devtools.build.lib.rules.extra.ActionListener.retrieveAndValidateExtraActions,src/main/java/com/google/devtools/build/lib/rules/extra/ActionListener.java,3060,108,23
+51,com.google.devtools.build.lib.rules.config.ConfigSetting.constraintValuesMatch,src/main/java/com/google/devtools/build/lib/rules/config/ConfigSetting.java,7054,85,23
+52,com.google.devtools.build.lib.rules.config.ConfigGlobalLibrary.validateBuildSettingKeys,src/main/java/com/google/devtools/build/lib/rules/config/ConfigGlobalLibrary.java,3149,141,41
+53,com.google.devtools.build.lib.rules.python.PythonOptions.canTransitionPythonVersion,src/main/java/com/google/devtools/build/lib/rules/python/PythonOptions.java,14860,144,31
+54,com.google.devtools.build.lib.rules.python.PythonOptions.setPythonVersion,src/main/java/com/google/devtools/build/lib/rules/python/PythonOptions.java,16264,144,31
+55,com.google.devtools.build.lib.rules.android.AarImport.getBootclasspath,src/main/java/com/google/devtools/build/lib/rules/android/AarImport.java,11313,130,23
+56,com.google.devtools.build.lib.rules.android.ResourceApk.toResourceInfo,src/main/java/com/google/devtools/build/lib/rules/android/ResourceApk.java,6397,159,135
+57,com.google.devtools.build.lib.rules.android.AndroidCommon.collectHiddenTopLevelArtifacts,src/main/java/com/google/devtools/build/lib/rules/android/AndroidCommon.java,35622,8,23
+58,com.google.devtools.build.lib.rules.android.AndroidLibrary.collectTransitiveResourceJars,src/main/java/com/google/devtools/build/lib/rules/android/AndroidLibrary.java,12473,104,23
+59,com.google.devtools.build.lib.rules.android.AndroidManifest.renameManifestIfNeeded,src/main/java/com/google/devtools/build/lib/rules/android/AndroidManifest.java,6706,75,136
+60,com.google.devtools.build.lib.rules.android.AndroidResources.filterLocalResources,src/main/java/com/google/devtools/build/lib/rules/android/AndroidResources.java,14322,44,80
+61,com.google.devtools.build.lib.rules.android.AndroidLocalTestBase.addJavaClassJarToArtifactsBuilder,src/main/java/com/google/devtools/build/lib/rules/android/AndroidLocalTestBase.java,19229,59,56 189
+62,com.google.devtools.build.lib.rules.android.ValidatedAndroidResources.filter,src/main/java/com/google/devtools/build/lib/rules/android/ValidatedAndroidResources.java,5654,4,80
+63,com.google.devtools.build.lib.rules.genrule.GenRuleBase.updateBuilder,src/main/java/com/google/devtools/build/lib/rules/genrule/GenRuleBase.java,3321,100,23
+64,com.google.devtools.build.lib.rules.genquery.GenQuery.getEventHandler,src/main/java/com/google/devtools/build/lib/rules/genquery/GenQuery.java,9207,68,23
+65,com.google.devtools.build.lib.rules.platform.ConstraintSetting.validateDefaultConstraintValue,src/main/java/com/google/devtools/build/lib/rules/platform/ConstraintSetting.java,2804,34,23 135
+66,com.google.devtools.build.lib.rules.filegroup.Filegroup.getFilegroupPath,src/main/java/com/google/devtools/build/lib/rules/filegroup/Filegroup.java,5605,165,23
+67,com.google.devtools.build.lib.rules.repository.RepositoryFunction.prepareLocalRepositorySymlinkTree,src/main/java/com/google/devtools/build/lib/rules/repository/RepositoryFunction.java,16772,122,192 53
+68,com.google.devtools.build.lib.rules.repository.RepositoryDelegatorFunction.setupRepositoryRoot,src/main/java/com/google/devtools/build/lib/rules/repository/RepositoryDelegatorFunction.java,5681,129,192
+69,com.google.devtools.build.lib.rules.LateBoundAlias.createEmptyConfiguredTarget,src/main/java/com/google/devtools/build/lib/rules/LateBoundAlias.java,2971,118,23
+70,com.google.devtools.build.lib.events.Location.print,src/main/java/com/google/devtools/build/lib/events/Location.java,6668,41,176
+71,com.google.devtools.build.lib.events.Location.printWithPath,src/main/java/com/google/devtools/build/lib/events/Location.java,7961,41,176
+72,com.google.devtools.build.lib.events.PrintingEventHandler.handleFollowUpEvents,src/main/java/com/google/devtools/build/lib/events/PrintingEventHandler.java,4069,45,186
+73,com.google.devtools.build.lib.query2.query.output.ConditionalEdges.getAllConditions,src/main/java/com/google/devtools/build/lib/query2/query/output/ConditionalEdges.java,3220,201,53 158
+74,com.google.devtools.build.lib.query2.SkyQueryEnvironment.configureEvaluationContext,src/main/java/com/google/devtools/build/lib/query2/SkyQueryEnvironment.java,13923,138,7
+75,com.google.devtools.build.lib.remote.RemoteModule.checkClientServerCompatibility,src/main/java/com/google/devtools/build/lib/remote/RemoteModule.java,16370,13,0 83
+76,com.google.devtools.build.lib.remote.AbstractRemoteActionCache.injectRemoteArtifact,src/main/java/com/google/devtools/build/lib/remote/AbstractRemoteActionCache.java,17862,76,189 192
+77,com.google.devtools.build.lib.remote.SimpleBlobStoreActionCache.downloadTree,src/main/java/com/google/devtools/build/lib/remote/SimpleBlobStoreActionCache.java,3047,35,192
+78,com.google.devtools.build.lib.syntax.BaseFunction.canonicalizeArguments,src/main/java/com/google/devtools/build/lib/syntax/BaseFunction.java,17052,82,41
+79,com.google.devtools.build.lib.syntax.BaseFunction.getOrCreateChildEnvironment,src/main/java/com/google/devtools/build/lib/syntax/BaseFunction.java,18056,82,161
+80,com.google.devtools.build.lib.syntax.BuildFileAST.exec,src/main/java/com/google/devtools/build/lib/syntax/BuildFileAST.java,7956,15,161
+81,com.google.devtools.build.lib.syntax.BuildFileAST.execTopLevelStatement,src/main/java/com/google/devtools/build/lib/syntax/BuildFileAST.java,9166,15,161
+82,com.google.devtools.build.lib.syntax.BuildFileAST.eval,src/main/java/com/google/devtools/build/lib/syntax/BuildFileAST.java,16096,15,161
+83,com.google.devtools.build.lib.syntax.StringModule.join,src/main/java/com/google/devtools/build/lib/syntax/StringModule.java,3819,204,41 161
+84,com.google.devtools.build.lib.syntax.StringModule.replace,src/main/java/com/google/devtools/build/lib/syntax/StringModule.java,10068,204,41
+85,com.google.devtools.build.lib.syntax.StringModule.split,src/main/java/com/google/devtools/build/lib/syntax/StringModule.java,11999,204,41 161
+86,com.google.devtools.build.lib.syntax.StringModule.format,src/main/java/com/google/devtools/build/lib/syntax/StringModule.java,40124,204,41
+87,com.google.devtools.build.lib.syntax.MethodLibrary.sorted,src/main/java/com/google/devtools/build/lib/syntax/MethodLibrary.java,6694,199,41 161
+88,com.google.devtools.build.lib.syntax.MethodLibrary.reversed,src/main/java/com/google/devtools/build/lib/syntax/MethodLibrary.java,7730,199,41 161
+89,com.google.devtools.build.lib.syntax.MethodLibrary.len,src/main/java/com/google/devtools/build/lib/syntax/MethodLibrary.java,10551,199,41 161
+90,com.google.devtools.build.lib.syntax.MethodLibrary.dict,src/main/java/com/google/devtools/build/lib/syntax/MethodLibrary.java,20612,199,41 161
+91,com.google.devtools.build.lib.syntax.MethodLibrary.range,src/main/java/com/google/devtools/build/lib/syntax/MethodLibrary.java,23939,199,41 161
+92,com.google.devtools.build.lib.syntax.MethodLibrary.dir,src/main/java/com/google/devtools/build/lib/syntax/MethodLibrary.java,29338,199,41 161
+93,com.google.devtools.build.lib.syntax.MethodLibrary.fail,src/main/java/com/google/devtools/build/lib/syntax/MethodLibrary.java,30328,199,41
+94,com.google.devtools.build.lib.syntax.MethodLibrary.print,src/main/java/com/google/devtools/build/lib/syntax/MethodLibrary.java,31430,199,41 161
+95,com.google.devtools.build.lib.syntax.MethodLibrary.select,src/main/java/com/google/devtools/build/lib/syntax/MethodLibrary.java,39502,199,41
+96,com.google.devtools.build.lib.syntax.SkylarkMutable.checkMutable,src/main/java/com/google/devtools/build/lib/syntax/SkylarkMutable.java,1743,172,41 134
+97,com.google.devtools.build.lib.syntax.SkylarkMutable.lock,src/main/java/com/google/devtools/build/lib/syntax/SkylarkMutable.java,2828,172,41
+98,com.google.devtools.build.lib.syntax.SkylarkMutable.unlock,src/main/java/com/google/devtools/build/lib/syntax/SkylarkMutable.java,2971,172,41
+99,com.google.devtools.build.lib.syntax.SkylarkNestedSet.union,src/main/java/com/google/devtools/build/lib/syntax/SkylarkNestedSet.java,13548,156,41 161
+100,com.google.devtools.build.lib.syntax.FuncallExpression.callLegacyBuiltinRegistryFunction,src/main/java/com/google/devtools/build/lib/syntax/FuncallExpression.java,38738,67,161 82
+101,com.google.devtools.build.lib.syntax.FuncallExpression.callFunction,src/main/java/com/google/devtools/build/lib/syntax/FuncallExpression.java,39959,67,161
+102,com.google.devtools.build.lib.syntax.SyntaxTreeVisitor.visit,src/main/java/com/google/devtools/build/lib/syntax/SyntaxTreeVisitor.java,1970,166,15
+103,com.google.devtools.build.lib.syntax.SyntaxTreeVisitor.visit,src/main/java/com/google/devtools/build/lib/syntax/SyntaxTreeVisitor.java,2088,166,149
+104,com.google.devtools.build.lib.syntax.SyntaxTreeVisitor.visit,src/main/java/com/google/devtools/build/lib/syntax/SyntaxTreeVisitor.java,2815,166,151
+105,com.google.devtools.build.lib.syntax.SyntaxTreeVisitor.visit,src/main/java/com/google/devtools/build/lib/syntax/SyntaxTreeVisitor.java,3265,166,96
+106,com.google.devtools.build.lib.syntax.SyntaxTreeVisitor.visit,src/main/java/com/google/devtools/build/lib/syntax/SyntaxTreeVisitor.java,4838,166,37
+107,com.google.devtools.build.lib.syntax.SyntaxTreeVisitor.visit,src/main/java/com/google/devtools/build/lib/syntax/SyntaxTreeVisitor.java,4942,166,115
+108,com.google.devtools.build.lib.syntax.SyntaxTreeVisitor.visit,src/main/java/com/google/devtools/build/lib/syntax/SyntaxTreeVisitor.java,5293,166,95
+109,com.google.devtools.build.lib.syntax.EvalExceptionWithStackTrace.isSameLocation,src/main/java/com/google/devtools/build/lib/syntax/EvalExceptionWithStackTrace.java,5055,157,41
+110,com.google.devtools.build.lib.actions.AbstractAction.checkOutputsForDirectories,src/main/java/com/google/devtools/build/lib/actions/AbstractAction.java,15301,179,17
+111,com.google.devtools.build.lib.actions.ArtifactFactory.createArtifact,src/main/java/com/google/devtools/build/lib/actions/ArtifactFactory.java,11953,131,176 16
+112,com.google.devtools.build.lib.actions.ActionEnvironment.addTo,src/main/java/com/google/devtools/build/lib/actions/ActionEnvironment.java,8772,66,30
+113,com.google.devtools.build.lib.actions.ActionLookupValue.getGeneratingActionDangerousReadJavadoc,src/main/java/com/google/devtools/build/lib/actions/ActionLookupValue.java,2391,63,189
+114,com.google.devtools.build.lib.actions.FileContentsProxy.addToFingerprint,src/main/java/com/google/devtools/build/lib/actions/FileContentsProxy.java,2764,52,153
+115,com.google.devtools.build.lib.actions.FilesetOutputSymlink.reconstituteTargetPath,src/main/java/com/google/devtools/build/lib/actions/FilesetOutputSymlink.java,2173,188,176
+116,com.google.devtools.build.lib.collect.nestedset.NestedSetFingerprintCache.addNestedSetToFingerprintSlow,src/main/java/com/google/devtools/build/lib/collect/nestedset/NestedSetFingerprintCache.java,2595,102,30
+117,com.google.devtools.build.lib.dynamic.DynamicSpawnStrategy.moveFileOutErr,src/main/java/com/google/devtools/build/lib/dynamic/DynamicSpawnStrategy.java,14434,183,17 12
+118,com.google.devtools.build.lib.runtime.commands.RunCommand.computeArgs,src/main/java/com/google/devtools/build/lib/runtime/commands/RunCommand.java,8691,112,145
+119,com.google.devtools.build.lib.runtime.commands.RunCommand.prepareTestEnvironment,src/main/java/com/google/devtools/build/lib/runtime/commands/RunCommand.java,24430,112,145
+120,com.google.devtools.build.lib.runtime.commands.RunCommand.writeScript,src/main/java/com/google/devtools/build/lib/runtime/commands/RunCommand.java,26229,112,176 145
+121,com.google.devtools.build.lib.runtime.commands.RunCommand.warningOrException,src/main/java/com/google/devtools/build/lib/runtime/commands/RunCommand.java,28703,112,0
+122,com.google.devtools.build.lib.runtime.commands.DumpCommand.dumpActionCache,src/main/java/com/google/devtools/build/lib/runtime/commands/DumpCommand.java,11172,143,145
+123,com.google.devtools.build.lib.runtime.commands.DumpCommand.dumpRuleClasses,src/main/java/com/google/devtools/build/lib/runtime/commands/DumpCommand.java,12302,143,78
+124,com.google.devtools.build.lib.runtime.commands.DumpCommand.dumpSkylarkHeap,src/main/java/com/google/devtools/build/lib/runtime/commands/DumpCommand.java,16896,143,175
+125,com.google.devtools.build.lib.runtime.commands.HelpCommand.emitBlazeVersionInfo,src/main/java/com/google/devtools/build/lib/runtime/commands/HelpCommand.java,7650,184,57
+126,com.google.devtools.build.lib.runtime.commands.HelpCommand.createFlagInfo,src/main/java/com/google/devtools/build/lib/runtime/commands/HelpCommand.java,11206,184,61
+127,com.google.devtools.build.lib.runtime.commands.HelpCommand.emitGenericHelp,src/main/java/com/google/devtools/build/lib/runtime/commands/HelpCommand.java,13649,184,78 57
+128,com.google.devtools.build.lib.runtime.commands.AqueryCommand.getFunctionsMap,src/main/java/com/google/devtools/build/lib/runtime/commands/AqueryCommand.java,5726,105,145
+129,com.google.devtools.build.lib.runtime.commands.ProfileCommand.printTaskTree,src/main/java/com/google/devtools/build/lib/runtime/commands/ProfileCommand.java,13597,39,173
+130,com.google.devtools.build.lib.runtime.mobileinstall.MobileInstallCommand.isRuleSupported,src/main/java/com/google/devtools/build/lib/runtime/mobileinstall/MobileInstallCommand.java,15627,142,145
+131,com.google.devtools.build.lib.runtime.BlazeRuntime.initProfiler,src/main/java/com/google/devtools/build/lib/runtime/BlazeRuntime.java,12874,78,175
+132,com.google.devtools.build.lib.runtime.BuildEventStreamer.isIncomplete,src/main/java/com/google/devtools/build/lib/runtime/BuildEventStreamer.java,19767,5,64
+133,com.google.devtools.build.lib.runtime.CommandEnvironment.syncPackageLoading,src/main/java/com/google/devtools/build/lib/runtime/CommandEnvironment.java,21039,145,18 174
+134,com.google.devtools.build.lib.runtime.CriticalPathComputer.checkCriticalPathInconsistency,src/main/java/com/google/devtools/build/lib/runtime/CriticalPathComputer.java,14904,155,189 132
+135,com.google.devtools.build.lib.runtime.BlazeCommandDispatcher.bufferOut,src/main/java/com/google/devtools/build/lib/runtime/BlazeCommandDispatcher.java,23745,194,57
+136,com.google.devtools.build.lib.runtime.BlazeCommandDispatcher.bufferErr,src/main/java/com/google/devtools/build/lib/runtime/BlazeCommandDispatcher.java,24083,194,57
+137,com.google.devtools.build.lib.runtime.BlazeCommandDispatcher.ansiStripOut,src/main/java/com/google/devtools/build/lib/runtime/BlazeCommandDispatcher.java,24420,194,57
+138,com.google.devtools.build.lib.runtime.BlazeCommandDispatcher.ansiStripErr,src/main/java/com/google/devtools/build/lib/runtime/BlazeCommandDispatcher.java,24622,194,57
+139,com.google.devtools.build.lib.runtime.BlazeCommandDispatcher.tee,src/main/java/com/google/devtools/build/lib/runtime/BlazeCommandDispatcher.java,24824,194,57
+140,com.google.devtools.build.lib.runtime.BlazeCommandDispatcher.createEventHandler,src/main/java/com/google/devtools/build/lib/runtime/BlazeCommandDispatcher.java,26405,194,57
+141,com.google.devtools.build.lib.runtime.ExperimentalEventHandler.testSummaryProvidesNewInformation,src/main/java/com/google/devtools/build/lib/runtime/ExperimentalEventHandler.java,30219,72,43
+142,com.google.devtools.build.lib.runtime.FancyTerminalEventHandler.handleFollowUpEvents,src/main/java/com/google/devtools/build/lib/runtime/FancyTerminalEventHandler.java,9894,3,186
+143,com.google.devtools.build.lib.analysis.extra.ExtraActionSpec.getRootRelativePath,src/main/java/com/google/devtools/build/lib/analysis/extra/ExtraActionSpec.java,8844,20,23
+144,com.google.devtools.build.lib.analysis.config.OutputDirectories.buildMnemonic,src/main/java/com/google/devtools/build/lib/analysis/config/OutputDirectories.java,7777,26,70
+145,com.google.devtools.build.lib.analysis.actions.CustomCommandLine.addSimpleVectorArgToFingerprint,src/main/java/com/google/devtools/build/lib/analysis/actions/CustomCommandLine.java,48854,148,200 30
+146,com.google.devtools.build.lib.analysis.skylark.SkylarkActionFactory.validateActionCreation,src/main/java/com/google/devtools/build/lib/analysis/skylark/SkylarkActionFactory.java,11085,107,41
+147,com.google.devtools.build.lib.analysis.platform.PlatformInfo.addTo,src/main/java/com/google/devtools/build/lib/analysis/platform/PlatformInfo.java,3561,193,30
+148,com.google.devtools.build.lib.analysis.platform.ConstraintValueInfo.addTo,src/main/java/com/google/devtools/build/lib/analysis/platform/ConstraintValueInfo.java,3056,54,30
+149,com.google.devtools.build.lib.analysis.platform.ConstraintCollection.convertKey,src/main/java/com/google/devtools/build/lib/analysis/platform/ConstraintCollection.java,7196,90,41
+150,com.google.devtools.build.lib.analysis.constraints.ConstraintSemantics.validateAttributes,src/main/java/com/google/devtools/build/lib/analysis/constraints/ConstraintSemantics.java,22034,65,23
+151,com.google.devtools.build.lib.analysis.BuildView.filterTransitiveExtraActions,src/main/java/com/google/devtools/build/lib/analysis/BuildView.java,28440,51,181
+152,com.google.devtools.build.lib.analysis.RuleContext.internalCreateOutputArtifact,src/main/java/com/google/devtools/build/lib/analysis/RuleContext.java,25330,23,176
+153,com.google.devtools.build.lib.analysis.CommandHelper.shellPath,src/main/java/com/google/devtools/build/lib/analysis/CommandHelper.java,15670,113,176
+154,com.google.devtools.build.lib.analysis.BlazeDirectories.getActionConsoleOutputDirectory,src/main/java/com/google/devtools/build/lib/analysis/BlazeDirectories.java,6419,185,192
+155,com.google.devtools.build.lib.analysis.ConfiguredAspect.getProvider,src/main/java/com/google/devtools/build/lib/analysis/ConfiguredAspect.java,4996,160,11
+156,com.google.devtools.build.lib.analysis.DependencyResolver.dependentNodeMap,src/main/java/com/google/devtools/build/lib/analysis/DependencyResolver.java,6387,127,106 71 69
+157,com.google.devtools.build.lib.analysis.DependencyResolver.addExplicitDeps,src/main/java/com/google/devtools/build/lib/analysis/DependencyResolver.java,27055,127,53
+158,com.google.devtools.build.lib.analysis.DependencyResolver.getAttributes,src/main/java/com/google/devtools/build/lib/analysis/DependencyResolver.java,28658,127,53
+159,com.google.devtools.build.lib.analysis.DependencyResolver.visitTargetVisibility,src/main/java/com/google/devtools/build/lib/analysis/DependencyResolver.java,30974,127,71
+160,com.google.devtools.build.lib.analysis.PlatformConfiguration.isToolchainTypeEnabled,src/main/java/com/google/devtools/build/lib/analysis/PlatformConfiguration.java,3015,6,135
+161,com.google.devtools.build.lib.analysis.ConfiguredTargetFactory.findPrerequisite,src/main/java/com/google/devtools/build/lib/analysis/ConfiguredTargetFactory.java,7861,190,135 69
+162,com.google.devtools.build.lib.analysis.ConfiguredTargetFactory.getOutputArtifact,src/main/java/com/google/devtools/build/lib/analysis/ConfiguredTargetFactory.java,8379,190,131 121 69
+163,com.google.devtools.build.lib.analysis.ConfiguredTargetFactory.depAnalysisFailures,src/main/java/com/google/devtools/build/lib/analysis/ConfiguredTargetFactory.java,17490,190,23
+164,com.google.devtools.build.lib.analysis.ConfiguredTargetFactory.erroredConfiguredTargetWithFailures,src/main/java/com/google/devtools/build/lib/analysis/ConfiguredTargetFactory.java,18422,190,23
+165,com.google.devtools.build.lib.analysis.ConfiguredTargetFactory.erroredConfiguredTarget,src/main/java/com/google/devtools/build/lib/analysis/ConfiguredTargetFactory.java,18919,190,23
+166,com.google.devtools.build.lib.analysis.ConfiguredTargetFactory.missingFragmentError,src/main/java/com/google/devtools/build/lib/analysis/ConfiguredTargetFactory.java,20537,190,23 125
+167,com.google.devtools.build.lib.analysis.ConfiguredTargetFactory.validateAdvertisedProviders,src/main/java/com/google/devtools/build/lib/analysis/ConfiguredTargetFactory.java,25718,190,93 160
+168,com.google.devtools.build.lib.analysis.ResolvedToolchainContext.transformKey,src/main/java/com/google/devtools/build/lib/analysis/ResolvedToolchainContext.java,7943,169,41
+169,com.google.devtools.build.lib.analysis.CachingAnalysisEnvironment.collectDebugInfoAndCrash,src/main/java/com/google/devtools/build/lib/analysis/CachingAnalysisEnvironment.java,12201,14,69
+170,com.google.devtools.build.lib.packages.Rule.checkForNullLabel,src/main/java/com/google/devtools/build/lib/packages/Rule.java,24649,53,135
+171,com.google.devtools.build.lib.packages.Rule.getAspectLabelsSuperset,src/main/java/com/google/devtools/build/lib/packages/Rule.java,26118,53,191
+172,com.google.devtools.build.lib.packages.Attribute.getDefaultValue,src/main/java/com/google/devtools/build/lib/packages/Attribute.java,91650,111,53
+173,com.google.devtools.build.lib.packages.PackageFactory.createPackage,src/main/java/com/google/devtools/build/lib/packages/PackageFactory.java,50884,109,40 126 187 140
+174,com.google.devtools.build.lib.packages.PackageFactory.createPackageFromAst,src/main/java/com/google/devtools/build/lib/packages/PackageFactory.java,53409,109,40 126 140
+175,com.google.devtools.build.lib.packages.PackageFactory.createPackageForTesting,src/main/java/com/google/devtools/build/lib/packages/PackageFactory.java,54987,109,40 126
+176,com.google.devtools.build.lib.packages.PackageFactory.maybeGetBuildFileBytes,src/main/java/com/google/devtools/build/lib/packages/PackageFactory.java,58982,109,192
+177,com.google.devtools.build.lib.packages.WorkspaceGlobals.createRepositoryName,src/main/java/com/google/devtools/build/lib/packages/WorkspaceGlobals.java,6526,162,41
+178,com.google.devtools.build.lib.packages.WorkspaceGlobals.getManagedDirectoriesPaths,src/main/java/com/google/devtools/build/lib/packages/WorkspaceGlobals.java,6983,162,41
+179,com.google.devtools.build.lib.packages.RawAttributeMapper.getRawAttributeValue,src/main/java/com/google/devtools/build/lib/packages/RawAttributeMapper.java,3723,158,53
+180,com.google.devtools.build.lib.packages.RawAttributeMapper.getRawAttributeValue,src/main/java/com/google/devtools/build/lib/packages/RawAttributeMapper.java,4164,158,111 53
+181,com.google.devtools.build.lib.packages.AdvertisedProviderSet.advertises,src/main/java/com/google/devtools/build/lib/packages/AdvertisedProviderSet.java,4303,93,11
+182,com.google.devtools.build.lib.packages.AggregatingAttributeMapper.getPossibleAttributeValues,src/main/java/com/google/devtools/build/lib/packages/AggregatingAttributeMapper.java,8544,84,111 53
+183,com.google.devtools.build.lib.pkgcache.PathPackageLocator.getPackageBuildFile,src/main/java/com/google/devtools/build/lib/pkgcache/PathPackageLocator.java,2914,36,40
+184,com.google.devtools.build.lib.pkgcache.PathPackageLocator.getFilePath,src/main/java/com/google/devtools/build/lib/pkgcache/PathPackageLocator.java,10668,36,176
+185,com.google.devtools.build.lib.pkgcache.CompileOneDependencyTransformer.getOrderedRuleList,src/main/java/com/google/devtools/build/lib/pkgcache/CompileOneDependencyTransformer.java,2609,98,167
+186,com.google.devtools.build.lib.profiler.chart.DetailedChartCreator.createTypes,src/main/java/com/google/devtools/build/lib/profiler/chart/DetailedChartCreator.java,3004,170,164
+187,com.google.devtools.build.lib.profiler.chart.AggregatingChartCreator.createBar,src/main/java/com/google/devtools/build/lib/profiler/chart/AggregatingChartCreator.java,4364,47,110 164
+188,com.google.devtools.build.lib.profiler.analysis.ProfileInfo.getStatsForType,src/main/java/com/google/devtools/build/lib/profiler/analysis/ProfileInfo.java,19862,173,203
+189,com.google.devtools.build.lib.profiler.Profiler.shouldProfile,src/main/java/com/google/devtools/build/lib/profiler/Profiler.java,24674,38,203
+190,com.google.devtools.build.lib.skyframe.serialization.ObjectCodecs.serializeImpl,src/main/java/com/google/devtools/build/lib/skyframe/serialization/ObjectCodecs.java,3787,1,42 114
+191,com.google.devtools.build.lib.skyframe.serialization.ObjectCodecs.deserializeImpl,src/main/java/com/google/devtools/build/lib/skyframe/serialization/ObjectCodecs.java,4133,1,79
+192,com.google.devtools.build.lib.skyframe.ActionRewindStrategy.addPropagatingActionDepsAndGetNewlyVisitedArtifacts,src/main/java/com/google/devtools/build/lib/skyframe/ActionRewindStrategy.java,17223,128,97
+193,com.google.devtools.build.lib.skyframe.PlatformMappingValue.parse,src/main/java/com/google/devtools/build/lib/skyframe/PlatformMappingValue.java,10172,86,46
+194,com.google.devtools.build.lib.skyframe.WorkspaceFileFunction.createImportToChunkMap,src/main/java/com/google/devtools/build/lib/skyframe/WorkspaceFileFunction.java,6642,33,123 58
+195,com.google.devtools.build.lib.skyframe.SkyframeActionExecutor.reportActionExecution,src/main/java/com/google/devtools/build/lib/skyframe/SkyframeActionExecutor.java,65734,171,192 12 146
+196,com.google.devtools.build.lib.skyframe.SkylarkImportLookupFunction.getRepositoryMapping,src/main/java/com/google/devtools/build/lib/skyframe/SkylarkImportLookupFunction.java,18099,94,126 135
+197,com.google.devtools.build.lib.skyframe.ToolchainResolutionFunction.filterPlatform,src/main/java/com/google/devtools/build/lib/skyframe/ToolchainResolutionFunction.java,10801,27,193
+198,com.google.devtools.build.lib.skyframe.RegisteredToolchainsFunction.configureRegisteredToolchains,src/main/java/com/google/devtools/build/lib/skyframe/RegisteredToolchainsFunction.java,4962,50,69
+199,com.google.devtools.build.lib.buildtool.BuildTool.shouldStopOnFailure,src/main/java/com/google/devtools/build/lib/buildtool/BuildTool.java,14987,77,182
+200,com.google.devtools.build.lib.buildtool.AqueryBuildTool.getNextFunctionExpression,src/main/java/com/google/devtools/build/lib/buildtool/AqueryBuildTool.java,8224,29,89
+201,com.google.devtools.build.docgen.RuleDocumentationAttribute.getRuleDefinition,src/main/java/com/google/devtools/build/docgen/RuleDocumentationAttribute.java,10406,202,152
+202,com.google.devtools.common.options.OptionsBase.getValueFromDefinition,src/main/java/com/google/devtools/common/options/OptionsBase.java,2899,87,61
+203,com.google.protobuf.UnknownFieldSet.writeAsMessageSetTo,third_party/protobuf/3.6.1/java/core/src/main/java/com/google/protobuf/UnknownFieldSet.java,7328,48,114

@@ -1,0 +1,53 @@
+2019-05-17 17:54:16,471 [INFO] Project /home/mikhail/Documents/Development/MoveMethodGenerator/../MoveMethodDataset/bazel/bazel is opened
+2019-05-17 18:01:29,832 [INFO] Total number of java files: 5398
+2019-05-17 18:01:29,832 [INFO] Total number of source java files: 4069
+2019-05-17 18:01:29,832 [INFO] Total number of classes: 1772
+2019-05-17 18:01:29,833 [INFO] Total number of methods: 16035
+2019-05-17 18:01:29,833 [INFO] StaticMethodsFilter filtered: 3800
+2019-05-17 18:01:29,833 [INFO] ConstructorsFilter filtered: 1542
+2019-05-17 18:01:29,833 [INFO] AbstractMethodsFilter filtered: 481
+2019-05-17 18:01:29,833 [INFO] GettersFilter filtered: 1942
+2019-05-17 18:01:29,833 [INFO] SettersFilter filtered: 68
+2019-05-17 18:01:29,833 [INFO] EmptyMethodsFilter filtered: 442
+2019-05-17 18:01:29,833 [INFO] ExceptionsThrowersFilter filtered: 109
+2019-05-17 18:01:29,833 [INFO] SingleMethodFilter filtered: 163
+2019-05-17 18:01:29,833 [INFO] SimpleDelegationsFilter filtered: 2167
+2019-05-17 18:01:29,833 [INFO] PrivateMethodsCallersFilter filtered: 2103
+2019-05-17 18:01:29,833 [INFO] PrivateFieldAccessorsFilter filtered: 1740
+2019-05-17 18:01:29,833 [INFO] OverridingMethodsFilter filtered: 748
+2019-05-17 18:01:29,833 [INFO] OverriddenMethodsFilter filtered: 31
+2019-05-17 18:01:29,833 [INFO] MethodCallWithSuperFilter filtered: 4
+2019-05-17 18:01:29,833 [INFO] PrivateClassUserFilter filtered: 18
+2019-05-17 18:01:29,833 [INFO] GenericTypeUserFilter filtered: 0
+2019-05-17 18:01:29,833 [INFO] NoTargetsMethodsFilter filtered: 473
+2019-05-17 18:01:29,833 [INFO] Number of methods after filtration: 204
+2019-05-17 18:04:10,813 [INFO] Project /home/mikhail/Documents/Development/MoveMethodGenerator/../MoveMethodDataset/bazel/bazel is opened
+2019-05-17 18:05:24,701 [ERROR] Exception occurred: Failed to find moved method: printTaskTree; Method was moved to com.google.devtools.build.lib.profiler.analysis.ProfileInfo [java.lang.IllegalStateException: Failed to find moved method: printTaskTree; Method was moved to com.google.devtools.build.lib.profiler.analysis.ProfileInfo]
+2019-05-17 18:05:24,701 [ERROR] org.jetbrains.research.groups.ml_methods.move_method_gen.mover.AppStarter.moveMethod(AppStarter.java:228)
+2019-05-17 18:05:24,701 [ERROR] org.jetbrains.research.groups.ml_methods.move_method_gen.mover.AppStarter.lambda$run$3(AppStarter.java:115)
+2019-05-17 18:05:24,701 [ERROR] com.intellij.openapi.project.DumbServiceImpl.lambda$runWhenSmart$0(DumbServiceImpl.java:232)
+2019-05-17 18:05:24,701 [ERROR] com.intellij.ide.startup.impl.StartupManagerImpl.lambda$runWhenProjectIsInitialized$6(StartupManagerImpl.java:392)
+2019-05-17 18:05:24,702 [ERROR] com.intellij.ui.GuiUtils.invokeLaterIfNeeded(GuiUtils.java:377)
+2019-05-17 18:05:24,702 [ERROR] com.intellij.ide.startup.impl.StartupManagerImpl.runWhenProjectIsInitialized(StartupManagerImpl.java:394)
+2019-05-17 18:05:24,702 [ERROR] com.intellij.openapi.project.DumbServiceImpl.runWhenSmart(DumbServiceImpl.java:224)
+2019-05-17 18:05:24,702 [ERROR] org.jetbrains.research.groups.ml_methods.move_method_gen.mover.AppStarter.run(AppStarter.java:107)
+2019-05-17 18:05:24,702 [ERROR] org.jetbrains.research.groups.ml_methods.move_method_gen.ProjectAppStarter.main(ProjectAppStarter.java:108)
+2019-05-17 18:05:24,702 [ERROR] com.intellij.idea.IdeaApplication.lambda$run$1(IdeaApplication.java:211)
+2019-05-17 18:05:24,702 [ERROR] com.intellij.openapi.application.TransactionGuardImpl.performUserActivity(TransactionGuardImpl.java:195)
+2019-05-17 18:05:24,702 [ERROR] com.intellij.idea.IdeaApplication.run(IdeaApplication.java:211)
+2019-05-17 18:05:24,702 [ERROR] com.intellij.idea.IdeaApplication.lambda$initApplication$0(IdeaApplication.java:74)
+2019-05-17 18:05:24,702 [ERROR] java.awt.event.InvocationEvent.dispatch(InvocationEvent.java:311)
+2019-05-17 18:05:24,702 [ERROR] java.awt.EventQueue.dispatchEventImpl(EventQueue.java:764)
+2019-05-17 18:05:24,702 [ERROR] java.awt.EventQueue.access$500(EventQueue.java:98)
+2019-05-17 18:05:24,702 [ERROR] java.awt.EventQueue$3.run(EventQueue.java:715)
+2019-05-17 18:05:24,702 [ERROR] java.awt.EventQueue$3.run(EventQueue.java:709)
+2019-05-17 18:05:24,702 [ERROR] java.security.AccessController.doPrivileged(Native Method)
+2019-05-17 18:05:24,702 [ERROR] java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:74)
+2019-05-17 18:05:24,702 [ERROR] java.awt.EventQueue.dispatchEvent(EventQueue.java:734)
+2019-05-17 18:05:24,702 [ERROR] com.intellij.ide.IdeEventQueue.dispatchEvent(IdeEventQueue.java:347)
+2019-05-17 18:05:24,702 [ERROR] java.awt.EventDispatchThread.pumpOneEventForFilters(EventDispatchThread.java:205)
+2019-05-17 18:05:24,702 [ERROR] java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:116)
+2019-05-17 18:05:24,702 [ERROR] java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:105)
+2019-05-17 18:05:24,702 [ERROR] java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:101)
+2019-05-17 18:05:24,702 [ERROR] java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:93)
+2019-05-17 18:05:24,702 [ERROR] java.awt.EventDispatchThread.run(EventDispatchThread.java:82)
