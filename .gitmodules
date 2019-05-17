@@ -32,3 +32,6 @@
 [submodule "bazel/bazel"]
 	path = bazel/bazel
 	url = https://github.com/bazelbuild/bazel.git
+[submodule "atlas/atlas"]
+	path = atlas/atlas
+	url = https://github.com/alibaba/atlas.git

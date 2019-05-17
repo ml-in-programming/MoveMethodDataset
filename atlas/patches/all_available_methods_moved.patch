@@ -1,0 +1,1035 @@
+diff --git a/atlas-demo/multi-feature-module/base/src/main/java/com/example/android/unsplash/ui/grid/PhotoViewHolder.java b/atlas-demo/multi-feature-module/base/src/main/java/com/example/android/unsplash/ui/grid/PhotoViewHolder.java
+index 3147d8d..391ff31 100644
+--- a/atlas-demo/multi-feature-module/base/src/main/java/com/example/android/unsplash/ui/grid/PhotoViewHolder.java
++++ b/atlas-demo/multi-feature-module/base/src/main/java/com/example/android/unsplash/ui/grid/PhotoViewHolder.java
+@@ -19,6 +19,7 @@ package com.example.android.unsplash.ui.grid;
+ import android.support.v7.widget.RecyclerView;
+ import android.view.View;
+ 
++import com.example.android.unsplash.MainActivity;
+ import com.example.android.unsplash.data.model.Photo;
+ 
+ public class PhotoViewHolder extends RecyclerView.ViewHolder {
+@@ -53,4 +54,29 @@ public class PhotoViewHolder extends RecyclerView.ViewHolder {
+     public void setId(long id) {
+         this.id = id;
+     }
++
++    public ActivityOptions getActivityOptions(MainActivity mainActivity) {
++        TextView author =
++                itemView.findViewById(com.example.android.unsplash.base.R.id.author);
++        ImageView photo =
++                itemView.findViewById(com.example.android.unsplash.base.R.id.photo);
++        Pair authorPair = Pair.create(author, author.getTransitionName());
++        Pair photoPair = Pair.create(photo, photo.getTransitionName());
++        View decorView = getWindow().getDecorView();
++        View statusBackground = decorView.findViewById(android.R.id.statusBarBackground);
++        View navBackground = decorView.findViewById(android.R.id.navigationBarBackground);
++        Pair statusPair = Pair.create(statusBackground,
++                statusBackground.getTransitionName());
++
++        final ActivityOptions options;
++        if (navBackground == null) {
++            options = ActivityOptions.makeSceneTransitionAnimation(mainActivity,
++                    authorPair, photoPair, statusPair);
++        } else {
++            Pair navPair = Pair.create(navBackground, navBackground.getTransitionName());
++            options = ActivityOptions.makeSceneTransitionAnimation(mainActivity,
++                    authorPair, photoPair, statusPair, navPair);
++        }
++        return options;
++    }
+ }
+diff --git a/atlas-demo/multi-feature-module/main/src/main/java/com/example/android/unsplash/MainActivity.java b/atlas-demo/multi-feature-module/main/src/main/java/com/example/android/unsplash/MainActivity.java
+index c6ad8af..09fbfc7 100644
+--- a/atlas-demo/multi-feature-module/main/src/main/java/com/example/android/unsplash/MainActivity.java
++++ b/atlas-demo/multi-feature-module/main/src/main/java/com/example/android/unsplash/MainActivity.java
+@@ -112,7 +112,7 @@ public class MainActivity extends Activity {
+                 PhotoViewHolder pvh = (PhotoViewHolder) holder;
+                 final Intent intent = getDetailActivityStartIntent(
+                         activity, position, pvh);
+-                final ActivityOptions activityOptions = getActivityOptions(pvh);
++                final ActivityOptions activityOptions = pvh.getActivityOptions(this);
+ 
+                 activity.startActivityForResult(
+                         intent, IntentUtil.INSTANCE.getREQUEST_CODE(), activityOptions.toBundle());
+@@ -209,31 +209,6 @@ public class MainActivity extends Activity {
+         return intent;
+     }
+ 
+-    private ActivityOptions getActivityOptions(PhotoViewHolder holder) {
+-        TextView author =
+-                holder.itemView.findViewById(com.example.android.unsplash.base.R.id.author);
+-        ImageView photo =
+-                holder.itemView.findViewById(com.example.android.unsplash.base.R.id.photo);
+-        Pair authorPair = Pair.create(author, author.getTransitionName());
+-        Pair photoPair = Pair.create(photo, photo.getTransitionName());
+-        View decorView = getWindow().getDecorView();
+-        View statusBackground = decorView.findViewById(android.R.id.statusBarBackground);
+-        View navBackground = decorView.findViewById(android.R.id.navigationBarBackground);
+-        Pair statusPair = Pair.create(statusBackground,
+-                statusBackground.getTransitionName());
+-
+-        final ActivityOptions options;
+-        if (navBackground == null) {
+-            options = ActivityOptions.makeSceneTransitionAnimation(this,
+-                    authorPair, photoPair, statusPair);
+-        } else {
+-            Pair navPair = Pair.create(navBackground, navBackground.getTransitionName());
+-            options = ActivityOptions.makeSceneTransitionAnimation(this,
+-                    authorPair, photoPair, statusPair, navPair);
+-        }
+-        return options;
+-    }
+-
+     @Override
+     protected void onResume() {
+         super.onResume();
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/cf/code/Frame.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/cf/code/Frame.java
+index b2f8a13..0dd09cc 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/cf/code/Frame.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/cf/code/Frame.java
+@@ -108,17 +108,6 @@ public final class Frame {
+     }
+ 
+     /**
+-     * Replaces all the occurrences of the given uninitialized type in
+-     * this frame with its initialized equivalent.
+-     *
+-     * @param type {@code non-null;} type to replace
+-     */
+-    public void makeInitialized(Type type) {
+-        locals.makeInitialized(type);
+-        stack.makeInitialized(type);
+-    }
+-
+-    /**
+      * Gets the locals array for this instance.
+      *
+      * @return {@code non-null;} the locals array
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/cf/code/Ropper.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/cf/code/Ropper.java
+index fa31609..f097e89 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/cf/code/Ropper.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/cf/code/Ropper.java
+@@ -1621,7 +1621,7 @@ public final class Ropper {
+ 
+             addBlock (
+                 new BasicBlock(newLabel,
+-                    filterMoveReturnAddressInsns(origBlock.getInsns()),
++                    origBlock.getInsns().filterMoveReturnAddressInsns(this),
+                     successors, primarySuccessor),
+                     labelToSubroutines.get(newLabel));
+         }
+@@ -1705,46 +1705,6 @@ public final class Ropper {
+ 
+ 
+     /**
+-     * Removes all {@code move-return-address} instructions, returning a new
+-     * {@code InsnList} if necessary. The {@code move-return-address}
+-     * insns are dead code after subroutines have been inlined.
+-     *
+-     * @param insns {@code InsnList} that may contain
+-     * {@code move-return-address} insns
+-     * @return {@code InsnList} with {@code move-return-address} removed
+-     */
+-    private InsnList filterMoveReturnAddressInsns(InsnList insns) {
+-        int sz;
+-        int newSz = 0;
+-
+-        // First see if we need to filter, and if so what the new size will be
+-        sz = insns.size();
+-        for (int i = 0; i < sz; i++) {
+-            if (insns.get(i).getOpcode() != Rops.MOVE_RETURN_ADDRESS) {
+-                newSz++;
+-            }
+-        }
+-
+-        if (newSz == sz) {
+-            return insns;
+-        }
+-
+-        // Make a new list without the MOVE_RETURN_ADDRESS insns
+-        InsnList newInsns = new InsnList(newSz);
+-
+-        int newIndex = 0;
+-        for (int i = 0; i < sz; i++) {
+-            Insn insn = insns.get(i);
+-            if (insn.getOpcode() != Rops.MOVE_RETURN_ADDRESS) {
+-                newInsns.set(newIndex++, insn);
+-            }
+-        }
+-
+-        newInsns.setImmutable();
+-        return newInsns;
+-    }
+-
+-    /**
+      * Visits each non-subroutine block once in depth-first successor order.
+      *
+      * @param firstLabel label of start block
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/cf/code/ValueAwareMachine.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/cf/code/ValueAwareMachine.java
+index 86902a8..3a4a212 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/cf/code/ValueAwareMachine.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/cf/code/ValueAwareMachine.java
+@@ -157,7 +157,7 @@ public class ValueAwareMachine extends BaseMachine {
+             case ByteOps.INVOKESPECIAL: {
+                 Type thisType = arg(0).getType();
+                 if (thisType.isUninitialized()) {
+-                    frame.makeInitialized(thisType);
++                    thisType.makeInitialized(frame);
+                 }
+                 Type type = ((TypeBearer) getAuxCst()).getType();
+                 if (type == Type.VOID) {
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/cf/cst/ConstantPoolParser.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/cf/cst/ConstantPoolParser.java
+index bc4c3a4..ee8bb42 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/cf/cst/ConstantPoolParser.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/cf/cst/ConstantPoolParser.java
+@@ -350,7 +350,7 @@ public final class ConstantPoolParser {
+             throw pe;
+         }
+ 
+-        pool.set(idx, cst);
++        cst.set(idx, pool);
+         return cst;
+     }
+ 
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/code/CodeAddress.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/code/CodeAddress.java
+index fa32388..be1cb58 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/code/CodeAddress.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/code/CodeAddress.java
+@@ -88,4 +88,20 @@ public final class CodeAddress extends ZeroSizeInsn {
+     public boolean getBindsClosely() {
+         return bindsClosely;
+     }
++
++    /**
++     * Returns an instance that is just like this one, except that its
++     * opcode has the opposite sense (as a test; e.g. a
++     * {@code lt} test becomes a {@code ge}), and its branch
++     * target is replaced by the one given, and all set-once values
++     * associated with the class (such as its address) are reset.
++     *
++     *
++     * @param targetInsn@return {@code non-null;} an appropriately-constructed instance
++     */
++    public TargetInsn withNewTargetAndReversed(TargetInsn targetInsn) {
++        Dop opcode = targetInsn.getOpcode().getOppositeTest();
++
++        return new TargetInsn(opcode, targetInsn.getPosition(), targetInsn.getRegisters(), this);
++    }
+ }
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/code/DalvInsn.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/code/DalvInsn.java
+index fa2805a..fadab63 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/code/DalvInsn.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/code/DalvInsn.java
+@@ -459,4 +459,35 @@ public abstract class DalvInsn {
+      * @return {@code null-ok;} the listing string
+      */
+     protected abstract String listingString0(boolean noteIndices);
++
++    /**
++     * Returns the string form, suitable for inclusion in a listing
++     * dump, of the given instruction. The instruction must be of this
++     * instance's format for proper operation.
++     *
++     * @param noteIndices whether to include an explicit notation of
++     * constant pool indices
++     * @param insnFormat
++     * @return {@code non-null;} the string form
++     */
++    public final String listingStringOther(boolean noteIndices, InsnFormat insnFormat) {
++        String op = getOpcode().getName();
++        String arg = insnFormat.insnArgString(this);
++        String comment = insnFormat.insnCommentString(this, noteIndices);
++        StringBuilder sb = new StringBuilder(100);
++
++        sb.append(op);
++
++        if (arg.length() != 0) {
++            sb.append(' ');
++            sb.append(arg);
++        }
++
++        if (comment.length() != 0) {
++            sb.append(" // ");
++            sb.append(comment);
++        }
++
++        return sb.toString();
++    }
+ }
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/code/FixedSizeInsn.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/code/FixedSizeInsn.java
+index cdc8234..36fe77c 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/code/FixedSizeInsn.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/code/FixedSizeInsn.java
+@@ -68,6 +68,6 @@ public abstract class FixedSizeInsn extends DalvInsn {
+     /** {@inheritDoc} */
+     @Override
+     protected final String listingString0(boolean noteIndices) {
+-        return getOpcode().getFormat().listingString(this, noteIndices);
++        return listingStringOther(noteIndices, getOpcode().getFormat());
+     }
+ }
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/code/InsnFormat.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/code/InsnFormat.java
+index 78cfeb0..db6233c 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/code/InsnFormat.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/code/InsnFormat.java
+@@ -43,37 +43,6 @@ public abstract class InsnFormat {
+     public static boolean ALLOW_EXTENDED_OPCODES = true;
+ 
+     /**
+-     * Returns the string form, suitable for inclusion in a listing
+-     * dump, of the given instruction. The instruction must be of this
+-     * instance's format for proper operation.
+-     *
+-     * @param insn {@code non-null;} the instruction
+-     * @param noteIndices whether to include an explicit notation of
+-     * constant pool indices
+-     * @return {@code non-null;} the string form
+-     */
+-    public final String listingString(DalvInsn insn, boolean noteIndices) {
+-        String op = insn.getOpcode().getName();
+-        String arg = insnArgString(insn);
+-        String comment = insnCommentString(insn, noteIndices);
+-        StringBuilder sb = new StringBuilder(100);
+-
+-        sb.append(op);
+-
+-        if (arg.length() != 0) {
+-            sb.append(' ');
+-            sb.append(arg);
+-        }
+-
+-        if (comment.length() != 0) {
+-            sb.append(" // ");
+-            sb.append(comment);
+-        }
+-
+-        return sb.toString();
+-    }
+-
+-    /**
+      * Returns the string form of the arguments to the given instruction.
+      * The instruction must be of this instance's format. If the instruction
+      * has no arguments, then the result should be {@code ""}, not
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/code/OutputFinisher.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/code/OutputFinisher.java
+index e4e9483..f32a918 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/code/OutputFinisher.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/code/OutputFinisher.java
+@@ -299,7 +299,7 @@ public final class OutputFinisher {
+          * No need to call this.set(), since the format and other info
+          * are the same.
+          */
+-        insns.set(index, targetInsn.withNewTargetAndReversed(newTarget));
++        insns.set(index, newTarget.withNewTargetAndReversed(targetInsn));
+     }
+ 
+     /**
+@@ -787,7 +787,7 @@ public final class OutputFinisher {
+                     new TargetInsn(Dops.GOTO, target.getPosition(),
+                             RegisterSpecList.EMPTY, target.getTarget());
+                 insns.set(i, gotoInsn);
+-                insns.add(i, target.withNewTargetAndReversed(newTarget));
++                insns.add(i, newTarget.withNewTargetAndReversed(target));
+                 size++;
+                 i++;
+             }
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/code/TargetInsn.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/code/TargetInsn.java
+index fa0653e..042fdf7 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/code/TargetInsn.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/code/TargetInsn.java
+@@ -62,22 +62,6 @@ public final class TargetInsn extends FixedSizeInsn {
+     }
+ 
+     /**
+-     * Returns an instance that is just like this one, except that its
+-     * opcode has the opposite sense (as a test; e.g. a
+-     * {@code lt} test becomes a {@code ge}), and its branch
+-     * target is replaced by the one given, and all set-once values
+-     * associated with the class (such as its address) are reset.
+-     *
+-     * @param target {@code non-null;} the new branch target
+-     * @return {@code non-null;} an appropriately-constructed instance
+-     */
+-    public TargetInsn withNewTargetAndReversed(CodeAddress target) {
+-        Dop opcode = getOpcode().getOppositeTest();
+-
+-        return new TargetInsn(opcode, getPosition(), getRegisters(), target);
+-    }
+-
+-    /**
+      * Gets the unique branch target of this instruction.
+      *
+      * @return {@code non-null;} the branch target
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/CatchStructs.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/CatchStructs.java
+index 9b1726b..ce03201 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/CatchStructs.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/CatchStructs.java
+@@ -161,7 +161,7 @@ public final class CatchStructs {
+             for (int i = 0; i < listSize; i++) {
+                 CatchHandlerList.Entry entry = list.get(i);
+                 out.writeUleb128(
+-                        typeIds.indexOf(entry.getExceptionType()));
++                        entry.getExceptionType().indexOf(typeIds));
+                 out.writeUleb128(entry.getHandler());
+             }
+ 
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/ClassDefItem.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/ClassDefItem.java
+index 3b76281..082b4fe 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/ClassDefItem.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/ClassDefItem.java
+@@ -171,9 +171,9 @@ public final class ClassDefItem extends IndexedItem {
+     public void writeTo(DexFile file, AnnotatedOutput out) {
+         boolean annotates = out.annotates();
+         TypeIdsSection typeIds = file.getTypeIds();
+-        int classIdx = typeIds.indexOf(thisClass);
++        int classIdx = thisClass.indexOf(typeIds);
+         int superIdx = (superclass == null) ? -1 :
+-            typeIds.indexOf(superclass);
++            superclass.indexOf(typeIds);
+         int interOff = OffsettedItem.getAbsoluteOffsetOr0(interfaces);
+         int annoOff = annotationsDirectory.isEmpty() ? 0 :
+             annotationsDirectory.getAbsoluteOffset();
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/DebugInfoEncoder.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/DebugInfoEncoder.java
+index 73c167a..7e23d07 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/DebugInfoEncoder.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/DebugInfoEncoder.java
+@@ -670,7 +670,7 @@ public final class DebugInfoEncoder {
+             output.writeUleb128(0);
+         } else {
+             output.writeUleb128(
+-                    1 + file.getTypeIds().indexOf(type));
++                    1 + type.indexOf(file.getTypeIds()));
+         }
+ 
+         if (DEBUG) {
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/DexFile.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/DexFile.java
+index f82b5b4..96d4552 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/DexFile.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/DexFile.java
+@@ -608,7 +608,7 @@ public final class DexFile {
+         Statistics stats = new Statistics();
+ 
+         for (Section s : sections) {
+-            stats.addAll(s);
++            s.addAll(stats);
+         }
+ 
+         return stats;
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/MemberIdItem.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/MemberIdItem.java
+index 2803061..51d8e70 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/MemberIdItem.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/MemberIdItem.java
+@@ -62,7 +62,7 @@ public abstract class MemberIdItem extends IdItem {
+         TypeIdsSection typeIds = file.getTypeIds();
+         StringIdsSection stringIds = file.getStringIds();
+         CstNat nat = cst.getNat();
+-        int classIdx = typeIds.indexOf(getDefiningClass());
++        int classIdx = getDefiningClass().indexOf(typeIds);
+         int nameIdx = stringIds.indexOf(nat.getName());
+         int typoidIdx = getTypoidIdx(file);
+ 
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/Section.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/Section.java
+index 856e1b5..8952622 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/Section.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/Section.java
+@@ -284,4 +284,16 @@ public abstract class Section {
+     protected final String getName() {
+         return name;
+     }
++
++    /**
++     * Adds the given list of items to the statistics.
++     *
++     * @param statistics
++     */
++    public void addAll(Statistics statistics) {
++        Collection<? extends Item> items = items();
++        for (Item item : items) {
++            statistics.add(item);
++        }
++    }
+ }
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/Statistics.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/Statistics.java
+index 429bb8d..b5b0334 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/Statistics.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/Statistics.java
+@@ -17,7 +17,7 @@
+ package com.taobao.android.dx.dex.file;
+ 
+ import com.taobao.android.dx.util.AnnotatedOutput;
+-import java.util.Collection;
++
+ import java.util.HashMap;
+ import java.util.TreeMap;
+ 
+@@ -52,18 +52,6 @@ public final class Statistics {
+     }
+ 
+     /**
+-     * Adds the given list of items to the statistics.
+-     *
+-     * @param list {@code non-null;} the list of items to add
+-     */
+-    public void addAll(Section list) {
+-        Collection<? extends Item> items = list.items();
+-        for (Item item : items) {
+-            add(item);
+-        }
+-    }
+-
+-    /**
+      * Writes the statistics as an annotation.
+      *
+      * @param out {@code non-null;} where to write to
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/StringIdsSection.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/StringIdsSection.java
+index 23ff8e8..def336b 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/StringIdsSection.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/StringIdsSection.java
+@@ -17,7 +17,6 @@
+ package com.taobao.android.dx.dex.file;
+ 
+ import com.taobao.android.dx.rop.cst.Constant;
+-import com.taobao.android.dx.rop.cst.CstNat;
+ import com.taobao.android.dx.rop.cst.CstString;
+ import com.taobao.android.dx.util.AnnotatedOutput;
+ import com.taobao.android.dx.util.Hex;
+@@ -136,16 +135,6 @@ public final class StringIdsSection
+     }
+ 
+     /**
+-     * Interns the components of a name-and-type into this instance.
+-     *
+-     * @param nat {@code non-null;} the name-and-type
+-     */
+-    public synchronized void intern(CstNat nat) {
+-        intern(nat.getName());
+-        intern(nat.getDescriptor());
+-    }
+-
+-    /**
+      * Gets the index of the given string, which must have been added
+      * to this instance.
+      *
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/TypeIdsSection.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/TypeIdsSection.java
+index 8f8baeb..d9bd610 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/TypeIdsSection.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/TypeIdsSection.java
+@@ -169,21 +169,6 @@ public final class TypeIdsSection extends UniformItemSection {
+         return item.getIndex();
+     }
+ 
+-    /**
+-     * Gets the index of the given type, which must have
+-     * been added to this instance.
+-     *
+-     * @param type {@code non-null;} the type to look up
+-     * @return {@code >= 0;} the reference's index
+-     */
+-    public int indexOf(CstType type) {
+-        if (type == null) {
+-            throw new NullPointerException("type == null");
+-        }
+-
+-        return indexOf(type.getClassType());
+-    }
+-
+     /** {@inheritDoc} */
+     @Override
+     protected void orderItems() {
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/ValueEncoder.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/ValueEncoder.java
+index 036035a..07cf6bd 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/ValueEncoder.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/dex/file/ValueEncoder.java
+@@ -159,7 +159,7 @@ public final class ValueEncoder {
+                 break;
+             }
+             case VALUE_TYPE: {
+-                int index = file.getTypeIds().indexOf((CstType) cst);
++                int index = ((CstType) cst).indexOf(file.getTypeIds());
+                 EncodedValueCodec.writeUnsignedIntegralValue(out, type, (long) index);
+                 break;
+             }
+@@ -311,14 +311,14 @@ public final class ValueEncoder {
+         TypeIdsSection typeIds = file.getTypeIds();
+ 
+         CstType type = annotation.getType();
+-        int typeIdx = typeIds.indexOf(type);
++        int typeIdx = type.indexOf(typeIds);
+ 
+         if (annotates) {
+             out.annotate("  type_idx: " + Hex.u4(typeIdx) + " // " +
+                     type.toHuman());
+         }
+ 
+-        out.writeUleb128(typeIds.indexOf(annotation.getType()));
++        out.writeUleb128(annotation.getType().indexOf(typeIds));
+ 
+         Collection<NameValuePair> pairs = annotation.getNameValuePairs();
+         int size = pairs.size();
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/code/InsnList.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/code/InsnList.java
+index cf6ee95..4db64dc 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/code/InsnList.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/code/InsnList.java
+@@ -16,6 +16,7 @@
+ 
+ package com.taobao.android.dx.rop.code;
+ 
++import com.taobao.android.dx.cf.code.Ropper;
+ import com.taobao.android.dx.util.FixedSizeList;
+ 
+ /**
+@@ -127,4 +128,43 @@ public final class InsnList
+ 
+         return result;
+     }
++
++    /**
++     * Removes all {@code move-return-address} instructions, returning a new
++     * {@code InsnList} if necessary. The {@code move-return-address}
++     * insns are dead code after subroutines have been inlined.
++     *
++     *
++     * @param ropper@return {@code InsnList} with {@code move-return-address} removed
++     */
++    public InsnList filterMoveReturnAddressInsns(Ropper ropper) {
++        int sz;
++        int newSz = 0;
++
++        // First see if we need to filter, and if so what the new size will be
++        sz = size();
++        for (int i = 0; i < sz; i++) {
++            if (get(i).getOpcode() != Rops.MOVE_RETURN_ADDRESS) {
++                newSz++;
++            }
++        }
++
++        if (newSz == sz) {
++            return this;
++        }
++
++        // Make a new list without the MOVE_RETURN_ADDRESS insns
++        InsnList newInsns = new InsnList(newSz);
++
++        int newIndex = 0;
++        for (int i = 0; i < sz; i++) {
++            Insn insn = get(i);
++            if (insn.getOpcode() != Rops.MOVE_RETURN_ADDRESS) {
++                newInsns.set(newIndex++, insn);
++            }
++        }
++
++        newInsns.setImmutable();
++        return newInsns;
++    }
+ }
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/code/LocalItem.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/code/LocalItem.java
+index 0052af8..af993dc 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/code/LocalItem.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/code/LocalItem.java
+@@ -17,6 +17,7 @@
+ package com.taobao.android.dx.rop.code;
+ 
+ import com.taobao.android.dx.rop.cst.CstString;
++import com.taobao.android.dx.rop.type.TypeBearer;
+ 
+ /**
+  * A local variable item: either a name or a signature or both.
+@@ -140,4 +141,22 @@ public class LocalItem implements Comparable<LocalItem> {
+     public CstString getSignature() {
+         return signature;
+     }
++
++    /**
++     * Helper for {@link #equalsOther} and {@link #ForComparison.equals},
++     * which actually does the test.
++     *
++     * @param reg value of the instance variable, for another instance
++     * @param type value of the instance variable, for another instance
++     * @param registerSpec
++     * @return whether this instance is equal to one with the given
++     * values
++     */
++    public boolean equalsOther(int reg, TypeBearer type, RegisterSpec registerSpec) {
++        registerSpec.getClass();
++        return (registerSpec.getReg() == reg)
++            && registerSpec.getTypeBearer().equals(type)
++            && ((registerSpec.getLocalItem() == this)
++                    || ((registerSpec.getLocalItem() != null) && registerSpec.getLocalItem().equals(this)));
++    }
+ }
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/code/RegisterSpec.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/code/RegisterSpec.java
+index 92fd714..49b2912 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/code/RegisterSpec.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/code/RegisterSpec.java
+@@ -167,13 +167,13 @@ public final class RegisterSpec
+         if (!(other instanceof RegisterSpec)) {
+             if (other instanceof ForComparison) {
+                 ForComparison fc = (ForComparison) other;
+-                return equals(fc.reg, fc.type, fc.local);
++                return fc.local.equalsOther(fc.reg, fc.type, this);
+             }
+             return false;
+         }
+ 
+         RegisterSpec spec = (RegisterSpec) other;
+-        return equals(spec.reg, spec.type, spec.local);
++        return spec.local.equalsOther(spec.reg, spec.type, this);
+     }
+ 
+     /**
+@@ -214,23 +214,6 @@ public final class RegisterSpec
+     }
+ 
+     /**
+-     * Helper for {@link #equals} and {@link #ForComparison.equals},
+-     * which actually does the test.
+-     *
+-     * @param reg value of the instance variable, for another instance
+-     * @param type value of the instance variable, for another instance
+-     * @param local value of the instance variable, for another instance
+-     * @return whether this instance is equal to one with the given
+-     * values
+-     */
+-    private boolean equals(int reg, TypeBearer type, LocalItem local) {
+-        return (this.reg == reg)
+-            && this.type.equals(type)
+-            && ((this.local == local)
+-                    || ((this.local != null) && this.local.equals(local)));
+-    }
+-
+-    /**
+      * Compares by (in priority order) register number, unwrapped type
+      * (that is types not {@link TypeBearer}s, and local info.
+      *
+@@ -650,7 +633,7 @@ public final class RegisterSpec
+             }
+ 
+             RegisterSpec spec = (RegisterSpec) other;
+-            return spec.equals(reg, type, local);
++            return local.equalsOther(reg, type, spec);
+         }
+ 
+         /** {@inheritDoc} */
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/cst/Constant.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/cst/Constant.java
+index cdba2a5..6937b1e 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/cst/Constant.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/cst/Constant.java
+@@ -65,4 +65,41 @@ public abstract class Constant
+      * for a comparison
+      */
+     protected abstract int compareTo0(Constant other);
++
++    /**
++     * Sets the entry at the given index.
++     *  @param n {@code >= 1, < size();} which entry
++     * @param stdConstantPool
++     */
++    public void set(int n, StdConstantPool stdConstantPool) {
++        stdConstantPool.throwIfImmutable();
++
++        boolean cat2 = (this != null) && isCategory2();
++
++        if (n < 1) {
++            throw new IllegalArgumentException("n < 1");
++        }
++
++        if (cat2) {
++            // Storing a category-2 entry nulls out the next index.
++            if (n == (stdConstantPool.getEntries().length - 1)) {
++                throw new IllegalArgumentException("(n == size - 1) && " +
++                                                   "cst.isCategory2()");
++            }
++            stdConstantPool.getEntries()[n + 1] = null;
++        }
++
++        if ((this != null) && (stdConstantPool.getEntries()[n] == null)) {
++            /*
++             * Overwriting the second half of a category-2 entry nulls out
++             * the first half.
++             */
++            Constant prev = stdConstantPool.getEntries()[n - 1];
++            if ((prev != null) && prev.isCategory2()) {
++                stdConstantPool.getEntries()[n - 1] = null;
++            }
++        }
++
++        stdConstantPool.getEntries()[n] = this;
++    }
+ }
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/cst/CstNat.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/cst/CstNat.java
+index c894eb7..b91e171 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/cst/CstNat.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/cst/CstNat.java
+@@ -16,6 +16,7 @@
+ 
+ package com.taobao.android.dx.rop.cst;
+ 
++import com.taobao.android.dx.dex.file.StringIdsSection;
+ import com.taobao.android.dx.rop.type.Type;
+ 
+ /**
+@@ -167,4 +168,14 @@ public final class CstNat extends Constant {
+     public final boolean isClassInit() {
+         return name.getString().equals("<clinit>");
+     }
++
++    /**
++     * Interns the components of a name-and-type into this instance.
++     *
++     * @param stringIdsSection
++     */
++    public synchronized void intern(StringIdsSection stringIdsSection) {
++        stringIdsSection.intern(getName());
++        stringIdsSection.intern(getDescriptor());
++    }
+ }
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/cst/CstType.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/cst/CstType.java
+index 4f94842..88306c4 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/cst/CstType.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/cst/CstType.java
+@@ -16,6 +16,7 @@
+ 
+ package com.taobao.android.dx.rop.cst;
+ 
++import com.taobao.android.dx.dex.file.TypeIdsSection;
+ import com.taobao.android.dx.rop.type.Type;
+ 
+ import java.util.HashMap;
+@@ -247,4 +248,19 @@ public final class CstType extends TypedConstant {
+             return descriptor.substring(lastLeftSquare + 2, lastSlash).replace('/', '.');
+         }
+     }
++
++    /**
++     * Gets the index of the given type, which must have
++     * been added to this instance.
++     *
++     *
++     * @param typeIdsSection@return {@code >= 0;} the reference's index
++     */
++    public int indexOf(TypeIdsSection typeIdsSection) {
++        if (this == null) {
++            throw new NullPointerException("type == null");
++        }
++
++        return typeIdsSection.indexOf(getClassType());
++    }
+ }
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/cst/StdConstantPool.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/cst/StdConstantPool.java
+index 76c2173..315735b 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/cst/StdConstantPool.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/cst/StdConstantPool.java
+@@ -97,44 +97,6 @@ public final class StdConstantPool
+     }
+ 
+     /**
+-     * Sets the entry at the given index.
+-     *
+-     * @param n {@code >= 1, < size();} which entry
+-     * @param cst {@code null-ok;} the constant to store
+-     */
+-    public void set(int n, Constant cst) {
+-        throwIfImmutable();
+-
+-        boolean cat2 = (cst != null) && cst.isCategory2();
+-
+-        if (n < 1) {
+-            throw new IllegalArgumentException("n < 1");
+-        }
+-
+-        if (cat2) {
+-            // Storing a category-2 entry nulls out the next index.
+-            if (n == (entries.length - 1)) {
+-                throw new IllegalArgumentException("(n == size - 1) && " +
+-                                                   "cst.isCategory2()");
+-            }
+-            entries[n + 1] = null;
+-        }
+-
+-        if ((cst != null) && (entries[n] == null)) {
+-            /*
+-             * Overwriting the second half of a category-2 entry nulls out
+-             * the first half.
+-             */
+-            Constant prev = entries[n - 1];
+-            if ((prev != null) && prev.isCategory2()) {
+-                entries[n - 1] = null;
+-            }
+-        }
+-
+-        entries[n] = cst;
+-    }
+-
+-    /**
+      * Throws the right exception for an invalid cpi.
+      *
+      * @param idx the bad cpi
+diff --git a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/type/Type.java b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/type/Type.java
+index 83caec3..cf60885 100644
+--- a/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/type/Type.java
++++ b/atlas-gradle-plugin/dexpatch/src/main/java/com/taobao/android/dx/rop/type/Type.java
+@@ -16,6 +16,7 @@
+ 
+ package com.taobao.android.dx.rop.type;
+ 
++import com.taobao.android.dx.cf.code.Frame;
+ import com.taobao.android.dx.util.Hex;
+ import java.util.HashMap;
+ 
+@@ -858,4 +859,15 @@ public final class Type implements TypeBearer, Comparable<Type> {
+             return type;
+         }
+     }
++
++    /**
++     * Replaces all the occurrences of the given uninitialized type in
++     * this frame with its initialized equivalent.
++     *
++     * @param frame
++     */
++    public void makeInitialized(Frame frame) {
++        frame.getLocals().makeInitialized(this);
++        frame.getStack().makeInitialized(this);
++    }
+ }
+diff --git a/atlas-update/src/main/java/com/taobao/atlas/dex/Dex.java b/atlas-update/src/main/java/com/taobao/atlas/dex/Dex.java
+index 06811b8..b25000b 100644
+--- a/atlas-update/src/main/java/com/taobao/atlas/dex/Dex.java
++++ b/atlas-update/src/main/java/com/taobao/atlas/dex/Dex.java
+@@ -21,6 +21,7 @@ import com.taobao.atlas.dex.Code.Try;
+ import com.taobao.atlas.dex.util.ByteInput;
+ import com.taobao.atlas.dex.util.ByteOutput;
+ import com.taobao.atlas.dex.util.FileUtils;
++import com.taobao.atlas.dexmerge.dx.merge.DexTransform;
+ 
+ import java.io.ByteArrayOutputStream;
+ import java.io.File;
+@@ -34,12 +35,7 @@ import java.nio.ByteBuffer;
+ import java.nio.ByteOrder;
+ import java.security.MessageDigest;
+ import java.security.NoSuchAlgorithmException;
+-import java.util.AbstractList;
+-import java.util.Collections;
+-import java.util.Iterator;
+-import java.util.List;
+-import java.util.NoSuchElementException;
+-import java.util.RandomAccess;
++import java.util.*;
+ import java.util.zip.Adler32;
+ import java.util.zip.ZipEntry;
+ import java.util.zip.ZipFile;
+@@ -513,6 +509,16 @@ public final class Dex {
+         return types;
+     }
+ 
++    public void initMethodsMaps(ClassData.Method[] methods, Set<String> methodSets, DexTransform dexTransform) {
++        for (ClassData.Method method : methods) {
++            MethodId methodId = methodIds().get(method.getMethodIndex());
++            String className = typeNames().get(methodId.getDeclaringClassIndex());
++            String methodName = strings().get(methodId.getNameIndex())
++                    + readTypeList(protoIds().get(methodId.getProtoIndex()).getParametersOffset());
++            methodSets.add(className + "." + methodName);
++        }
++    }
++
+     public final class Section implements ByteInput, ByteOutput {
+ 
+         private final String     name;
+diff --git a/atlas-update/src/main/java/com/taobao/atlas/dex/MethodId.java b/atlas-update/src/main/java/com/taobao/atlas/dex/MethodId.java
+index 42758c0..41396e2 100644
+--- a/atlas-update/src/main/java/com/taobao/atlas/dex/MethodId.java
++++ b/atlas-update/src/main/java/com/taobao/atlas/dex/MethodId.java
+@@ -17,6 +17,7 @@
+ package com.taobao.atlas.dex;
+ 
+ import com.taobao.atlas.dex.util.Unsigned;
++import com.taobao.atlas.dexmerge.dx.merge.DexMerger;
+ 
+ public final class MethodId implements Comparable<MethodId> {
+     private final Dex dex;
+@@ -67,4 +68,10 @@ public final class MethodId implements Comparable<MethodId> {
+                 + "." + dex.strings().get(nameIndex)
+                 + dex.readTypeList(dex.protoIds().get(protoIndex).getParametersOffset());
+     }
++
++    public String getMethodIdIndex(DexMerger dexMerger){
++        StringBuilder sb = new StringBuilder();
++        sb.append(getDeclaringClassIndex()).append(".").append(getNameIndex()).append("-").append(getProtoIndex());
++        return toString();
++    }
+ }
+diff --git a/atlas-update/src/main/java/com/taobao/atlas/dexmerge/dx/merge/DexMerger.java b/atlas-update/src/main/java/com/taobao/atlas/dexmerge/dx/merge/DexMerger.java
+index b2fe937..004bf76 100644
+--- a/atlas-update/src/main/java/com/taobao/atlas/dexmerge/dx/merge/DexMerger.java
++++ b/atlas-update/src/main/java/com/taobao/atlas/dexmerge/dx/merge/DexMerger.java
+@@ -893,11 +893,6 @@ public final class DexMerger {
+         }
+     }
+ 
+-    private String getMethodIdIndex(MethodId methodId){
+-        StringBuilder sb = new StringBuilder();
+-        sb.append(methodId.getDeclaringClassIndex()).append(".").append(methodId.getNameIndex()).append("-").append(methodId.getProtoIndex());
+-        return methodId.toString();
+-    }
+     private void transformClassData(Dex in, ClassData classData, IndexMap indexMap,
+                                     List<DexSectionItem<ClassData>> dupClassDatas) {
+         contentsOut.classDatas.size++;
+@@ -926,7 +921,7 @@ public final class DexMerger {
+                     methodItem.item = method;
+                     Dex dex = dupClassData.target;
+                     MethodId methodId = dupClassData.indexMap.adjust(dex.methodIds().get(method.getMethodIndex()));
+-                    String index = getMethodIdIndex(methodId);
++                    String index = methodId.getMethodIdIndex(this);
+                     ArrayList<DexSectionItem<ClassData.Method>> methodList = dupMethods.get(index);
+                     if (null == methodList) {
+                         methodList = new ArrayList<DexSectionItem<ClassData.Method>>();
+@@ -946,7 +941,7 @@ public final class DexMerger {
+                     methodItem.item = method;
+                     Dex dex = dupClassData.target;
+                     MethodId methodId = dupClassData.indexMap.adjust(dex.methodIds().get(method.getMethodIndex()));
+-                    String index = getMethodIdIndex(methodId);
++                    String index = methodId.getMethodIdIndex(this);
+                     ArrayList<DexSectionItem<ClassData.Method>> methodList = dupMethods.get(index);
+                     if (null == methodList) {
+                         methodList = new ArrayList<DexSectionItem<ClassData.Method>>();
+@@ -984,7 +979,7 @@ public final class DexMerger {
+                 classDataOut.writeUleb128(0);
+             } else if (method.getCodeOffset() == 1) { // 1这个我们认为是取下一个dex的数据
+                 MethodId methodId = indexMap.adjust(in.methodIds().get(method.getMethodIndex()));
+-                String index = getMethodIdIndex(methodId);
++                String index = methodId.getMethodIdIndex(this);
+                 ArrayList<DexSectionItem<ClassData.Method>> dupMethods = dupMethodMaps.get(index);
+                 if (null != dupMethods && dupMethods.size() > 0) {
+                     boolean matchCodes = false;
+diff --git a/atlas-update/src/main/java/com/taobao/atlas/dexmerge/dx/merge/DexTransform.java b/atlas-update/src/main/java/com/taobao/atlas/dexmerge/dx/merge/DexTransform.java
+index 98a11fc..da5c39f 100644
+--- a/atlas-update/src/main/java/com/taobao/atlas/dexmerge/dx/merge/DexTransform.java
++++ b/atlas-update/src/main/java/com/taobao/atlas/dexmerge/dx/merge/DexTransform.java
+@@ -194,24 +194,14 @@ public final class DexTransform {
+                 ClassData classData = dex.readClassData(classDef);
+                 ClassData.Method[] directMethods = classData.getDirectMethods();
+                 ClassData.Method[] virtualMethods = classData.getVirtualMethods();
+-                initMethodsMaps(dex, directMethods, methods);
+-                initMethodsMaps(dex, virtualMethods, methods);
++                dex.initMethodsMaps(directMethods, methods, this);
++                dex.initMethodsMaps(virtualMethods, methods, this);
+             }
+ 
+         }
+         return methods;
+     }
+ 
+-    private void initMethodsMaps(Dex dex, ClassData.Method[] methods, Set<String> methodSets) {
+-        for (ClassData.Method method : methods) {
+-            MethodId methodId = dex.methodIds().get(method.getMethodIndex());
+-            String className = dex.typeNames().get(methodId.getDeclaringClassIndex());
+-            String methodName = dex.strings().get(methodId.getNameIndex())
+-                    + dex.readTypeList(dex.protoIds().get(methodId.getProtoIndex()).getParametersOffset());
+-            methodSets.add(className + "." + methodName);
+-        }
+-    }
+-
+     /**
+      * 根据基线的dex,去除重复的string值
+      *
