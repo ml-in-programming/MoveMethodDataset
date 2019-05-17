@@ -1,0 +1,366 @@
+id,name,file,offset,containing_class_id,target_ids
+0,org.apache.hadoop.hive.ql.plan.api.Task.addToOperatorList,ql/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/ql/plan/api/Task.java,14614,63,361
+1,org.apache.hadoop.hive.ql.plan.api.Graph.addToAdjacencyList,ql/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/ql/plan/api/Graph.java,8339,58,65
+2,org.apache.hadoop.hive.ql.plan.api.Query.addToStageList,ql/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/ql/plan/api/Query.java,14482,177,59
+3,org.apache.hadoop.hive.ql.plan.api.Stage.addToTaskList,ql/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/ql/plan/api/Stage.java,13320,59,63
+4,org.apache.hadoop.hive.ql.plan.api.QueryPlan.addToQueries,ql/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/ql/plan/api/QueryPlan.java,6758,83,177
+5,org.apache.hadoop.hive.ql.io.sarg.ConvertAstToSearchArg.findVariable,ql/src/java/org/apache/hadoop/hive/ql/io/sarg/ConvertAstToSearchArg.java,12768,332,208
+6,org.apache.hadoop.hive.ql.io.merge.MergeFileTask.addInputPaths,ql/src/java/org/apache/hadoop/hive/ql/io/merge/MergeFileTask.java,7238,122,175
+7,org.apache.hadoop.hive.ql.ppd.ExprWalkerInfo.addNonFinalCandidate,ql/src/java/org/apache/hadoop/hive/ql/ppd/ExprWalkerInfo.java,7191,258,208
+8,org.apache.hadoop.hive.ql.ppd.PredicateTransitivePropagate.createFilter,ql/src/java/org/apache/hadoop/hive/ql/ppd/PredicateTransitivePropagate.java,4387,194,283 208
+9,org.apache.hadoop.hive.ql.udf.ptf.ValueBoundaryScanner.checkIfCacheCanEvict,ql/src/java/org/apache/hadoop/hive/ql/udf/ptf/ValueBoundaryScanner.java,5113,57,34
+10,org.apache.hadoop.hive.ql.udf.ptf.ValueBoundaryScanner.fillCacheUntilEndOrFull,ql/src/java/org/apache/hadoop/hive/ql/udf/ptf/ValueBoundaryScanner.java,6040,57,34
+11,org.apache.hadoop.hive.ql.udf.ptf.ValueBoundaryScanner.skipOrStepBack,ql/src/java/org/apache/hadoop/hive/ql/udf/ptf/ValueBoundaryScanner.java,7126,57,34
+12,org.apache.hadoop.hive.ql.udf.ptf.ValueBoundaryScanner.skipOrStepForward,ql/src/java/org/apache/hadoop/hive/ql/udf/ptf/ValueBoundaryScanner.java,8180,57,34
+13,org.apache.hadoop.hive.ql.udf.ptf.ValueBoundaryScanner.computeValueUseCache,ql/src/java/org/apache/hadoop/hive/ql/udf/ptf/ValueBoundaryScanner.java,9213,57,34
+14,org.apache.hadoop.hive.ql.exec.tez.monitoring.TezProgressMonitor.getMode,ql/src/java/org/apache/hadoop/hive/ql/exec/tez/monitoring/TezProgressMonitor.java,6823,176,54
+15,org.apache.hadoop.hive.ql.exec.tez.TezTask.getUserNameForGroups,ql/src/java/org/apache/hadoop/hive/ql/exec/tez/TezTask.java,13543,318,246
+16,org.apache.hadoop.hive.ql.exec.tez.TezTask.checkOutputSpec,ql/src/java/org/apache/hadoop/hive/ql/exec/tez/TezTask.java,15669,318,54
+17,org.apache.hadoop.hive.ql.exec.tez.DagUtils.initializeVertexConf,ql/src/java/org/apache/hadoop/hive/ql/exec/tez/DagUtils.java,12364,12,119 183
+18,org.apache.hadoop.hive.ql.exec.tez.DagUtils.initializeVertexConf,ql/src/java/org/apache/hadoop/hive/ql/exec/tez/DagUtils.java,35992,12,183 185
+19,org.apache.hadoop.hive.ql.exec.tez.DagUtils.createVertexExecutionContext,ql/src/java/org/apache/hadoop/hive/ql/exec/tez/DagUtils.java,36630,12,54
+20,org.apache.hadoop.hive.ql.exec.tez.DagUtils.setupAutoReducerParallelism,ql/src/java/org/apache/hadoop/hive/ql/exec/tez/DagUtils.java,63492,12,275
+21,org.apache.hadoop.hive.ql.exec.tez.DagUtils.setupQuickStart,ql/src/java/org/apache/hadoop/hive/ql/exec/tez/DagUtils.java,64382,12,275
+22,org.apache.hadoop.hive.ql.exec.tez.DagUtils.createDagName,ql/src/java/org/apache/hadoop/hive/ql/exec/tez/DagUtils.java,65054,12,304
+23,org.apache.hadoop.hive.ql.exec.tez.WorkloadManager.resetGlobalTezSession,ql/src/java/org/apache/hadoop/hive/ql/exec/tez/WorkloadManager.java,65563,132,142
+24,org.apache.hadoop.hive.ql.exec.tez.MapRecordProcessor.getKeyValueReader,ql/src/java/org/apache/hadoop/hive/ql/exec/tez/MapRecordProcessor.java,16810,266,238
+25,org.apache.hadoop.hive.ql.exec.repl.bootstrap.events.filesystem.FSTableEvent.partitionDesc,ql/src/java/org/apache/hadoop/hive/ql/exec/repl/bootstrap/events/filesystem/FSTableEvent.java,7253,313,315
+26,org.apache.hadoop.hive.ql.exec.repl.ReplLoadTask.setUpDependencies,ql/src/java/org/apache/hadoop/hive/ql/exec/repl/ReplLoadTask.java,20472,346,170
+27,org.apache.hadoop.hive.ql.exec.spark.SparkPlanGenerator.checkSpecs,ql/src/java/org/apache/hadoop/hive/ql/exec/spark/SparkPlanGenerator.java,13265,168,54
+28,org.apache.hadoop.hive.ql.exec.vector.mapjoin.VectorMapJoinInnerBigOnlyGenerateResultOperator.generateHashMultiSetResultRepeatedAll,ql/src/java/org/apache/hadoop/hive/ql/exec/vector/mapjoin/VectorMapJoinInnerBigOnlyGenerateResultOperator.java,10215,359,310
+29,org.apache.hadoop.hive.ql.exec.vector.wrapper.VectorHashKeyWrapperBatch.getWritableKeyValue,ql/src/java/org/apache/hadoop/hive/ql/exec/vector/wrapper/VectorHashKeyWrapperBatch.java,36604,222,334
+30,org.apache.hadoop.hive.ql.exec.vector.wrapper.VectorHashKeyWrapperBatch.setLongValue,ql/src/java/org/apache/hadoop/hive/ql/exec/vector/wrapper/VectorHashKeyWrapperBatch.java,38097,222,334
+31,org.apache.hadoop.hive.ql.exec.vector.wrapper.VectorHashKeyWrapperBatch.assignRowColumn,ql/src/java/org/apache/hadoop/hive/ql/exec/vector/wrapper/VectorHashKeyWrapperBatch.java,38619,222,334
+32,org.apache.hadoop.hive.ql.exec.vector.expressions.IfExprCondExprBase.conditionalEvaluate,ql/src/java/org/apache/hadoop/hive/ql/exec/vector/expressions/IfExprCondExprBase.java,2101,10,354
+33,org.apache.hadoop.hive.ql.exec.vector.VectorMapOperator.createAndInitPartitionContext,ql/src/java/org/apache/hadoop/hive/ql/exec/vector/VectorMapOperator.java,14125,21,46
+34,org.apache.hadoop.hive.ql.exec.vector.VectorizationContext.getStructFieldIndex,ql/src/java/org/apache/hadoop/hive/ql/exec/vector/VectorizationContext.java,47868,245,328
+35,org.apache.hadoop.hive.ql.exec.vector.VectorizationContext.getCommonTypeForChildExpressions,ql/src/java/org/apache/hadoop/hive/ql/exec/vector/VectorizationContext.java,48798,245,85
+36,org.apache.hadoop.hive.ql.exec.vector.VectorizationContext.isCondExpr,ql/src/java/org/apache/hadoop/hive/ql/exec/vector/VectorizationContext.java,150502,245,208
+37,org.apache.hadoop.hive.ql.exec.vector.VectorizationContext.isNullConst,ql/src/java/org/apache/hadoop/hive/ql/exec/vector/VectorizationContext.java,150674,245,208
+38,org.apache.hadoop.hive.ql.exec.vector.VectorizationContext.getScalarValue,ql/src/java/org/apache/hadoop/hive/ql/exec/vector/VectorizationContext.java,167235,245,225
+39,org.apache.hadoop.hive.ql.exec.vector.VectorizationContext.evaluateCastToTimestamp,ql/src/java/org/apache/hadoop/hive/ql/exec/vector/VectorizationContext.java,171144,245,208
+40,org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatchCtx.findVirtualColumnNum,ql/src/java/org/apache/hadoop/hive/ql/exec/vector/VectorizedRowBatchCtx.java,6833,73,125
+41,org.apache.hadoop.hive.ql.exec.persistence.MapJoinKeyObject.read,ql/src/java/org/apache/hadoop/hive/ql/exec/persistence/MapJoinKeyObject.java,3091,360,68
+42,org.apache.hadoop.hive.ql.exec.persistence.MapJoinKeyObject.readFromVector,ql/src/java/org/apache/hadoop/hive/ql/exec/persistence/MapJoinKeyObject.java,4920,360,222 334
+43,org.apache.hadoop.hive.ql.exec.persistence.KeyValueContainer.writeHiveKey,ql/src/java/org/apache/hadoop/hive/ql/exec/persistence/KeyValueContainer.java,4165,353,230
+44,org.apache.hadoop.hive.ql.exec.persistence.MapJoinEagerRowContainer.read,ql/src/java/org/apache/hadoop/hive/ql/exec/persistence/MapJoinEagerRowContainer.java,3266,220,68
+45,org.apache.hadoop.hive.ql.exec.persistence.MapJoinBytesTableContainer.createInternalOi,ql/src/java/org/apache/hadoop/hive/ql/exec/persistence/MapJoinBytesTableContainer.java,6389,26,68
+46,org.apache.hadoop.hive.ql.exec.persistence.MapJoinTableContainerSerDe.loadOptimized,ql/src/java/org/apache/hadoop/hive/ql/exec/persistence/MapJoinTableContainerSerDe.java,7546,154,26
+47,org.apache.hadoop.hive.ql.exec.persistence.MapJoinTableContainerSerDe.loadFastContainer,ql/src/java/org/apache/hadoop/hive/ql/exec/persistence/MapJoinTableContainerSerDe.java,7997,154,184
+48,org.apache.hadoop.hive.ql.exec.DDLTask.insertCommitWork,ql/src/java/org/apache/hadoop/hive/ql/exec/DDLTask.java,10686,166,180 39
+49,org.apache.hadoop.hive.ql.exec.DDLTask.cacheMetadata,ql/src/java/org/apache/hadoop/hive/ql/exec/DDLTask.java,11454,166,39 236
+50,org.apache.hadoop.hive.ql.exec.DDLTask.setIsArchived,ql/src/java/org/apache/hadoop/hive/ql/exec/DDLTask.java,17745,166,3
+51,org.apache.hadoop.hive.ql.exec.DDLTask.getOriginalLocation,ql/src/java/org/apache/hadoop/hive/ql/exec/DDLTask.java,18487,166,3
+52,org.apache.hadoop.hive.ql.exec.DDLTask.setOriginalLocation,ql/src/java/org/apache/hadoop/hive/ql/exec/DDLTask.java,18799,166,3
+53,org.apache.hadoop.hive.ql.exec.DDLTask.checkArchiveProperty,ql/src/java/org/apache/hadoop/hive/ql/exec/DDLTask.java,39912,166,3
+54,org.apache.hadoop.hive.ql.exec.DDLTask.alterTableDropProps,ql/src/java/org/apache/hadoop/hive/ql/exec/DDLTask.java,69968,166,135 3 214
+55,org.apache.hadoop.hive.ql.exec.DDLTask.checkMmLb,ql/src/java/org/apache/hadoop/hive/ql/exec/DDLTask.java,71353,166,214
+56,org.apache.hadoop.hive.ql.exec.DDLTask.checkMmLb,ql/src/java/org/apache/hadoop/hive/ql/exec/DDLTask.java,71853,166,3
+57,org.apache.hadoop.hive.ql.exec.DDLTask.dropConstraint,ql/src/java/org/apache/hadoop/hive/ql/exec/DDLTask.java,76077,166,135 39
+58,org.apache.hadoop.hive.ql.exec.DDLTask.allowOperationInReplicationScope,ql/src/java/org/apache/hadoop/hive/ql/exec/DDLTask.java,80582,166,20 39
+59,org.apache.hadoop.hive.ql.exec.DDLTask.remFirstIncPendFlag,ql/src/java/org/apache/hadoop/hive/ql/exec/DDLTask.java,82233,166,67 39
+60,org.apache.hadoop.hive.ql.exec.MoveTask.getWriteType,ql/src/java/org/apache/hadoop/hive/ql/exec/MoveTask.java,32103,309,339
+61,org.apache.hadoop.hive.ql.exec.MoveTask.isSkewedStoredAsDirs,ql/src/java/org/apache/hadoop/hive/ql/exec/MoveTask.java,32816,309,339
+62,org.apache.hadoop.hive.ql.exec.Registry.addToCurrentFunctions,ql/src/java/org/apache/hadoop/hive/ql/exec/Registry.java,15063,157,302
+63,org.apache.hadoop.hive.ql.exec.Registry.getPermanentUdfClass,ql/src/java/org/apache/hadoop/hive/ql/exec/Registry.java,22723,157,302
+64,org.apache.hadoop.hive.ql.exec.ExplainTask.getJSONCBOPlan,ql/src/java/org/apache/hadoop/hive/ql/exec/ExplainTask.java,5724,204,333
+65,org.apache.hadoop.hive.ql.exec.MapOperator.initializeAsRoot,ql/src/java/org/apache/hadoop/hive/ql/exec/MapOperator.java,5678,209,119
+66,org.apache.hadoop.hive.ql.exec.FunctionTask.createMacro,ql/src/java/org/apache/hadoop/hive/ql/exec/FunctionTask.java,9684,347,90
+67,org.apache.hadoop.hive.ql.exec.FunctionTask.getUdfClass,ql/src/java/org/apache/hadoop/hive/ql/exec/FunctionTask.java,14377,347,35
+68,org.apache.hadoop.hive.ql.exec.FetchOperator.getPartitionKeyOI,ql/src/java/org/apache/hadoop/hive/ql/exec/FetchOperator.java,9210,265,174
+69,org.apache.hadoop.hive.ql.exec.FetchOperator.createPartValue,ql/src/java/org/apache/hadoop/hive/ql/exec/FetchOperator.java,10165,265,46
+70,org.apache.hadoop.hive.ql.exec.FetchOperator.needConversion,ql/src/java/org/apache/hadoop/hive/ql/exec/FetchOperator.java,28010,265,174
+71,org.apache.hadoop.hive.ql.exec.MapJoinOperator.isInputFileChangeSensitive,ql/src/java/org/apache/hadoop/hive/ql/exec/MapJoinOperator.java,41469,44,161
+72,org.apache.hadoop.hive.ql.exec.PTFRollingPartition.rowToProcess,ql/src/java/org/apache/hadoop/hive/ql/exec/PTFRollingPartition.java,3650,36,18
+73,org.apache.hadoop.hive.ql.exec.ExplainSQRewriteTask.getJoinKeyWord,ql/src/java/org/apache/hadoop/hive/ql/exec/ExplainSQRewriteTask.java,5904,195,210
+74,org.apache.hadoop.hive.ql.plan.ptf.OrderDef.addExpression,ql/src/java/org/apache/hadoop/hive/ql/plan/ptf/OrderDef.java,1349,150,99
+75,org.apache.hadoop.hive.ql.plan.ptf.PartitionDef.addExpression,ql/src/java/org/apache/hadoop/hive/ql/plan/ptf/PartitionDef.java,1169,206,98
+76,org.apache.hadoop.hive.ql.plan.ptf.WindowFunctionDef.addArg,ql/src/java/org/apache/hadoop/hive/ql/plan/ptf/WindowFunctionDef.java,1996,0,98
+77,org.apache.hadoop.hive.ql.plan.ptf.PartitionedTableFunctionDef.addArg,ql/src/java/org/apache/hadoop/hive/ql/plan/ptf/PartitionedTableFunctionDef.java,4958,95,98
+78,org.apache.hadoop.hive.ql.plan.MapWork.addMapWork,ql/src/java/org/apache/hadoop/hive/ql/plan/MapWork.java,14982,119,46
+79,org.apache.hadoop.hive.ql.plan.MapWork.mergeAliasedInput,ql/src/java/org/apache/hadoop/hive/ql/plan/MapWork.java,18401,119,46
+80,org.apache.hadoop.hive.ql.plan.FetchWork.initializeForFetch,ql/src/java/org/apache/hadoop/hive/ql/plan/FetchWork.java,4325,129,115
+81,org.apache.hadoop.hive.ql.plan.LoadTableDesc.init,ql/src/java/org/apache/hadoop/hive/ql/plan/LoadTableDesc.java,5906,339,174
+82,org.apache.hadoop.hive.ql.plan.MergeJoinWork.setReduceSinkOutputName,ql/src/java/org/apache/hadoop/hive/ql/plan/MergeJoinWork.java,4062,344,54
+83,org.apache.hadoop.hive.ql.plan.PartitionDesc.PartitionDescConstructorHelper,ql/src/java/org/apache/hadoop/hive/ql/plan/PartitionDesc.java,4770,46,3 174
+84,org.apache.hadoop.hive.ql.plan.ListBucketingCtx.processRowSkewedIndex,ql/src/java/org/apache/hadoop/hive/ql/plan/ListBucketingCtx.java,3000,306,283
+85,org.apache.hadoop.hive.ql.plan.OperatorExplainVectorization.outputColumnsToStringList,ql/src/java/org/apache/hadoop/hive/ql/plan/OperatorExplainVectorization.java,1882,211,296
+86,org.apache.hadoop.hive.ql.plan.OperatorExplainVectorization.outputColumnsAndTypesToStringList,ql/src/java/org/apache/hadoop/hive/ql/plan/OperatorExplainVectorization.java,2519,211,296
+87,org.apache.hadoop.hive.ql.plan.OperatorExplainVectorization.columnMappingToStringList,ql/src/java/org/apache/hadoop/hive/ql/plan/OperatorExplainVectorization.java,2923,211,296
+88,org.apache.hadoop.hive.ql.plan.ConditionalResolverMergeFiles.generateDPFullPartSpec,ql/src/java/org/apache/hadoop/hive/ql/plan/ConditionalResolverMergeFiles.java,13028,308,174 80
+89,org.apache.hadoop.hive.ql.plan.ConditionalResolverMergeFiles.setupMapRedWork,ql/src/java/org/apache/hadoop/hive/ql/plan/ConditionalResolverMergeFiles.java,13526,308,119
+90,org.apache.hadoop.hive.ql.hooks.EnforceReadOnlyTables.run,ql/src/java/org/apache/hadoop/hive/ql/hooks/EnforceReadOnlyTables.java,1759,291,246
+91,org.apache.hadoop.hive.ql.parse.repl.dump.io.TableSerializer.updatePropertiesInTable,ql/src/java/org/apache/hadoop/hive/ql/parse/repl/dump/io/TableSerializer.java,2937,234,20
+92,org.apache.hadoop.hive.ql.parse.spark.SparkCompiler.runRemoveDynamicPruning,ql/src/java/org/apache/hadoop/hive/ql/parse/spark/SparkCompiler.java,7000,340,162
+93,org.apache.hadoop.hive.ql.parse.spark.SparkCompiler.runStatsAnnotation,ql/src/java/org/apache/hadoop/hive/ql/parse/spark/SparkCompiler.java,11698,340,162
+94,org.apache.hadoop.hive.ql.parse.spark.SparkCompiler.runSetReducerParallelism,ql/src/java/org/apache/hadoop/hive/ql/parse/spark/SparkCompiler.java,12818,340,162
+95,org.apache.hadoop.hive.ql.parse.spark.SparkCompiler.runJoinOptimizations,ql/src/java/org/apache/hadoop/hive/ql/parse/spark/SparkCompiler.java,13653,340,162
+96,org.apache.hadoop.hive.ql.parse.spark.SparkPartitionPruningSinkOperator.addAsSourceEvent,ql/src/java/org/apache/hadoop/hive/ql/parse/spark/SparkPartitionPruningSinkOperator.java,7139,158,119 208
+97,org.apache.hadoop.hive.ql.parse.spark.SparkPartitionPruningSinkOperator.removeFromSourceEvent,ql/src/java/org/apache/hadoop/hive/ql/parse/spark/SparkPartitionPruningSinkOperator.java,8438,158,119 208
+98,org.apache.hadoop.hive.ql.parse.QB.getPTFInvocationSpec,ql/src/java/org/apache/hadoop/hive/ql/parse/QB.java,9383,107,103
+99,org.apache.hadoop.hive.ql.parse.authorization.HiveAuthorizationTaskFactoryImpl.analyzeGrantRevokeRole,ql/src/java/org/apache/hadoop/hive/ql/parse/authorization/HiveAuthorizationTaskFactoryImpl.java,8592,48,103
+100,org.apache.hadoop.hive.ql.parse.authorization.HiveAuthorizationTaskFactoryImpl.analyzePrivilegeListDef,ql/src/java/org/apache/hadoop/hive/ql/parse/authorization/HiveAuthorizationTaskFactoryImpl.java,12029,48,103
+101,org.apache.hadoop.hive.ql.parse.authorization.HiveAuthorizationTaskFactoryImpl.toMessage,ql/src/java/org/apache/hadoop/hive/ql/parse/authorization/HiveAuthorizationTaskFactoryImpl.java,14140,48,227
+102,org.apache.hadoop.hive.ql.parse.TableMask.needsMaskingOrFiltering,ql/src/java/org/apache/hadoop/hive/ql/parse/TableMask.java,3368,240,89
+103,org.apache.hadoop.hive.ql.parse.GenTezWork.getFollowingWorkIndex,ql/src/java/org/apache/hadoop/hive/ql/parse/GenTezWork.java,23124,192,56 270 159
+104,org.apache.hadoop.hive.ql.parse.RowResolver.putExpression,ql/src/java/org/apache/hadoop/hive/ql/parse/RowResolver.java,2591,256,103 40
+105,org.apache.hadoop.hive.ql.parse.RowResolver.put,ql/src/java/org/apache/hadoop/hive/ql/parse/RowResolver.java,3649,256,40
+106,org.apache.hadoop.hive.ql.parse.TezCompiler.runStatsAnnotation,ql/src/java/org/apache/hadoop/hive/ql/parse/TezCompiler.java,19830,49,358
+107,org.apache.hadoop.hive.ql.parse.TezCompiler.runStatsDependentOptimizations,ql/src/java/org/apache/hadoop/hive/ql/parse/TezCompiler.java,20058,49,358
+108,org.apache.hadoop.hive.ql.parse.TezCompiler.runRemoveDynamicPruningOptimization,ql/src/java/org/apache/hadoop/hive/ql/parse/TezCompiler.java,25302,49,358
+109,org.apache.hadoop.hive.ql.parse.TezCompiler.runDynamicPartitionPruning,ql/src/java/org/apache/hadoop/hive/ql/parse/TezCompiler.java,26403,49,358
+110,org.apache.hadoop.hive.ql.parse.TezCompiler.findParallelSemiJoinBranch,ql/src/java/org/apache/hadoop/hive/ql/parse/TezCompiler.java,55249,49,87 290
+111,org.apache.hadoop.hive.ql.parse.TezCompiler.updateBucketingVersionForUpgrade,ql/src/java/org/apache/hadoop/hive/ql/parse/TezCompiler.java,80174,49,358
+112,org.apache.hadoop.hive.ql.parse.ParseContext.getColStatsCached,ql/src/java/org/apache/hadoop/hive/ql/parse/ParseContext.java,14946,87,241
+113,org.apache.hadoop.hive.ql.parse.ParseContext.getPrunedPartitions,ql/src/java/org/apache/hadoop/hive/ql/parse/ParseContext.java,17014,87,290
+114,org.apache.hadoop.hive.ql.parse.TaskCompiler.extractTableFullName,ql/src/java/org/apache/hadoop/hive/ql/parse/TaskCompiler.java,18930,97,264
+115,org.apache.hadoop.hive.ql.parse.TaskCompiler.runDynPartitionSortOptimizations,ql/src/java/org/apache/hadoop/hive/ql/parse/TaskCompiler.java,31145,97,87
+116,org.apache.hadoop.hive.ql.parse.PTFTranslator.copyShape,ql/src/java/org/apache/hadoop/hive/ql/parse/PTFTranslator.java,24398,284,268
+117,org.apache.hadoop.hive.ql.parse.PTFTranslator.setupRankingArgs,ql/src/java/org/apache/hadoop/hive/ql/parse/PTFTranslator.java,26972,284,0 17
+118,org.apache.hadoop.hive.ql.parse.CalcitePlanner.fixUpASTNoAggregateIncrementalRebuild,ql/src/java/org/apache/hadoop/hive/ql/parse/CalcitePlanner.java,57750,226,103
+119,org.apache.hadoop.hive.ql.parse.CalcitePlanner.handleInsertStatement,ql/src/java/org/apache/hadoop/hive/ql/parse/CalcitePlanner.java,70475,226,256 107
+120,org.apache.hadoop.hive.ql.parse.CalcitePlanner.genRowResolver,ql/src/java/org/apache/hadoop/hive/ql/parse/CalcitePlanner.java,74333,226,107
+121,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.doPhase1QBExpr,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,27844,82,70 103
+122,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.isInsertInto,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,31472,82,321
+123,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.isValueClause,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,31988,82,103
+124,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.findTabRefIdxs,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,43744,82,103
+125,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.findSimpleTableName,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,44517,82,103
+126,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.populateAliases,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,115936,82,103 94
+127,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.getTableDescFromSerDe,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,158398,82,103
+128,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.hasGroupBySibling,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,175947,82,103
+129,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.isSelectDistinct,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,176345,82,103
+130,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.addGroupingSetKey,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,211542,82,256
+131,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.processGroupingSetReduceSinkOperator,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,213289,82,256
+132,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.createNewGroupingKey,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,224900,82,256
+133,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.isConsistentWithinQuery,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,239207,82,208
+134,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.getDistinctColIndicesForReduceSink,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,239457,82,321 256
+135,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.getReduceValuesForReduceSinkNoMapAgg,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,241952,82,321 256
+136,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.getEnabledNotNullConstraints,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,296372,82,214
+137,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.getSortOrders,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,364117,82,107 214
+138,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.extractJoinAlias,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,417445,82,103
+139,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.parseStreamTables,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,418151,82,107 94
+140,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.findMergePos,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,428394,82,94
+141,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.shouldMerge,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,430597,82,94
+142,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.getDistinctExprs,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,442138,82,321 256
+143,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.genInputSelectForUnion,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,459360,82,256
+144,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.getAliasId,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,465861,82,107
+145,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.LVmergeRowResolvers,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,493603,82,256
+146,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.getHintsFromQB,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,511066,82,107
+147,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.getHintsFromQB,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,511377,82,70
+148,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.putAccessedColumnsToReadEntity,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,525189,82,277
+149,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.getTablesUsed,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,533086,82,87
+150,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.genExprNodeDesc,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,534993,82,256 103
+151,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.genExprNodeDesc,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,535644,82,256 103
+152,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.genAllExprNodeDesc,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,535943,82,256 103
+153,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.processPartitionSpec,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,590980,82,103
+154,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.processOrderSpec,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,591353,82,103
+155,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.processBoundary,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,597590,82,103
+156,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.buildPTFReduceSinkDetails,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,602125,82,256 95
+157,org.apache.hadoop.hive.ql.parse.SemanticAnalyzer.copyInfoToQueryProperties,ql/src/java/org/apache/hadoop/hive/ql/parse/SemanticAnalyzer.java,617276,82,300
+158,org.apache.hadoop.hive.ql.parse.DDLSemanticAnalyzer.buildTriggerExpression,ql/src/java/org/apache/hadoop/hive/ql/parse/DDLSemanticAnalyzer.java,48746,345,103
+159,org.apache.hadoop.hive.ql.parse.DDLSemanticAnalyzer.validateAlterTableType,ql/src/java/org/apache/hadoop/hive/ql/parse/DDLSemanticAnalyzer.java,71664,345,214
+160,org.apache.hadoop.hive.ql.parse.DDLSemanticAnalyzer.determineAlterTableWriteType,ql/src/java/org/apache/hadoop/hive/ql/parse/DDLSemanticAnalyzer.java,80147,345,135 214
+161,org.apache.hadoop.hive.ql.parse.DDLSemanticAnalyzer.calculatePartPrefix,ql/src/java/org/apache/hadoop/hive/ql/parse/DDLSemanticAnalyzer.java,164518,345,214
+162,org.apache.hadoop.hive.ql.parse.DDLSemanticAnalyzer.isConstant,ql/src/java/org/apache/hadoop/hive/ql/parse/DDLSemanticAnalyzer.java,177205,345,103
+163,org.apache.hadoop.hive.ql.parse.DDLSemanticAnalyzer.createAuthorizationTaskFactory,ql/src/java/org/apache/hadoop/hive/ql/parse/DDLSemanticAnalyzer.java,178284,345,39
+164,org.apache.hadoop.hive.ql.parse.BaseSemanticAnalyzer.getColumnNamesOrder,ql/src/java/org/apache/hadoop/hive/ql/parse/BaseSemanticAnalyzer.java,55754,235,103
+165,org.apache.hadoop.hive.ql.parse.BaseSemanticAnalyzer.getSkewedValueFromASTNode,ql/src/java/org/apache/hadoop/hive/ql/parse/BaseSemanticAnalyzer.java,74396,235,103
+166,org.apache.hadoop.hive.ql.parse.BaseSemanticAnalyzer.analyzeSkewedTablDDLColNames,ql/src/java/org/apache/hadoop/hive/ql/parse/BaseSemanticAnalyzer.java,75711,235,103
+167,org.apache.hadoop.hive.ql.parse.BaseSemanticAnalyzer.analyzeStoredAdDirs,ql/src/java/org/apache/hadoop/hive/ql/parse/BaseSemanticAnalyzer.java,77740,235,103
+168,org.apache.hadoop.hive.ql.parse.BaseSemanticAnalyzer.toMessage,ql/src/java/org/apache/hadoop/hive/ql/parse/BaseSemanticAnalyzer.java,88280,235,227
+169,org.apache.hadoop.hive.ql.parse.ImportSemanticAnalyzer.parsePartitionSpec,ql/src/java/org/apache/hadoop/hive/ql/parse/ImportSemanticAnalyzer.java,7477,92,103
+170,org.apache.hadoop.hive.ql.parse.RewriteSemanticAnalyzer.findLHSofAssignment,ql/src/java/org/apache/hadoop/hive/ql/parse/RewriteSemanticAnalyzer.java,5295,86,103
+171,org.apache.hadoop.hive.ql.parse.RewriteSemanticAnalyzer.setUpAccessControlInfoForUpdate,ql/src/java/org/apache/hadoop/hive/ql/parse/RewriteSemanticAnalyzer.java,9318,86,214
+172,org.apache.hadoop.hive.ql.parse.FunctionSemanticAnalyzer.getResourceType,ql/src/java/org/apache/hadoop/hive/ql/parse/FunctionSemanticAnalyzer.java,5230,260,103
+173,org.apache.hadoop.hive.ql.parse.ColumnStatsSemanticAnalyzer.shouldRewrite,ql/src/java/org/apache/hadoop/hive/ql/parse/ColumnStatsSemanticAnalyzer.java,2882,355,103
+174,org.apache.hadoop.hive.ql.stats.BasicStatsTask.createStatsAggregator,ql/src/java/org/apache/hadoop/hive/ql/stats/BasicStatsTask.java,14551,278,23
+175,org.apache.hadoop.hive.ql.stats.ColStatsProcessor.buildColumnStatsDesc,ql/src/java/org/apache/hadoop/hive/ql/stats/ColStatsProcessor.java,6503,280,214
+176,org.apache.hadoop.hive.ql.reexec.ReOptimizePlugin.getRootOps,ql/src/java/org/apache/hadoop/hive/ql/reexec/ReOptimizePlugin.java,4453,281,317
+177,org.apache.hadoop.hive.ql.lockmgr.zookeeper.ZooKeeperHiveLockManager.printConflictingLocks,ql/src/java/org/apache/hadoop/hive/ql/lockmgr/zookeeper/ZooKeeperHiveLockManager.java,11531,205,113
+178,org.apache.hadoop.hive.ql.lockmgr.DbTxnManager.allowOperationInATransaction,ql/src/java/org/apache/hadoop/hive/ql/lockmgr/DbTxnManager.java,14923,81,304
+179,org.apache.hadoop.hive.ql.metadata.Hive.alterTable,ql/src/java/org/apache/hadoop/hive/ql/metadata/Hive.java,23895,39,214
+180,org.apache.hadoop.hive.ql.metadata.Hive.alterTable,ql/src/java/org/apache/hadoop/hive/ql/metadata/Hive.java,24596,39,214
+181,org.apache.hadoop.hive.ql.metadata.Hive.alterTable,ql/src/java/org/apache/hadoop/hive/ql/metadata/Hive.java,24938,39,214
+182,org.apache.hadoop.hive.ql.metadata.Hive.alterPartition,ql/src/java/org/apache/hadoop/hive/ql/metadata/Hive.java,28563,39,3
+183,org.apache.hadoop.hive.ql.metadata.Hive.validatePartition,ql/src/java/org/apache/hadoop/hive/ql/metadata/Hive.java,31272,39,3
+184,org.apache.hadoop.hive.ql.metadata.Hive.dropPartitions,ql/src/java/org/apache/hadoop/hive/ql/metadata/Hive.java,144929,39,214
+185,org.apache.hadoop.hive.ql.metadata.Hive.getPartitionsByNames,ql/src/java/org/apache/hadoop/hive/ql/metadata/Hive.java,155430,39,214
+186,org.apache.hadoop.hive.ql.metadata.Hive.getNumPartitionsByFilter,ql/src/java/org/apache/hadoop/hive/ql/metadata/Hive.java,161284,39,214
+187,org.apache.hadoop.hive.ql.metadata.formatting.JsonMetaDataFormatter.makeTableStatusLocations,ql/src/java/org/apache/hadoop/hive/ql/metadata/formatting/JsonMetaDataFormatter.java,11454,151,3 39 214
+188,org.apache.hadoop.hive.ql.metadata.Partition.initialize,ql/src/java/org/apache/hadoop/hive/ql/metadata/Partition.java,5204,3,214
+189,org.apache.hadoop.hive.ql.metadata.Partition.getPath,ql/src/java/org/apache/hadoop/hive/ql/metadata/Partition.java,13687,3,252
+190,org.apache.hadoop.hive.ql.security.authorization.plugin.HivePrivilege.supportsScope,ql/src/java/org/apache/hadoop/hive/ql/security/authorization/plugin/HivePrivilege.java,2879,323,45
+191,org.apache.hadoop.hive.ql.security.authorization.AuthorizationPreEventListener.metaException,ql/src/java/org/apache/hadoop/hive/ql/security/authorization/AuthorizationPreEventListener.java,17500,356,11
+192,org.apache.hadoop.hive.ql.security.authorization.StorageBasedAuthorizationProvider.getFsAction,ql/src/java/org/apache/hadoop/hive/ql/security/authorization/StorageBasedAuthorizationProvider.java,12601,250,16
+193,org.apache.hadoop.hive.ql.optimizer.spark.SparkMapJoinOptimizer.convertJoinBucketMapJoin,ql/src/java/org/apache/hadoop/hive/ql/optimizer/spark/SparkMapJoinOptimizer.java,6344,123,44 162 136
+194,org.apache.hadoop.hive.ql.optimizer.spark.SplitSparkWorkResolver.getAllReduceSinks,ql/src/java/org/apache/hadoop/hive/ql/optimizer/spark/SplitSparkWorkResolver.java,5548,357,54
+195,org.apache.hadoop.hive.ql.optimizer.spark.SparkSMBJoinHintOptimizer.removeSmallTableReduceSink,ql/src/java/org/apache/hadoop/hive/ql/optimizer/spark/SparkSMBJoinHintOptimizer.java,2969,4,44
+196,org.apache.hadoop.hive.ql.optimizer.spark.SetSparkReducerParallelism.needSetParallelism,ql/src/java/org/apache/hadoop/hive/ql/optimizer/spark/SetSparkReducerParallelism.java,9766,104,270
+197,org.apache.hadoop.hive.ql.optimizer.calcite.rules.HiveRemoveSqCountCheck.isSqlCountCheck,ql/src/java/org/apache/hadoop/hive/ql/optimizer/calcite/rules/HiveRemoveSqCountCheck.java,3287,282,242
+198,org.apache.hadoop.hive.ql.optimizer.calcite.stats.HiveRelMdSize.averageColumnSizes,ql/src/java/org/apache/hadoop/hive/ql/optimizer/calcite/stats/HiveRelMdSize.java,2284,232,182
+199,org.apache.hadoop.hive.ql.optimizer.calcite.stats.HiveRelMdSize.averageColumnSizes,ql/src/java/org/apache/hadoop/hive/ql/optimizer/calcite/stats/HiveRelMdSize.java,3778,232,307
+200,org.apache.hadoop.hive.ql.optimizer.calcite.stats.HiveRelMdMemory.memory,ql/src/java/org/apache/hadoop/hive/ql/optimizer/calcite/stats/HiveRelMdMemory.java,2466,215,255
+201,org.apache.hadoop.hive.ql.optimizer.calcite.stats.HiveRelMdMemory.memory,ql/src/java/org/apache/hadoop/hive/ql/optimizer/calcite/stats/HiveRelMdMemory.java,3186,215,116
+202,org.apache.hadoop.hive.ql.optimizer.calcite.stats.HiveRelMdCollation.collations,ql/src/java/org/apache/hadoop/hive/ql/optimizer/calcite/stats/HiveRelMdCollation.java,2554,27,255
+203,org.apache.hadoop.hive.ql.optimizer.calcite.stats.HiveRelMdUniqueKeys.getUniqueKeys,ql/src/java/org/apache/hadoop/hive/ql/optimizer/calcite/stats/HiveRelMdUniqueKeys.java,1923,88,182
+204,org.apache.hadoop.hive.ql.optimizer.calcite.stats.HiveRelMdParallelism.splitCount,ql/src/java/org/apache/hadoop/hive/ql/optimizer/calcite/stats/HiveRelMdParallelism.java,2545,335,182
+205,org.apache.hadoop.hive.ql.optimizer.calcite.stats.HiveRelMdSelectivity.getSelectivity,ql/src/java/org/apache/hadoop/hive/ql/optimizer/calcite/stats/HiveRelMdSelectivity.java,2512,33,182
+206,org.apache.hadoop.hive.ql.optimizer.calcite.stats.HiveRelMdColumnUniqueness.areColumnsUnique,ql/src/java/org/apache/hadoop/hive/ql/optimizer/calcite/stats/HiveRelMdColumnUniqueness.java,2184,133,182
+207,org.apache.hadoop.hive.ql.optimizer.calcite.stats.HiveRelMdDistinctRowCount.getDistinctRowCount,ql/src/java/org/apache/hadoop/hive/ql/optimizer/calcite/stats/HiveRelMdDistinctRowCount.java,2998,279,182
+208,org.apache.hadoop.hive.ql.optimizer.calcite.stats.HiveRelMdDistinctRowCount.getCumulativeCost,ql/src/java/org/apache/hadoop/hive/ql/optimizer/calcite/stats/HiveRelMdDistinctRowCount.java,4370,279,307
+209,org.apache.hadoop.hive.ql.optimizer.calcite.stats.FilterSelectivityEstimator.getMaxNulls,ql/src/java/org/apache/hadoop/hive/ql/optimizer/calcite/stats/FilterSelectivityEstimator.java,6713,325,182
+210,org.apache.hadoop.hive.ql.optimizer.calcite.translator.ASTConverter.getUnionAllAST,ql/src/java/org/apache/hadoop/hive/ql/optimizer/calcite/translator/ASTConverter.java,32940,139,103
+211,org.apache.hadoop.hive.ql.optimizer.calcite.translator.RexNodeConverter.castExprUsingUDFBridge,ql/src/java/org/apache/hadoop/hive/ql/optimizer/calcite/translator/RexNodeConverter.java,23306,112,85
+212,org.apache.hadoop.hive.ql.optimizer.physical.SparkMapJoinResolver.containsOp,ql/src/java/org/apache/hadoop/hive/ql/optimizer/physical/SparkMapJoinResolver.java,3200,311,54
+213,org.apache.hadoop.hive.ql.optimizer.physical.NullScanTaskDispatcher.getAliasForTableScanOperator,ql/src/java/org/apache/hadoop/hive/ql/optimizer/physical/NullScanTaskDispatcher.java,3244,105,119 290
+214,org.apache.hadoop.hive.ql.optimizer.physical.CommonJoinTaskDispatcher.multiInsertBigTableCheck,ql/src/java/org/apache/hadoop/hive/ql/optimizer/physical/CommonJoinTaskDispatcher.java,25249,305,136
+215,org.apache.hadoop.hive.ql.optimizer.physical.AbstractJoinTaskDispatcher.getTotalKnownInputSize,ql/src/java/org/apache/hadoop/hive/ql/optimizer/physical/AbstractJoinTaskDispatcher.java,4807,42,119 183
+216,org.apache.hadoop.hive.ql.optimizer.physical.SortMergeJoinTaskDispatcher.genSMBJoinWork,ql/src/java/org/apache/hadoop/hive/ql/optimizer/physical/SortMergeJoinTaskDispatcher.java,3244,336,119 267
+217,org.apache.hadoop.hive.ql.optimizer.physical.SortMergeJoinTaskDispatcher.isEligibleForOptimization,ql/src/java/org/apache/hadoop/hive/ql/optimizer/physical/SortMergeJoinTaskDispatcher.java,7977,336,267
+218,org.apache.hadoop.hive.ql.optimizer.GenMRUnion1.processMapOnlyUnion,ql/src/java/org/apache/hadoop/hive/ql/optimizer/GenMRUnion1.java,2250,322,30 134 50
+219,org.apache.hadoop.hive.ql.optimizer.GenMRUnion1.processSubQueryUnionMerge,ql/src/java/org/apache/hadoop/hive/ql/optimizer/GenMRUnion1.java,5646,322,30 50
+220,org.apache.hadoop.hive.ql.optimizer.JoinReorder.getBigTables,ql/src/java/org/apache/hadoop/hive/ql/optimizer/JoinReorder.java,3929,152,87
+221,org.apache.hadoop.hive.ql.optimizer.GenMRFileSink1.processLinkedFileDesc,ql/src/java/org/apache/hadoop/hive/ql/optimizer/GenMRFileSink1.java,5663,187,50
+222,org.apache.hadoop.hive.ql.optimizer.GenMRFileSink1.processFS,ql/src/java/org/apache/hadoop/hive/ql/optimizer/GenMRFileSink1.java,6320,187,221
+223,org.apache.hadoop.hive.ql.optimizer.MapJoinProcessor.genSelectPlan,ql/src/java/org/apache/hadoop/hive/ql/optimizer/MapJoinProcessor.java,30927,324,44 87
+224,org.apache.hadoop.hive.ql.optimizer.MapJoinProcessor.mapSideJoin,ql/src/java/org/apache/hadoop/hive/ql/optimizer/MapJoinProcessor.java,32743,324,136
+225,org.apache.hadoop.hive.ql.optimizer.ConvertJoinMapJoin.preserveOperatorInfos,ql/src/java/org/apache/hadoop/hive/ql/optimizer/ConvertJoinMapJoin.java,31884,251,358
+226,org.apache.hadoop.hive.ql.optimizer.ConvertJoinMapJoin.hasOuterJoin,ql/src/java/org/apache/hadoop/hive/ql/optimizer/ConvertJoinMapJoin.java,42259,251,136
+227,org.apache.hadoop.hive.ql.optimizer.ConvertJoinMapJoin.isCrossProduct,ql/src/java/org/apache/hadoop/hive/ql/optimizer/ConvertJoinMapJoin.java,42935,251,136
+228,org.apache.hadoop.hive.ql.optimizer.ColumnPrunerProcCtx.getSelectColsFromLVJoin,ql/src/java/org/apache/hadoop/hive/ql/optimizer/ColumnPrunerProcCtx.java,10546,237,283
+229,org.apache.hadoop.hive.ql.optimizer.GlobalLimitOptimizer.onlyContainsPartnCols,ql/src/java/org/apache/hadoop/hive/ql/optimizer/GlobalLimitOptimizer.java,5813,319,214
+230,org.apache.hadoop.hive.ql.optimizer.DynamicPartitionPruningOptimization.replaceExprNode,ql/src/java/org/apache/hadoop/hive/ql/optimizer/DynamicPartitionPruningOptimization.java,18205,31,32 208
+231,org.apache.hadoop.hive.ql.optimizer.DynamicPartitionPruningOptimization.cleanTableScanFilters,ql/src/java/org/apache/hadoop/hive/ql/optimizer/DynamicPartitionPruningOptimization.java,18550,31,290
+232,org.apache.hadoop.hive.ql.optimizer.DynamicPartitionPruningOptimization.isNonEquiJoin,ql/src/java/org/apache/hadoop/hive/ql/optimizer/DynamicPartitionPruningOptimization.java,19582,31,208
+233,org.apache.hadoop.hive.ql.Driver.addTableFromEntity,ql/src/java/org/apache/hadoop/hive/ql/Driver.java,61685,217,219
+234,org.apache.hadoop.hive.ql.Driver.getWrittenTableList,ql/src/java/org/apache/hadoop/hive/ql/Driver.java,62257,217,304
+235,org.apache.hadoop.hive.ql.Driver.invokeFailureHooks,ql/src/java/org/apache/hadoop/hive/ql/Driver.java,105080,217,143
+236,org.apache.hadoop.hive.ql.Context.getMatchedText,ql/src/java/org/apache/hadoop/hive/ql/Context.java,7562,183,103
+237,org.apache.hadoop.hive.ql.ErrorMsg.getMsg,ql/src/java/org/apache/hadoop/hive/ql/ErrorMsg.java,47734,227,103
+238,org.apache.hadoop.hive.ql.QueryPlan.populateOperatorGraph,ql/src/java/org/apache/hadoop/hive/ql/QueryPlan.java,7655,304,63
+239,org.apache.hadoop.hive.ql.QueryPlan.getJSONOperator,ql/src/java/org/apache/hadoop/hive/ql/QueryPlan.java,20295,304,361
+240,org.apache.hadoop.hive.serde2.avro.TypeInfoToSchema.createAvroPrimitive,serde/src/java/org/apache/hadoop/hive/serde2/avro/TypeInfoToSchema.java,3587,190,341
+241,org.apache.hadoop.hive.serde2.avro.AvroObjectInspectorGenerator.supportedCategories,serde/src/java/org/apache/hadoop/hive/serde2/avro/AvroObjectInspectorGenerator.java,5913,28,341
+242,org.apache.hadoop.hive.serde2.teradata.TeradataBinaryDataOutputStream.writeVarChar,serde/src/java/org/apache/hadoop/hive/serde2/teradata/TeradataBinaryDataOutputStream.java,2441,274,111
+243,org.apache.hadoop.hive.serde2.teradata.TeradataBinaryDataOutputStream.writeDate,serde/src/java/org/apache/hadoop/hive/serde2/teradata/TeradataBinaryDataOutputStream.java,5161,274,201
+244,org.apache.hadoop.hive.serde2.teradata.TeradataBinaryDataOutputStream.writeChar,serde/src/java/org/apache/hadoop/hive/serde2/teradata/TeradataBinaryDataOutputStream.java,6134,274,2
+245,org.apache.hadoop.hive.serde2.dynamic_type.thrift_grammarTokenManager.ReInit,serde/src/java/org/apache/hadoop/hive/serde2/dynamic_type/thrift_grammarTokenManager.java,42260,101,13
+246,org.apache.hadoop.hive.serde2.objectinspector.primitive.WritableHiveCharObjectInspector.getPrimitiveWithParams,serde/src/java/org/apache/hadoop/hive/serde2/objectinspector/primitive/WritableHiveCharObjectInspector.java,3539,188,2
+247,org.apache.hadoop.hive.serde2.objectinspector.primitive.WritableHiveCharObjectInspector.getWritableWithParams,serde/src/java/org/apache/hadoop/hive/serde2/objectinspector/primitive/WritableHiveCharObjectInspector.java,3711,188,2
+248,org.apache.hadoop.hive.serde2.objectinspector.primitive.WritableHiveVarcharObjectInspector.getPrimitiveWithParams,serde/src/java/org/apache/hadoop/hive/serde2/objectinspector/primitive/WritableHiveVarcharObjectInspector.java,3756,314,111
+249,org.apache.hadoop.hive.serde2.objectinspector.primitive.WritableHiveVarcharObjectInspector.getWritableWithParams,serde/src/java/org/apache/hadoop/hive/serde2/objectinspector/primitive/WritableHiveVarcharObjectInspector.java,3943,314,111
+250,org.apache.hive.common.util.DateParser.parseDate,common/src/java/org/apache/hive/common/util/DateParser.java,1150,29,329
+251,org.apache.hadoop.hive.common.type.Decimal128.zeroFractionPart,common/src/java/org/apache/hadoop/hive/common/type/Decimal128.java,58977,79,24
+252,org.apache.hadoop.hive.common.jsonexplain.Vertex.print,common/src/java/org/apache/hadoop/hive/common/jsonexplain/Vertex.java,8702,327,257
+253,org.apache.hadoop.hive.common.jsonexplain.DagJsonParser.addInline,common/src/java/org/apache/hadoop/hive/common/jsonexplain/DagJsonParser.java,5497,285,179 186
+254,org.apache.hadoop.hive.common.jsonexplain.DagJsonParser.isInline,common/src/java/org/apache/hadoop/hive/common/jsonexplain/DagJsonParser.java,5767,285,327
+255,org.apache.hive.hplsql.Exec.signal,hplsql/src/main/java/org/apache/hive/hplsql/Exec.java,11129,312,147
+256,org.apache.hive.hplsql.Stmt.updateIndex,hplsql/src/main/java/org/apache/hive/hplsql/Stmt.java,30515,362,37
+257,org.apache.hive.beeline.ClientCommandHookFactory.getHook,beeline/src/java/org/apache/hive/beeline/ClientCommandHookFactory.java,3236,352,351
+258,org.apache.hive.service.cli.operation.Operation.validateFetchOrientation,service/src/java/org/apache/hive/service/cli/operation/Operation.java,12077,276,271
+259,org.apache.hive.service.cli.operation.OperationManager.getQueryId,service/src/java/org/apache/hive/service/cli/operation/OperationManager.java,7717,350,276
+260,org.apache.hive.service.cli.operation.OperationManager.getOperationStatus,service/src/java/org/apache/hive/service/cli/operation/OperationManager.java,10654,350,196
+261,org.apache.hive.service.cli.operation.OperationManager.getOperationResultSetSchema,service/src/java/org/apache/hive/service/cli/operation/OperationManager.java,12463,350,196
+262,org.apache.hive.service.cli.operation.OperationManager.getOperationNextRowSet,service/src/java/org/apache/hive/service/cli/operation/OperationManager.java,12631,350,196 271
+263,org.apache.hive.service.cli.operation.OperationManager.isFetchFirst,service/src/java/org/apache/hive/service/cli/operation/OperationManager.java,14054,350,271
+264,org.apache.hive.service.cli.operation.MetadataOperation.getDebugMessage,service/src/java/org/apache/hive/service/cli/operation/MetadataOperation.java,5691,191,114
+265,org.apache.hive.service.cli.CLIService.getSessionConf,service/src/java/org/apache/hive/service/cli/CLIService.java,20396,43,178
+266,org.apache.hive.hcatalog.templeton.HcatDelegator.makeOneCol,hcatalog/webhcat/svr/src/main/java/org/apache/hive/hcatalog/templeton/HcatDelegator.java,11886,228,243
+267,org.apache.hive.hcatalog.templeton.HcatDelegator.isValid,hcatalog/webhcat/svr/src/main/java/org/apache/hive/hcatalog/templeton/HcatDelegator.java,27610,228,224
+268,org.apache.hive.hcatalog.templeton.LauncherDelegator.runTempletonControllerJob,hcatalog/webhcat/svr/src/main/java/org/apache/hive/hcatalog/templeton/LauncherDelegator.java,10364,106,156
+269,org.apache.hive.hcatalog.api.repl.ReplicationTask.validateEventType,hcatalog/webhcat/java-client/src/main/java/org/apache/hive/hcatalog/api/repl/ReplicationTask.java,9947,140,200
+270,org.apache.hive.hcatalog.streaming.AbstractRecordWriter.getPathForEndPoint,hcatalog/streaming/src/java/org/apache/hive/hcatalog/streaming/AbstractRecordWriter.java,12288,131,261
+271,org.apache.hive.service.rpc.thrift.TRow.addToColVals,service-rpc/src/gen/thrift/gen-javabean/org/apache/hive/service/rpc/thrift/TRow.java,5347,130,1
+272,org.apache.hive.service.rpc.thrift.TRowSet.addToRows,service-rpc/src/gen/thrift/gen-javabean/org/apache/hive/service/rpc/thrift/TRowSet.java,9529,207,130
+273,org.apache.hive.service.rpc.thrift.TRowSet.addToColumns,service-rpc/src/gen/thrift/gen-javabean/org/apache/hive/service/rpc/thrift/TRowSet.java,10339,207,74
+274,org.apache.hive.service.rpc.thrift.TTypeDesc.addToTypes,service-rpc/src/gen/thrift/gen-javabean/org/apache/hive/service/rpc/thrift/TTypeDesc.java,5344,342,153
+275,org.apache.hive.service.rpc.thrift.TTableSchema.addToColumns,service-rpc/src/gen/thrift/gen-javabean/org/apache/hive/service/rpc/thrift/TTableSchema.java,5446,272,349
+276,org.apache.hive.service.rpc.thrift.TTypeQualifiers.putToQualifiers,service-rpc/src/gen/thrift/gen-javabean/org/apache/hive/service/rpc/thrift/TTypeQualifiers.java,5961,239,100
+277,org.apache.hadoop.hive.ql.exec.vector.LongColumnVector.copySelected,storage-api/src/java/org/apache/hadoop/hive/ql/exec/vector/LongColumnVector.java,4284,25,364
+278,org.apache.hadoop.hive.ql.exec.vector.DecimalColumnVector.fill,storage-api/src/java/org/apache/hadoop/hive/ql/exec/vector/DecimalColumnVector.java,1816,69,289
+279,org.apache.hadoop.hive.ql.exec.vector.DecimalColumnVector.set,storage-api/src/java/org/apache/hadoop/hive/ql/exec/vector/DecimalColumnVector.java,5349,69,145
+280,org.apache.hadoop.hive.ql.exec.vector.DecimalColumnVector.set,storage-api/src/java/org/apache/hadoop/hive/ql/exec/vector/DecimalColumnVector.java,6063,69,289
+281,org.apache.hadoop.hive.ql.exec.vector.Decimal64ColumnVector.set,storage-api/src/java/org/apache/hadoop/hive/ql/exec/vector/Decimal64ColumnVector.java,1493,75,145
+282,org.apache.hadoop.hive.ql.exec.vector.Decimal64ColumnVector.set,storage-api/src/java/org/apache/hadoop/hive/ql/exec/vector/Decimal64ColumnVector.java,2354,75,289
+283,org.apache.hadoop.hive.ql.exec.vector.IntervalDayTimeColumnVector.compareTo,storage-api/src/java/org/apache/hadoop/hive/ql/exec/vector/IntervalDayTimeColumnVector.java,4644,9,197
+284,org.apache.hadoop.hive.accumulo.mr.HiveAccumuloRecordReader.pushToValue,accumulo-handler/src/java/org/apache/hadoop/hive/accumulo/mr/HiveAccumuloRecordReader.java,3774,259,337
+285,org.apache.hadoop.hive.accumulo.predicate.AccumuloPredicateHandler.generateRanges,accumulo-handler/src/java/org/apache/hadoop/hive/accumulo/predicate/AccumuloPredicateHandler.java,10075,286,249
+286,org.apache.hadoop.hive.accumulo.HiveAccumuloHelper.updateConfWithAccumuloToken,accumulo-handler/src/java/org/apache/hadoop/hive/accumulo/HiveAccumuloHelper.java,7439,244,199
+287,org.apache.hadoop.hive.metastore.api.Type.addToFields,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/Type.java,8516,19,301
+288,org.apache.hadoop.hive.metastore.api.Table.addToPartitionKeys,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/Table.java,27112,22,301
+289,org.apache.hadoop.hive.metastore.api.Schema.addToFieldSchemas,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/Schema.java,6532,292,301
+290,org.apache.hadoop.hive.metastore.api.Function.addToResourceUris,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/Function.java,15534,297,273
+291,org.apache.hadoop.hive.metastore.api.AggrStats.addToColStats,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/AggrStats.java,7261,320,181
+292,org.apache.hadoop.hive.metastore.api.LockRequest.addToComponent,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/LockRequest.java,8361,202,52
+293,org.apache.hadoop.hive.metastore.api.PrivilegeBag.addToPrivileges,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/PrivilegeBag.java,5565,198,288
+294,org.apache.hadoop.hive.metastore.api.SchemaVersion.addToCols,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/SchemaVersion.java,13643,294,301
+295,org.apache.hadoop.hive.metastore.api.GetTablesResult.addToTables,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/GetTablesResult.java,5392,120,22
+296,org.apache.hadoop.hive.metastore.api.ColumnStatistics.addToStatsObj,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/ColumnStatistics.java,7883,149,181
+297,org.apache.hadoop.hive.metastore.api.CommitTxnRequest.addToWriteEventInfos,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/CommitTxnRequest.java,9882,7,216
+298,org.apache.hadoop.hive.metastore.api.TableStatsResult.addToTableStats,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/TableStatsResult.java,6605,233,181
+299,org.apache.hadoop.hive.metastore.api.ShowLocksResponse.addToLocks,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/ShowLocksResponse.java,5545,72,121
+300,org.apache.hadoop.hive.metastore.api.StorageDescriptor.addToCols,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/StorageDescriptor.java,15365,171,301
+301,org.apache.hadoop.hive.metastore.api.StorageDescriptor.addToSortCols,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/StorageDescriptor.java,20753,171,331
+302,org.apache.hadoop.hive.metastore.api.ClientCapabilities.addToValues,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/ClientCapabilities.java,5496,91,262
+303,org.apache.hadoop.hive.metastore.api.WMFullResourcePlan.addToPools,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/WMFullResourcePlan.java,9737,14,109
+304,org.apache.hadoop.hive.metastore.api.WMFullResourcePlan.addToMappings,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/WMFullResourcePlan.java,10580,14,5
+305,org.apache.hadoop.hive.metastore.api.WMFullResourcePlan.addToTriggers,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/WMFullResourcePlan.java,11486,14,167
+306,org.apache.hadoop.hive.metastore.api.WMFullResourcePlan.addToPoolTriggers,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/WMFullResourcePlan.java,12420,14,38
+307,org.apache.hadoop.hive.metastore.api.AddPartitionsResult.addToPartitions,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/AddPartitionsResult.java,6464,141,203
+308,org.apache.hadoop.hive.metastore.api.ForeignKeysResponse.addToForeignKeys,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/ForeignKeysResponse.java,5647,229,128
+309,org.apache.hadoop.hive.metastore.api.PrimaryKeysResponse.addToPrimaryKeys,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/PrimaryKeysResponse.java,5647,173,126
+310,org.apache.hadoop.hive.metastore.api.ShowCompactResponse.addToCompacts,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/ShowCompactResponse.java,5668,148,160
+311,org.apache.hadoop.hive.metastore.api.AddForeignKeyRequest.addToForeignKeyCols,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/AddForeignKeyRequest.java,5744,118,128
+312,org.apache.hadoop.hive.metastore.api.AddPartitionsRequest.addToParts,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/AddPartitionsRequest.java,10966,299,203
+313,org.apache.hadoop.hive.metastore.api.AddPrimaryKeyRequest.addToPrimaryKeyCols,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/AddPrimaryKeyRequest.java,5744,269,126
+314,org.apache.hadoop.hive.metastore.api.DropPartitionsResult.addToPartitions,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/DropPartitionsResult.java,5547,326,203
+315,org.apache.hadoop.hive.metastore.api.FindSchemasByColsResp.addToSchemaVersions,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/FindSchemasByColsResp.java,5832,110,96
+316,org.apache.hadoop.hive.metastore.api.GetPartitionsResponse.addToPartitionSpec,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/GetPartitionsResponse.java,5726,61,253
+317,org.apache.hadoop.hive.metastore.api.AlterPartitionsRequest.addToPartitions,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/AlterPartitionsRequest.java,11636,348,203
+318,org.apache.hadoop.hive.metastore.api.PartitionValuesRequest.addToPartitionKeys,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/PartitionValuesRequest.java,12842,254,301
+319,org.apache.hadoop.hive.metastore.api.PartitionValuesRequest.addToPartitionOrder,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/PartitionValuesRequest.java,15050,254,301
+320,org.apache.hadoop.hive.metastore.api.PartitionsByExprResult.addToPartitions,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/PartitionsByExprResult.java,6713,53,203
+321,org.apache.hadoop.hive.metastore.api.GetAllFunctionsResponse.addToFunctions,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/GetAllFunctionsResponse.java,5555,330,297
+322,org.apache.hadoop.hive.metastore.api.GetOpenTxnsInfoResponse.addToOpen_txns,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/GetOpenTxnsInfoResponse.java,7441,127,60
+323,org.apache.hadoop.hive.metastore.api.PartitionValuesResponse.addToPartitionValues,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/PartitionValuesResponse.java,5847,76,193
+324,org.apache.hadoop.hive.metastore.api.CheckConstraintsResponse.addToCheckConstraints,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/CheckConstraintsResponse.java,5887,189,8
+325,org.apache.hadoop.hive.metastore.api.GetValidWriteIdsResponse.addToTblValidWriteIds,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/GetValidWriteIdsResponse.java,5897,287,84
+326,org.apache.hadoop.hive.metastore.api.AddCheckConstraintRequest.addToCheckConstraintCols,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/AddCheckConstraintRequest.java,5984,41,8
+327,org.apache.hadoop.hive.metastore.api.NotificationEventResponse.addToEvents,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/NotificationEventResponse.java,5628,64,298
+328,org.apache.hadoop.hive.metastore.api.PartitionSpecWithSharedSD.addToPartitions,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/PartitionSpecWithSharedSD.java,6418,295,212
+329,org.apache.hadoop.hive.metastore.api.SetPartitionsStatsRequest.addToColStats,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/SetPartitionsStatsRequest.java,8046,6,149
+330,org.apache.hadoop.hive.metastore.api.UniqueConstraintsResponse.addToUniqueConstraints,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/UniqueConstraintsResponse.java,5935,124,293
+331,org.apache.hadoop.hive.metastore.api.AddUniqueConstraintRequest.addToUniqueConstraintCols,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/AddUniqueConstraintRequest.java,6032,66,293
+332,org.apache.hadoop.hive.metastore.api.DefaultConstraintsResponse.addToDefaultConstraints,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/DefaultConstraintsResponse.java,5983,231,338
+333,org.apache.hadoop.hive.metastore.api.GetPartitionsByNamesResult.addToPartitions,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/GetPartitionsByNamesResult.java,5682,55,203
+334,org.apache.hadoop.hive.metastore.api.NotNullConstraintsResponse.addToNotNullConstraints,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/NotNullConstraintsResponse.java,5988,172,117
+335,org.apache.hadoop.hive.metastore.api.PartitionListComposingSpec.addToPartitions,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/PartitionListComposingSpec.java,5681,165,203
+336,org.apache.hadoop.hive.metastore.api.AddDefaultConstraintRequest.addToDefaultConstraintCols,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/AddDefaultConstraintRequest.java,6080,363,338
+337,org.apache.hadoop.hive.metastore.api.AddNotNullConstraintRequest.addToNotNullConstraintCols,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/AddNotNullConstraintRequest.java,6085,316,117
+338,org.apache.hadoop.hive.metastore.api.GetFileMetadataByExprResult.putToMetadata,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/GetFileMetadataByExprResult.java,6938,223,144
+339,org.apache.hadoop.hive.metastore.api.GetPrincipalsInRoleResponse.addToPrincipalGrants,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/GetPrincipalsInRoleResponse.java,5903,155,213
+340,org.apache.hadoop.hive.metastore.api.AllocateTableWriteIdsRequest.addToSrcTxnToWriteIdList,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/AllocateTableWriteIdsRequest.java,11212,263,247
+341,org.apache.hadoop.hive.metastore.api.WMGetAllResourcePlanResponse.addToResourcePlans,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/WMGetAllResourcePlanResponse.java,5764,102,51
+342,org.apache.hadoop.hive.metastore.api.AllocateTableWriteIdsResponse.addToTxnToWriteIds,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/AllocateTableWriteIdsResponse.java,5841,303,247
+343,org.apache.hadoop.hive.metastore.api.GetRoleGrantsForPrincipalResponse.addToPrincipalGrants,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/GetRoleGrantsForPrincipalResponse.java,5987,93,213
+344,org.apache.hadoop.hive.metastore.api.WMGetTriggersForResourePlanResponse.addToTriggers,standalone-metastore/metastore-common/src/gen/thrift/gen-javabean/org/apache/hadoop/hive/metastore/api/WMGetTriggersForResourePlanResponse.java,5694,15,167
+345,org.apache.hadoop.hive.metastore.Warehouse.dbDirFromDbName,standalone-metastore/metastore-common/src/main/java/org/apache/hadoop/hive/metastore/Warehouse.java,8003,47,71
+346,org.apache.hadoop.hive.metastore.Warehouse.getDatabasePath,standalone-metastore/metastore-common/src/main/java/org/apache/hadoop/hive/metastore/Warehouse.java,8144,47,71
+347,org.apache.hadoop.hive.metastore.Warehouse.getPartitionPath,standalone-metastore/metastore-common/src/main/java/org/apache/hadoop/hive/metastore/Warehouse.java,22536,47,22 71
+348,org.apache.hadoop.hive.metastore.HiveMetaStoreClient.deepCopy,standalone-metastore/metastore-common/src/main/java/org/apache/hadoop/hive/metastore/HiveMetaStoreClient.java,107239,77,203
+349,org.apache.hadoop.hive.metastore.HiveMetaStoreClient.deepCopy,standalone-metastore/metastore-common/src/main/java/org/apache/hadoop/hive/metastore/HiveMetaStoreClient.java,107463,77,71
+350,org.apache.hadoop.hive.metastore.HiveMetaStoreClient.deepCopy,standalone-metastore/metastore-common/src/main/java/org/apache/hadoop/hive/metastore/HiveMetaStoreClient.java,107631,77,22
+351,org.apache.hadoop.hive.metastore.HiveMetaStoreClient.deepCopy,standalone-metastore/metastore-common/src/main/java/org/apache/hadoop/hive/metastore/HiveMetaStoreClient.java,107780,77,19
+352,org.apache.hadoop.hive.metastore.HiveMetaStoreClient.deepCopy,standalone-metastore/metastore-common/src/main/java/org/apache/hadoop/hive/metastore/HiveMetaStoreClient.java,107920,77,301
+353,org.apache.hadoop.hive.metastore.HiveMetaStoreClient.deepCopy,standalone-metastore/metastore-common/src/main/java/org/apache/hadoop/hive/metastore/HiveMetaStoreClient.java,108094,77,297
+354,org.apache.hadoop.hive.metastore.HiveMetaStoreClient.deepCopy,standalone-metastore/metastore-common/src/main/java/org/apache/hadoop/hive/metastore/HiveMetaStoreClient.java,108250,77,108
+355,org.apache.hadoop.hive.metastore.ObjectStore.mCatToCat,standalone-metastore/metastore-server/src/main/java/org/apache/hadoop/hive/metastore/ObjectStore.java,24542,164,138
+356,org.apache.hadoop.hive.metastore.ObjectStore.getType,standalone-metastore/metastore-server/src/main/java/org/apache/hadoop/hive/metastore/ObjectStore.java,33368,164,78
+357,org.apache.hadoop.hive.metastore.ObjectStore.putPersistentPrivObjects,standalone-metastore/metastore-server/src/main/java/org/apache/hadoop/hive/metastore/ObjectStore.java,38727,164,62
+358,org.apache.hadoop.hive.metastore.ObjectStore.convertToCreationMetadata,standalone-metastore/metastore-server/src/main/java/org/apache/hadoop/hive/metastore/ObjectStore.java,78723,164,163
+359,org.apache.hadoop.hive.metastore.ObjectStore.translateDbToThrift,standalone-metastore/metastore-server/src/main/java/org/apache/hadoop/hive/metastore/ObjectStore.java,411271,164,137
+360,org.apache.hadoop.hive.metastore.ObjectStore.convertToISchema,standalone-metastore/metastore-server/src/main/java/org/apache/hadoop/hive/metastore/ObjectStore.java,452911,164,248
+361,org.apache.hadoop.hive.metastore.ObjectStore.fromMResourcePlan,standalone-metastore/metastore-server/src/main/java/org/apache/hadoop/hive/metastore/ObjectStore.java,462164,164,343
+362,org.apache.hadoop.hive.metastore.ObjectStore.fromMPool,standalone-metastore/metastore-server/src/main/java/org/apache/hadoop/hive/metastore/ObjectStore.java,463458,164,218
+363,org.apache.hadoop.hive.metastore.ObjectStore.fromMMapping,standalone-metastore/metastore-server/src/main/java/org/apache/hadoop/hive/metastore/ObjectStore.java,463919,164,169
+364,org.apache.hadoop.hive.metastore.ObjectStore.fromMWMTrigger,standalone-metastore/metastore-server/src/main/java/org/apache/hadoop/hive/metastore/ObjectStore.java,489018,164,146

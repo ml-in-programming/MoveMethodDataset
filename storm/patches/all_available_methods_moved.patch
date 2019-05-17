@@ -1,0 +1,3746 @@
+diff --git a/examples/storm-loadgen/src/main/java/org/apache/storm/loadgen/LoadCompConf.java b/examples/storm-loadgen/src/main/java/org/apache/storm/loadgen/LoadCompConf.java
+index 80f4faf..f8120bf 100644
+--- a/examples/storm-loadgen/src/main/java/org/apache/storm/loadgen/LoadCompConf.java
++++ b/examples/storm-loadgen/src/main/java/org/apache/storm/loadgen/LoadCompConf.java
+@@ -142,19 +142,6 @@ public class LoadCompConf {
+     }
+ 
+     /**
+-     * Override the SlowExecutorPattern with a new one.
+-     * @param slp the new pattern or null if you don't want it to change
+-     * @return a copy of this with the adjustments made.
+-     */
+-    public LoadCompConf overrideSlowExecutorPattern(SlowExecutorPattern slp) {
+-        if (slp != null) {
+-            return new LoadCompConf(id, parallelism, streams, cpuLoad, memoryLoad, slp);
+-        } else {
+-            return this;
+-        }
+-    }
+-
+-    /**
+      * Compute the total amount of all messages emitted in all streams per second.
+      * @return the sum of all messages emitted per second.
+      */
+diff --git a/examples/storm-loadgen/src/main/java/org/apache/storm/loadgen/SlowExecutorPattern.java b/examples/storm-loadgen/src/main/java/org/apache/storm/loadgen/SlowExecutorPattern.java
+index d2c3ac5..ad3a499 100644
+--- a/examples/storm-loadgen/src/main/java/org/apache/storm/loadgen/SlowExecutorPattern.java
++++ b/examples/storm-loadgen/src/main/java/org/apache/storm/loadgen/SlowExecutorPattern.java
+@@ -80,4 +80,16 @@ public class SlowExecutorPattern implements Serializable {
+         return (index >= count) ? 0 : maxSlownessMs;
+     }
+ 
++    /**
++     * Override the SlowExecutorPattern with a new one.
++     *
++     * @param loadCompConf@return a copy of this with the adjustments made.
++     */
++    public LoadCompConf overrideSlowExecutorPattern(LoadCompConf loadCompConf) {
++        if (this != null) {
++            return new LoadCompConf(loadCompConf.id, loadCompConf.parallelism, loadCompConf.streams, loadCompConf.cpuLoad, loadCompConf.memoryLoad, this);
++        } else {
++            return loadCompConf;
++        }
++    }
+ }
+diff --git a/examples/storm-loadgen/src/main/java/org/apache/storm/loadgen/TopologyLoadConf.java b/examples/storm-loadgen/src/main/java/org/apache/storm/loadgen/TopologyLoadConf.java
+index 4f297ab..9360bf5 100644
+--- a/examples/storm-loadgen/src/main/java/org/apache/storm/loadgen/TopologyLoadConf.java
++++ b/examples/storm-loadgen/src/main/java/org/apache/storm/loadgen/TopologyLoadConf.java
+@@ -270,7 +270,7 @@ public class TopologyLoadConf {
+         LoadCompConf ret = comp;
+         SlowExecutorPattern slp = topoSpecific.get(name + ":" + comp.id);
+         if (slp != null) {
+-            ret = ret.overrideSlowExecutorPattern(slp);
++            ret = slp.overrideSlowExecutorPattern(ret);
+         }
+         return ret;
+     }
+diff --git a/examples/storm-starter/src/jvm/org/apache/storm/starter/AnchoredWordCount.java b/examples/storm-starter/src/jvm/org/apache/storm/starter/AnchoredWordCount.java
+index 022f6ad..b0b2c74 100644
+--- a/examples/storm-starter/src/jvm/org/apache/storm/starter/AnchoredWordCount.java
++++ b/examples/storm-starter/src/jvm/org/apache/storm/starter/AnchoredWordCount.java
+@@ -50,7 +50,7 @@ public class AnchoredWordCount extends ConfigurableTopology {
+         if (args != null && args.length > 0) {
+             topologyName = args[0];
+         }
+-        return submit(topologyName, conf, builder);
++        return conf.submit(topologyName, builder, AnchoredWordCount.this);
+     }
+ 
+     public static class RandomSentenceSpout extends BaseRichSpout {
+diff --git a/examples/storm-starter/src/jvm/org/apache/storm/starter/ExclamationTopology.java b/examples/storm-starter/src/jvm/org/apache/storm/starter/ExclamationTopology.java
+index 73f2067..cffddd4 100644
+--- a/examples/storm-starter/src/jvm/org/apache/storm/starter/ExclamationTopology.java
++++ b/examples/storm-starter/src/jvm/org/apache/storm/starter/ExclamationTopology.java
+@@ -50,7 +50,7 @@ public class ExclamationTopology extends ConfigurableTopology {
+             topologyName = args[0];
+         }
+ 
+-        return submit(topologyName, conf, builder);
++        return conf.submit(topologyName, builder, ExclamationTopology.this);
+     }
+ 
+     public static class ExclamationBolt extends BaseRichBolt {
+diff --git a/examples/storm-starter/src/jvm/org/apache/storm/starter/LambdaTopology.java b/examples/storm-starter/src/jvm/org/apache/storm/starter/LambdaTopology.java
+index 94b1c38..1310df6 100644
+--- a/examples/storm-starter/src/jvm/org/apache/storm/starter/LambdaTopology.java
++++ b/examples/storm-starter/src/jvm/org/apache/storm/starter/LambdaTopology.java
+@@ -51,7 +51,7 @@ public class LambdaTopology extends ConfigurableTopology {
+         conf.setDebug(true);
+         conf.setNumWorkers(2);
+ 
+-        return submit("lambda-demo", conf, builder);
++        return conf.submit("lambda-demo", builder, LambdaTopology.this);
+     }
+ }
+ 
+diff --git a/examples/storm-starter/src/jvm/org/apache/storm/starter/RollingTopWords.java b/examples/storm-starter/src/jvm/org/apache/storm/starter/RollingTopWords.java
+index 23f56c2..57249b0 100644
+--- a/examples/storm-starter/src/jvm/org/apache/storm/starter/RollingTopWords.java
++++ b/examples/storm-starter/src/jvm/org/apache/storm/starter/RollingTopWords.java
+@@ -78,6 +78,6 @@ public class RollingTopWords extends ConfigurableTopology {
+         builder.setBolt(totalRankerId, new TotalRankingsBolt(TOP_N)).globalGrouping(intermediateRankerId);
+         LOG.info("Topology name: " + topologyName);
+ 
+-        return submit(topologyName, conf, builder);
++        return conf.submit(topologyName, builder, RollingTopWords.this);
+     }
+ }
+diff --git a/examples/storm-starter/src/jvm/org/apache/storm/starter/SkewedRollingTopWords.java b/examples/storm-starter/src/jvm/org/apache/storm/starter/SkewedRollingTopWords.java
+index a3b8296..2e8d035 100644
+--- a/examples/storm-starter/src/jvm/org/apache/storm/starter/SkewedRollingTopWords.java
++++ b/examples/storm-starter/src/jvm/org/apache/storm/starter/SkewedRollingTopWords.java
+@@ -82,6 +82,6 @@ public class SkewedRollingTopWords extends ConfigurableTopology {
+         builder.setBolt(totalRankerId, new TotalRankingsBolt(TOP_N)).globalGrouping(intermediateRankerId);
+         LOG.info("Topology name: " + topologyName);
+ 
+-        return submit(topologyName, conf, builder);
++        return conf.submit(topologyName, builder, SkewedRollingTopWords.this);
+     }
+ }
+diff --git a/examples/storm-starter/src/jvm/org/apache/storm/starter/WordCountTopology.java b/examples/storm-starter/src/jvm/org/apache/storm/starter/WordCountTopology.java
+index 32ec822..82ecd28 100644
+--- a/examples/storm-starter/src/jvm/org/apache/storm/starter/WordCountTopology.java
++++ b/examples/storm-starter/src/jvm/org/apache/storm/starter/WordCountTopology.java
+@@ -53,7 +53,7 @@ public class WordCountTopology extends ConfigurableTopology {
+         if (args != null && args.length > 0) {
+             topologyName = args[0];
+         }
+-        return submit(topologyName, conf, builder);
++        return conf.submit(topologyName, builder, WordCountTopology.this);
+     }
+ 
+     public static class SplitSentence extends ShellBolt implements IRichBolt {
+diff --git a/external/storm-cassandra/src/main/java/org/apache/storm/cassandra/trident/state/OpaqueTupleStateMapper.java b/external/storm-cassandra/src/main/java/org/apache/storm/cassandra/trident/state/OpaqueTupleStateMapper.java
+index a7e857b..26dbe1a 100644
+--- a/external/storm-cassandra/src/main/java/org/apache/storm/cassandra/trident/state/OpaqueTupleStateMapper.java
++++ b/external/storm-cassandra/src/main/java/org/apache/storm/cassandra/trident/state/OpaqueTupleStateMapper.java
+@@ -87,7 +87,7 @@ public class OpaqueTupleStateMapper implements StateMapper<OpaqueValue<ITuple>>
+             curr.put(valueField, values.get(index++));
+         }
+ 
+-        if (isAllNull(curr)) {
++        if (curr.isAllNull(this)) {
+             curr = null;
+         }
+ 
+@@ -95,22 +95,13 @@ public class OpaqueTupleStateMapper implements StateMapper<OpaqueValue<ITuple>>
+         for (String valueField : tupleFields) {
+             prev.put(valueField, values.get(index++));
+         }
+-        if (isAllNull(prev)) {
++        if (prev.isAllNull(this)) {
+             prev = null;
+         }
+ 
+         return new OpaqueValue<ITuple>(currTx, curr, prev);
+     }
+ 
+-    private boolean isAllNull(SimpleTuple tuple) {
+-        for (Object value : tuple.getValues()) {
+-            if (value != null) {
+-                return false;
+-            }
+-        }
+-        return true;
+-    }
+-
+     @Override
+     public String toString() {
+         return String.format("{type: %s, fields: %s}", this.getClass().getSimpleName(), tableFields);
+diff --git a/external/storm-cassandra/src/main/java/org/apache/storm/cassandra/trident/state/SimpleTuple.java b/external/storm-cassandra/src/main/java/org/apache/storm/cassandra/trident/state/SimpleTuple.java
+index 7bc066e..db1d7d8 100644
+--- a/external/storm-cassandra/src/main/java/org/apache/storm/cassandra/trident/state/SimpleTuple.java
++++ b/external/storm-cassandra/src/main/java/org/apache/storm/cassandra/trident/state/SimpleTuple.java
+@@ -202,4 +202,12 @@ public class SimpleTuple implements ITuple, Serializable {
+         return Collections.unmodifiableList(keys);
+     }
+ 
++    public boolean isAllNull(OpaqueTupleStateMapper opaqueTupleStateMapper) {
++        for (Object value : getValues()) {
++            if (value != null) {
++                return false;
++            }
++        }
++        return true;
++    }
+ }
+diff --git a/external/storm-hbase/src/main/java/org/apache/storm/hbase/bolt/HBaseBolt.java b/external/storm-hbase/src/main/java/org/apache/storm/hbase/bolt/HBaseBolt.java
+index fa6acb5..c4956fe 100644
+--- a/external/storm-hbase/src/main/java/org/apache/storm/hbase/bolt/HBaseBolt.java
++++ b/external/storm-hbase/src/main/java/org/apache/storm/hbase/bolt/HBaseBolt.java
+@@ -81,7 +81,7 @@ public class HBaseBolt extends AbstractHBaseBolt {
+                 byte[] rowKey = this.mapper.rowKey(tuple);
+                 ColumnList cols = this.mapper.columns(tuple);
+                 List<Mutation> mutations =
+-                    hBaseClient.constructMutationReq(rowKey, cols, writeToWAL ? Durability.SYNC_WAL : Durability.SKIP_WAL);
++                    cols.constructMutationReq(rowKey, writeToWAL ? Durability.SYNC_WAL : Durability.SKIP_WAL, hBaseClient);
+                 batchMutations.addAll(mutations);
+                 batchHelper.addBatch(tuple);
+             }
+diff --git a/external/storm-hbase/src/main/java/org/apache/storm/hbase/common/ColumnList.java b/external/storm-hbase/src/main/java/org/apache/storm/hbase/common/ColumnList.java
+index 045b2e5..68f57c3 100644
+--- a/external/storm-hbase/src/main/java/org/apache/storm/hbase/common/ColumnList.java
++++ b/external/storm-hbase/src/main/java/org/apache/storm/hbase/common/ColumnList.java
+@@ -12,6 +12,9 @@
+ 
+ package org.apache.storm.hbase.common;
+ 
++import com.google.common.collect.Lists;
++import org.apache.hadoop.hbase.client.*;
++
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+@@ -182,6 +185,63 @@ public class ColumnList {
+         return this.counters;
+     }
+ 
++    public List<Mutation> constructMutationReq(byte[] rowKey, Durability durability, HBaseClient hBaseClient) {
++        List<Mutation> mutations = Lists.newArrayList();
++
++        if (hasColumns()) {
++            Put put = new Put(rowKey);
++            put.setDurability(durability);
++            for (Column col : getColumns()) {
++                if (col.getTs() > 0) {
++                    put.addColumn(
++                        col.getFamily(),
++                        col.getQualifier(),
++                        col.getTs(),
++                        col.getValue()
++                    );
++                } else {
++                    put.addColumn(
++                        col.getFamily(),
++                        col.getQualifier(),
++                        col.getValue()
++                    );
++                }
++            }
++            mutations.add(put);
++        }
++
++        if (hasCounters()) {
++            Increment inc = new Increment(rowKey);
++            inc.setDurability(durability);
++            for (Counter cnt : getCounters()) {
++                inc.addColumn(
++                        cnt.getFamily(),
++                        cnt.getQualifier(),
++                        cnt.getIncrement()
++                );
++            }
++            mutations.add(inc);
++        }
++
++        if (hasColumnsToDelete()) {
++            Delete delete = new Delete(rowKey);
++            delete.setDurability(durability);
++            for (Column col : getColumnsToDelete()) {
++                if (col.getTs() > 0) {
++                    delete.addColumn(col.getFamily(), col.getQualifier(), col.getTs());
++                } else {
++                    delete.addColumn(col.getFamily(), col.getQualifier());
++                }
++            }
++            mutations.add(delete);
++        }
++
++        if (mutations.isEmpty()) {
++            mutations.add(new Put(rowKey));
++        }
++        return mutations;
++    }
++
+     public static abstract class AbstractColumn {
+         byte[] family, qualifier;
+ 
+diff --git a/external/storm-hbase/src/main/java/org/apache/storm/hbase/common/HBaseClient.java b/external/storm-hbase/src/main/java/org/apache/storm/hbase/common/HBaseClient.java
+index 2d0c324..94bcb8d 100644
+--- a/external/storm-hbase/src/main/java/org/apache/storm/hbase/common/HBaseClient.java
++++ b/external/storm-hbase/src/main/java/org/apache/storm/hbase/common/HBaseClient.java
+@@ -12,19 +12,14 @@
+ 
+ package org.apache.storm.hbase.common;
+ 
+-import com.google.common.collect.Lists;
+ import java.io.Closeable;
+ import java.io.IOException;
+ import java.util.List;
+ import java.util.Map;
+ import org.apache.hadoop.conf.Configuration;
+ import org.apache.hadoop.hbase.HConstants;
+-import org.apache.hadoop.hbase.client.Delete;
+-import org.apache.hadoop.hbase.client.Durability;
+ import org.apache.hadoop.hbase.client.Get;
+-import org.apache.hadoop.hbase.client.Increment;
+ import org.apache.hadoop.hbase.client.Mutation;
+-import org.apache.hadoop.hbase.client.Put;
+ import org.apache.hadoop.hbase.client.Result;
+ import org.apache.hadoop.hbase.client.ResultScanner;
+ import org.apache.hadoop.hbase.client.Scan;
+@@ -52,63 +47,6 @@ public class HBaseClient implements Closeable {
+         }
+     }
+ 
+-    public List<Mutation> constructMutationReq(byte[] rowKey, ColumnList cols, Durability durability) {
+-        List<Mutation> mutations = Lists.newArrayList();
+-
+-        if (cols.hasColumns()) {
+-            Put put = new Put(rowKey);
+-            put.setDurability(durability);
+-            for (ColumnList.Column col : cols.getColumns()) {
+-                if (col.getTs() > 0) {
+-                    put.addColumn(
+-                        col.getFamily(),
+-                        col.getQualifier(),
+-                        col.getTs(),
+-                        col.getValue()
+-                    );
+-                } else {
+-                    put.addColumn(
+-                        col.getFamily(),
+-                        col.getQualifier(),
+-                        col.getValue()
+-                    );
+-                }
+-            }
+-            mutations.add(put);
+-        }
+-
+-        if (cols.hasCounters()) {
+-            Increment inc = new Increment(rowKey);
+-            inc.setDurability(durability);
+-            for (ColumnList.Counter cnt : cols.getCounters()) {
+-                inc.addColumn(
+-                        cnt.getFamily(),
+-                        cnt.getQualifier(),
+-                        cnt.getIncrement()
+-                );
+-            }
+-            mutations.add(inc);
+-        }
+-
+-        if (cols.hasColumnsToDelete()) {
+-            Delete delete = new Delete(rowKey);
+-            delete.setDurability(durability);
+-            for (ColumnList.Column col : cols.getColumnsToDelete()) {
+-                if (col.getTs() > 0) {
+-                    delete.addColumn(col.getFamily(), col.getQualifier(), col.getTs());
+-                } else {
+-                    delete.addColumn(col.getFamily(), col.getQualifier());
+-                }
+-            }
+-            mutations.add(delete);
+-        }
+-
+-        if (mutations.isEmpty()) {
+-            mutations.add(new Put(rowKey));
+-        }
+-        return mutations;
+-    }
+-
+     public void batchMutate(List<Mutation> mutations) throws Exception {
+         Object[] result = new Object[mutations.size()];
+         try {
+diff --git a/external/storm-hbase/src/main/java/org/apache/storm/hbase/state/HBaseKeyValueState.java b/external/storm-hbase/src/main/java/org/apache/storm/hbase/state/HBaseKeyValueState.java
+index 0da456c..bcb9049 100644
+--- a/external/storm-hbase/src/main/java/org/apache/storm/hbase/state/HBaseKeyValueState.java
++++ b/external/storm-hbase/src/main/java/org/apache/storm/hbase/state/HBaseKeyValueState.java
+@@ -394,7 +394,7 @@ public class HBaseKeyValueState<K, V> implements KeyValueState<K, V> {
+     private List<Mutation> prepareMutateRow(byte[] rowKey, byte[] columnFamily, Map<byte[], byte[]> map,
+                                             Durability durability) {
+         ColumnList columnList = buildColumnList(columnFamily, map);
+-        return hbaseClient.constructMutationReq(rowKey, columnList, durability);
++        return columnList.constructMutationReq(rowKey, durability, hbaseClient);
+     }
+ 
+     private void mutateRow(byte[] rowKey, byte[] columnFamily, Map<byte[], byte[]> map)
+diff --git a/external/storm-hbase/src/main/java/org/apache/storm/hbase/trident/state/HBaseState.java b/external/storm-hbase/src/main/java/org/apache/storm/hbase/trident/state/HBaseState.java
+index 0f81678..145a461 100644
+--- a/external/storm-hbase/src/main/java/org/apache/storm/hbase/trident/state/HBaseState.java
++++ b/external/storm-hbase/src/main/java/org/apache/storm/hbase/trident/state/HBaseState.java
+@@ -95,7 +95,7 @@ public class HBaseState implements State {
+         for (TridentTuple tuple : tuples) {
+             byte[] rowKey = options.mapper.rowKey(tuple);
+             ColumnList cols = options.mapper.columns(tuple);
+-            mutations.addAll(hBaseClient.constructMutationReq(rowKey, cols, options.durability));
++            mutations.addAll(cols.constructMutationReq(rowKey, options.durability, hBaseClient));
+         }
+ 
+         try {
+diff --git a/external/storm-hbase/src/test/java/org/apache/storm/hbase/state/HBaseClientTestUtil.java b/external/storm-hbase/src/test/java/org/apache/storm/hbase/state/HBaseClientTestUtil.java
+index 189713f..9d4fadf 100644
+--- a/external/storm-hbase/src/test/java/org/apache/storm/hbase/state/HBaseClientTestUtil.java
++++ b/external/storm-hbase/src/test/java/org/apache/storm/hbase/state/HBaseClientTestUtil.java
+@@ -19,7 +19,7 @@
+ package org.apache.storm.hbase.state;
+ 
+ import com.google.common.primitives.UnsignedBytes;
+-import java.io.IOException;
++
+ import java.util.ArrayList;
+ import java.util.Collections;
+ import java.util.Iterator;
+@@ -70,7 +70,7 @@ public class HBaseClientTestUtil {
+         Mockito.when(mockClient.constructGetRequests(any(byte[].class), any(HBaseProjectionCriteria.class)))
+                .thenCallRealMethod();
+ 
+-        Mockito.when(mockClient.constructMutationReq(any(byte[].class), any(ColumnList.class), any(Durability.class)))
++        Mockito.when(any(ColumnList.class).constructMutationReq(any(byte[].class), any(Durability.class), mockClient))
+                .thenCallRealMethod();
+ 
+         Mockito.when(mockClient.exists(any(Get.class))).thenAnswer(new ExistsAnswer(internalMap));
+diff --git a/external/storm-hbase/src/test/java/org/apache/storm/hbase/state/HBaseKeyValueStateIteratorTest.java b/external/storm-hbase/src/test/java/org/apache/storm/hbase/state/HBaseKeyValueStateIteratorTest.java
+index 250e337..a9cb953 100644
+--- a/external/storm-hbase/src/test/java/org/apache/storm/hbase/state/HBaseKeyValueStateIteratorTest.java
++++ b/external/storm-hbase/src/test/java/org/apache/storm/hbase/state/HBaseKeyValueStateIteratorTest.java
+@@ -198,7 +198,7 @@ public class HBaseKeyValueStateIteratorTest {
+     private List<Mutation> prepareMutateRow(byte[] rowKey, byte[] columnFamily, Map<byte[], byte[]> map,
+                                             Durability durability) {
+         ColumnList columnList = buildColumnList(columnFamily, map);
+-        return mockHBaseClient.constructMutationReq(rowKey, columnList, durability);
++        return columnList.constructMutationReq(rowKey, durability, mockHBaseClient);
+     }
+ 
+     private void mutateRow(byte[] rowKey, byte[] columnFamily, Map<byte[], byte[]> map)
+diff --git a/sql/storm-sql-core/src/jvm/org/apache/storm/sql/StormSqlContext.java b/sql/storm-sql-core/src/jvm/org/apache/storm/sql/StormSqlContext.java
+index e5413c3..16baf85 100644
+--- a/sql/storm-sql-core/src/jvm/org/apache/storm/sql/StormSqlContext.java
++++ b/sql/storm-sql-core/src/jvm/org/apache/storm/sql/StormSqlContext.java
+@@ -32,11 +32,9 @@ import org.apache.calcite.config.CalciteConnectionConfigImpl;
+ import org.apache.calcite.jdbc.CalciteSchema;
+ import org.apache.calcite.prepare.CalciteCatalogReader;
+ import org.apache.calcite.rel.RelNode;
+-import org.apache.calcite.rel.type.RelDataType;
+ import org.apache.calcite.rel.type.RelDataTypeSystem;
+ import org.apache.calcite.schema.Function;
+ import org.apache.calcite.schema.SchemaPlus;
+-import org.apache.calcite.schema.Table;
+ import org.apache.calcite.schema.impl.AggregateFunctionImpl;
+ import org.apache.calcite.schema.impl.ScalarFunctionImpl;
+ import org.apache.calcite.sql.SqlExplainLevel;
+@@ -50,16 +48,10 @@ import org.apache.calcite.tools.Frameworks;
+ import org.apache.calcite.tools.Planner;
+ import org.apache.calcite.tools.RelConversionException;
+ import org.apache.calcite.tools.ValidationException;
+-import org.apache.storm.sql.compiler.CompilerUtil;
+ import org.apache.storm.sql.compiler.StormSqlTypeFactoryImpl;
+-import org.apache.storm.sql.parser.ColumnConstraint;
+-import org.apache.storm.sql.parser.ColumnDefinition;
+ import org.apache.storm.sql.parser.SqlCreateFunction;
+-import org.apache.storm.sql.parser.SqlCreateTable;
+ import org.apache.storm.sql.planner.StormRelUtils;
+ import org.apache.storm.sql.planner.streams.QueryPlanner;
+-import org.apache.storm.sql.runtime.DataSourcesRegistry;
+-import org.apache.storm.sql.runtime.FieldInfo;
+ import org.apache.storm.sql.runtime.ISqlStreamsDataSource;
+ 
+ public class StormSqlContext {
+@@ -69,36 +61,6 @@ public class StormSqlContext {
+     private boolean hasUdf = false;
+     private Map<String, ISqlStreamsDataSource> dataSources = new HashMap<>();
+ 
+-    public void interpretCreateTable(SqlCreateTable n) {
+-        CompilerUtil.TableBuilderInfo builder = new CompilerUtil.TableBuilderInfo(typeFactory);
+-        List<FieldInfo> fields = new ArrayList<>();
+-        for (ColumnDefinition col : n.fieldList()) {
+-            builder.field(col.name(), col.type(), col.constraint());
+-            RelDataType dataType = col.type().deriveType(typeFactory);
+-            Class<?> javaType = (Class<?>) typeFactory.getJavaClass(dataType);
+-            ColumnConstraint constraint = col.constraint();
+-            boolean isPrimary = constraint != null && constraint instanceof ColumnConstraint.PrimaryKey;
+-            fields.add(new FieldInfo(col.name(), javaType, isPrimary));
+-        }
+-
+-        if (n.parallelism() != null) {
+-            builder.parallelismHint(n.parallelism());
+-        }
+-        Table table = builder.build();
+-        schema.add(n.tableName(), table);
+-
+-        ISqlStreamsDataSource ds = DataSourcesRegistry.constructStreamsDataSource(n.location(), n
+-            .inputFormatClass(), n.outputFormatClass(), n.properties(), fields);
+-        if (ds == null) {
+-            throw new RuntimeException("Failed to find data source for " + n
+-                .tableName() + " URI: " + n.location());
+-        } else if (dataSources.containsKey(n.tableName())) {
+-            throw new RuntimeException("Duplicated definition for table " + n
+-                .tableName());
+-        }
+-        dataSources.put(n.tableName(), ds);
+-    }
+-
+     public void interpretCreateFunction(SqlCreateFunction sqlCreateFunction) throws ClassNotFoundException {
+         if (sqlCreateFunction.jarName() != null) {
+             throw new UnsupportedOperationException("UDF 'USING JAR' not implemented");
+diff --git a/sql/storm-sql-core/src/jvm/org/apache/storm/sql/StormSqlImpl.java b/sql/storm-sql-core/src/jvm/org/apache/storm/sql/StormSqlImpl.java
+index fff801d..128a87f 100644
+--- a/sql/storm-sql-core/src/jvm/org/apache/storm/sql/StormSqlImpl.java
++++ b/sql/storm-sql-core/src/jvm/org/apache/storm/sql/StormSqlImpl.java
+@@ -49,7 +49,7 @@ class StormSqlImpl extends StormSql {
+             StormParser parser = new StormParser(sql);
+             SqlNode node = parser.impl().parseSqlStmtEof();
+             if (node instanceof SqlCreateTable) {
+-                sqlContext.interpretCreateTable((SqlCreateTable) node);
++                ((SqlCreateTable) node).interpretCreateTable(sqlContext);
+             } else if (node instanceof SqlCreateFunction) {
+                 sqlContext.interpretCreateFunction((SqlCreateFunction) node);
+             } else {
+@@ -87,7 +87,7 @@ class StormSqlImpl extends StormSql {
+             System.out.println("-----------------------------------------------------------");
+ 
+             if (node instanceof SqlCreateTable) {
+-                sqlContext.interpretCreateTable((SqlCreateTable) node);
++                ((SqlCreateTable) node).interpretCreateTable(sqlContext);
+                 System.out.println("No plan presented on DDL");
+             } else if (node instanceof SqlCreateFunction) {
+                 sqlContext.interpretCreateFunction((SqlCreateFunction) node);
+diff --git a/sql/storm-sql-core/src/jvm/org/apache/storm/sql/parser/SqlCreateTable.java b/sql/storm-sql-core/src/jvm/org/apache/storm/sql/parser/SqlCreateTable.java
+index bd58dd6..675ffd2 100644
+--- a/sql/storm-sql-core/src/jvm/org/apache/storm/sql/parser/SqlCreateTable.java
++++ b/sql/storm-sql-core/src/jvm/org/apache/storm/sql/parser/SqlCreateTable.java
+@@ -16,9 +16,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
+ import java.io.IOException;
+ import java.math.BigDecimal;
+ import java.net.URI;
++import java.util.ArrayList;
+ import java.util.HashMap;
+ import java.util.List;
+ import java.util.Properties;
++
++import org.apache.calcite.rel.type.RelDataType;
++import org.apache.calcite.schema.Table;
+ import org.apache.calcite.sql.SqlCall;
+ import org.apache.calcite.sql.SqlIdentifier;
+ import org.apache.calcite.sql.SqlKind;
+@@ -31,6 +35,11 @@ import org.apache.calcite.sql.SqlWriter;
+ import org.apache.calcite.sql.parser.SqlParserPos;
+ import org.apache.calcite.util.ImmutableNullableList;
+ import org.apache.calcite.util.NlsString;
++import org.apache.storm.sql.StormSqlContext;
++import org.apache.storm.sql.compiler.CompilerUtil;
++import org.apache.storm.sql.runtime.DataSourcesRegistry;
++import org.apache.storm.sql.runtime.FieldInfo;
++import org.apache.storm.sql.runtime.ISqlStreamsDataSource;
+ 
+ public class SqlCreateTable extends SqlCall {
+     public static final SqlSpecialOperator OPERATOR = new SqlSpecialOperator(
+@@ -161,4 +170,30 @@ public class SqlCreateTable extends SqlCall {
+         return (List<ColumnDefinition>) ((List<? extends SqlNode>) fieldList.getList());
+     }
+ 
++    public void interpretCreateTable(StormSqlContext stormSqlContext) {
++        CompilerUtil.TableBuilderInfo builder = new CompilerUtil.TableBuilderInfo(stormSqlContext.getTypeFactory());
++        List<FieldInfo> fields = new ArrayList<>();
++        for (ColumnDefinition col : fieldList()) {
++            builder.field(col.name(), col.type(), col.constraint());
++            RelDataType dataType = col.type().deriveType(stormSqlContext.getTypeFactory());
++            Class<?> javaType = (Class<?>) stormSqlContext.getTypeFactory().getJavaClass(dataType);
++            ColumnConstraint constraint = col.constraint();
++            boolean isPrimary = constraint != null && constraint instanceof ColumnConstraint.PrimaryKey;
++            fields.add(new FieldInfo(col.name(), javaType, isPrimary));
++        }
++
++        if (parallelism() != null) {
++            builder.parallelismHint(parallelism());
++        }
++        Table table = builder.build();
++        stormSqlContext.getSchema().add(tableName(), table);
++
++        ISqlStreamsDataSource ds = DataSourcesRegistry.constructStreamsDataSource(location(), inputFormatClass(), outputFormatClass(), properties(), fields);
++        if (ds == null) {
++            throw new RuntimeException("Failed to find data source for " + tableName() + " URI: " + location());
++        } else if (stormSqlContext.getDataSources().containsKey(tableName())) {
++            throw new RuntimeException("Duplicated definition for table " + tableName());
++        }
++        stormSqlContext.getDataSources().put(tableName(), ds);
++    }
+ }
+diff --git a/sql/storm-sql-core/src/test/org/apache/storm/sql/StormSqlLocalClusterImpl.java b/sql/storm-sql-core/src/test/org/apache/storm/sql/StormSqlLocalClusterImpl.java
+index 450e4f4..407d18d 100644
+--- a/sql/storm-sql-core/src/test/org/apache/storm/sql/StormSqlLocalClusterImpl.java
++++ b/sql/storm-sql-core/src/test/org/apache/storm/sql/StormSqlLocalClusterImpl.java
+@@ -53,7 +53,7 @@ public class StormSqlLocalClusterImpl {
+             StormParser parser = new StormParser(sql);
+             SqlNode node = parser.impl().parseSqlStmtEof();
+             if (node instanceof SqlCreateTable) {
+-                sqlContext.interpretCreateTable((SqlCreateTable) node);
++                ((SqlCreateTable) node).interpretCreateTable(sqlContext);
+             } else if (node instanceof SqlCreateFunction) {
+                 sqlContext.interpretCreateFunction((SqlCreateFunction) node);
+             } else {
+diff --git a/storm-client/src/jvm/org/apache/storm/Config.java b/storm-client/src/jvm/org/apache/storm/Config.java
+index 7c8d19e..fcd45e9 100644
+--- a/storm-client/src/jvm/org/apache/storm/Config.java
++++ b/storm-client/src/jvm/org/apache/storm/Config.java
+@@ -29,6 +29,8 @@ import org.apache.storm.metric.IEventLogger;
+ import org.apache.storm.policy.IWaitStrategy;
+ import org.apache.storm.serialization.IKryoDecorator;
+ import org.apache.storm.serialization.IKryoFactory;
++import org.apache.storm.topology.ConfigurableTopology;
++import org.apache.storm.topology.TopologyBuilder;
+ import org.apache.storm.utils.Utils;
+ import org.apache.storm.validation.ConfigValidation;
+ import org.apache.storm.validation.ConfigValidation.EventLoggerRegistryValidator;
+@@ -1916,4 +1918,21 @@ public class Config extends HashMap<String, Object> {
+         }
+         return principal;
+     }
++
++    /**
++     * Submits the topology under a specific name
++     *
++     * @param name
++     * @param builder
++     * @param configurableTopology*/
++    public int submit(String name, TopologyBuilder builder, ConfigurableTopology configurableTopology) {
++        try {
++            StormSubmitter.submitTopology(name, this,
++                                          builder.createTopology());
++        } catch (Exception e) {
++            e.printStackTrace();
++            return -1;
++        }
++        return 0;
++    }
+ }
+diff --git a/storm-client/src/jvm/org/apache/storm/blobstore/BlobStore.java b/storm-client/src/jvm/org/apache/storm/blobstore/BlobStore.java
+index 6cf9df9..7ef62ec 100644
+--- a/storm-client/src/jvm/org/apache/storm/blobstore/BlobStore.java
++++ b/storm-client/src/jvm/org/apache/storm/blobstore/BlobStore.java
+@@ -21,7 +21,6 @@ import java.util.Iterator;
+ import java.util.Map;
+ import java.util.NoSuchElementException;
+ import java.util.Set;
+-import java.util.regex.Pattern;
+ import javax.security.auth.Subject;
+ import org.apache.storm.daemon.Shutdownable;
+ import org.apache.storm.generated.AuthorizationException;
+@@ -222,32 +221,6 @@ public abstract class BlobStore implements Shutdownable, AutoCloseable {
+      *
+      * @param key  Key for the blob.
+      * @param data Byte data that needs to be uploaded.
+-     * @param meta Metadata which contains the acls information
+-     * @param who  Is the subject creating the blob.
+-     * @throws AuthorizationException
+-     * @throws KeyAlreadyExistsException
+-     * @throws IOException
+-     */
+-    public void createBlob(String key, byte[] data, SettableBlobMeta meta, Subject who) throws AuthorizationException,
+-        KeyAlreadyExistsException, IOException {
+-        AtomicOutputStream out = null;
+-        try {
+-            out = createBlob(key, meta, who);
+-            out.write(data);
+-            out.close();
+-            out = null;
+-        } finally {
+-            if (out != null) {
+-                out.cancel();
+-            }
+-        }
+-    }
+-
+-    /**
+-     * Wrapper called to create the blob which contains the byte data
+-     *
+-     * @param key  Key for the blob.
+-     * @param data Byte data that needs to be uploaded.
+      * @param who  Is the subject creating the blob.
+      * @throws AuthorizationException
+      * @throws IOException
+diff --git a/storm-client/src/jvm/org/apache/storm/blobstore/BlobStoreAclHandler.java b/storm-client/src/jvm/org/apache/storm/blobstore/BlobStoreAclHandler.java
+index 3b59022..47fc6c5 100644
+--- a/storm-client/src/jvm/org/apache/storm/blobstore/BlobStoreAclHandler.java
++++ b/storm-client/src/jvm/org/apache/storm/blobstore/BlobStoreAclHandler.java
+@@ -276,7 +276,7 @@ public class BlobStoreAclHandler {
+             return;
+         }
+         for (AccessControl ac : acl) {
+-            int allowed = getAllowed(ac, user);
++            int allowed = ac.getAllowed(user, this);
+             LOG.debug(" user: {} allowed: {} key: {}", user, allowed, key);
+             if ((allowed & mask) > 0) {
+                 return;
+@@ -306,7 +306,7 @@ public class BlobStoreAclHandler {
+             return;
+         }
+         for (AccessControl ac : acl) {
+-            int allowed = getAllowed(ac, user);
++            int allowed = ac.getAllowed(user, this);
+             mask = ~allowed & mask;
+             LOG.debug(" user: {} allowed: {} disallowed: {} key: {}", user, allowed, mask, key);
+         }
+@@ -337,20 +337,6 @@ public class BlobStoreAclHandler {
+         return b.toString();
+     }
+ 
+-    private int getAllowed(AccessControl ac, Set<String> users) {
+-        switch (ac.get_type()) {
+-            case OTHER:
+-                return ac.get_access();
+-            case USER:
+-                if (users.contains(ac.get_name())) {
+-                    return ac.get_access();
+-                }
+-                return 0;
+-            default:
+-                return 0;
+-        }
+-    }
+-
+     private List<AccessControl> removeBadACLs(List<AccessControl> accessControls) {
+         List<AccessControl> resultAcl = new ArrayList<AccessControl>();
+         for (AccessControl control : accessControls) {
+diff --git a/storm-client/src/jvm/org/apache/storm/cluster/ClusterStateContext.java b/storm-client/src/jvm/org/apache/storm/cluster/ClusterStateContext.java
+index 9f5f8c6..db5051a 100644
+--- a/storm-client/src/jvm/org/apache/storm/cluster/ClusterStateContext.java
++++ b/storm-client/src/jvm/org/apache/storm/cluster/ClusterStateContext.java
+@@ -15,6 +15,8 @@ package org.apache.storm.cluster;
+ import java.util.HashMap;
+ import java.util.List;
+ import java.util.Map;
++
++import org.apache.storm.Config;
+ import org.apache.storm.generated.WorkerTokenServiceType;
+ import org.apache.storm.shade.org.apache.zookeeper.data.ACL;
+ 
+@@ -48,4 +50,19 @@ public class ClusterStateContext {
+     public List<ACL> getZkSecretAcls(WorkerTokenServiceType type) {
+         return daemonType.getZkSecretAcls(type, conf);
+     }
++
++    public IStateStorage mkStateStorageImpl(Map<String, Object> config, Map<String, Object> auth_conf, ClusterUtils clusterUtils) throws
++        Exception {
++        String className = null;
++        IStateStorage stateStorage = null;
++        if (config.get(Config.STORM_CLUSTER_STATE_STORE) != null) {
++            className = (String) config.get(Config.STORM_CLUSTER_STATE_STORE);
++        } else {
++            className = "org.apache.storm.cluster.ZKStateStorageFactory";
++        }
++        Class clazz = Class.forName(className);
++        StateStorageFactory storageFactory = (StateStorageFactory) clazz.newInstance();
++        stateStorage = storageFactory.mkStore(config, auth_conf, this);
++        return stateStorage;
++    }
+ }
+diff --git a/storm-client/src/jvm/org/apache/storm/cluster/ClusterUtils.java b/storm-client/src/jvm/org/apache/storm/cluster/ClusterUtils.java
+index 145ec99..e163534 100644
+--- a/storm-client/src/jvm/org/apache/storm/cluster/ClusterUtils.java
++++ b/storm-client/src/jvm/org/apache/storm/cluster/ClusterUtils.java
+@@ -278,7 +278,7 @@ public class ClusterUtils {
+ 
+     public static IStateStorage mkStateStorage(Map<String, Object> config, Map<String, Object> auth_conf,
+                                                ClusterStateContext context) throws Exception {
+-        return _instance.mkStateStorageImpl(config, auth_conf, context);
++        return context.mkStateStorageImpl(config, auth_conf, _instance);
+     }
+ 
+     public static IStormClusterState mkStormClusterState(Object StateStorage, ILocalAssignmentsBackend backend,
+@@ -302,24 +302,10 @@ public class ClusterUtils {
+         if (stateStorage instanceof IStateStorage) {
+             return new StormClusterStateImpl((IStateStorage) stateStorage, backend, context, false);
+         } else {
+-            IStateStorage Storage = _instance.mkStateStorageImpl((Map<String, Object>) stateStorage,
+-                                                                 (Map<String, Object>) stateStorage, context);
++            IStateStorage Storage = context.mkStateStorageImpl((Map<String, Object>) stateStorage,
++                                                                 (Map<String, Object>) stateStorage, _instance);
+             return new StormClusterStateImpl(Storage, backend, context, true);
+         }
+     }
+ 
+-    public IStateStorage mkStateStorageImpl(Map<String, Object> config, Map<String, Object> auth_conf, ClusterStateContext context) throws
+-        Exception {
+-        String className = null;
+-        IStateStorage stateStorage = null;
+-        if (config.get(Config.STORM_CLUSTER_STATE_STORE) != null) {
+-            className = (String) config.get(Config.STORM_CLUSTER_STATE_STORE);
+-        } else {
+-            className = "org.apache.storm.cluster.ZKStateStorageFactory";
+-        }
+-        Class clazz = Class.forName(className);
+-        StateStorageFactory storageFactory = (StateStorageFactory) clazz.newInstance();
+-        stateStorage = storageFactory.mkStore(config, auth_conf, context);
+-        return stateStorage;
+-    }
+ }
+diff --git a/storm-client/src/jvm/org/apache/storm/container/cgroup/Device.java b/storm-client/src/jvm/org/apache/storm/container/cgroup/Device.java
+index 9dfc15a..8b75801 100755
+--- a/storm-client/src/jvm/org/apache/storm/container/cgroup/Device.java
++++ b/storm-client/src/jvm/org/apache/storm/container/cgroup/Device.java
+@@ -12,6 +12,8 @@
+ 
+ package org.apache.storm.container.cgroup;
+ 
++import org.apache.storm.container.cgroup.core.BlkioCore;
++
+ /**
+  * a class that represents a device in linux
+  */
+@@ -67,4 +69,10 @@ public class Device {
+         }
+         return true;
+     }
++
++    public String makeContext(Object data, BlkioCore blkioCore) {
++        StringBuilder sb = new StringBuilder();
++        sb.append(toString()).append(" ").append(data);
++        return sb.toString();
++    }
+ }
+diff --git a/storm-client/src/jvm/org/apache/storm/container/cgroup/Hierarchy.java b/storm-client/src/jvm/org/apache/storm/container/cgroup/Hierarchy.java
+index ea79918..53a400b 100755
+--- a/storm-client/src/jvm/org/apache/storm/container/cgroup/Hierarchy.java
++++ b/storm-client/src/jvm/org/apache/storm/container/cgroup/Hierarchy.java
+@@ -109,15 +109,6 @@ public class Hierarchy {
+         return name;
+     }
+ 
+-    public boolean isSubSystemMounted(SubSystemType subsystem) {
+-        for (SubSystemType type : this.subSystems) {
+-            if (type == subsystem) {
+-                return true;
+-            }
+-        }
+-        return false;
+-    }
+-
+     @Override
+     public String toString() {
+         return this.dir;
+diff --git a/storm-client/src/jvm/org/apache/storm/container/cgroup/SubSystemType.java b/storm-client/src/jvm/org/apache/storm/container/cgroup/SubSystemType.java
+index ff8ab28..520bf28 100755
+--- a/storm-client/src/jvm/org/apache/storm/container/cgroup/SubSystemType.java
++++ b/storm-client/src/jvm/org/apache/storm/container/cgroup/SubSystemType.java
+@@ -28,4 +28,13 @@ public enum SubSystemType {
+             return null;
+         }
+     }
++
++    public boolean isSubSystemMounted(Hierarchy hierarchy) {
++        for (SubSystemType type : hierarchy.getSubSystems()) {
++            if (type == this) {
++                return true;
++            }
++        }
++        return false;
++    }
+ }
+diff --git a/storm-client/src/jvm/org/apache/storm/container/cgroup/core/BlkioCore.java b/storm-client/src/jvm/org/apache/storm/container/cgroup/core/BlkioCore.java
+index 75fe134..694b8cb 100755
+--- a/storm-client/src/jvm/org/apache/storm/container/cgroup/core/BlkioCore.java
++++ b/storm-client/src/jvm/org/apache/storm/container/cgroup/core/BlkioCore.java
+@@ -64,7 +64,7 @@ public class BlkioCore implements CgroupCore {
+     }
+ 
+     public void setBlkioWeightDevice(Device device, int weight) throws IOException {
+-        CgroupUtils.writeFileByLine(CgroupUtils.getDir(this.dir, BLKIO_WEIGHT_DEVICE), makeContext(device, weight));
++        CgroupUtils.writeFileByLine(CgroupUtils.getDir(this.dir, BLKIO_WEIGHT_DEVICE), device.makeContext(weight, this));
+     }
+ 
+     public Map<Device, Integer> getBlkioWeightDevice() throws IOException {
+@@ -80,7 +80,7 @@ public class BlkioCore implements CgroupCore {
+     }
+ 
+     public void setReadBps(Device device, long bps) throws IOException {
+-        CgroupUtils.writeFileByLine(CgroupUtils.getDir(this.dir, BLKIO_THROTTLE_READ_BPS_DEVICE), makeContext(device, bps));
++        CgroupUtils.writeFileByLine(CgroupUtils.getDir(this.dir, BLKIO_THROTTLE_READ_BPS_DEVICE), device.makeContext(bps, this));
+     }
+ 
+     public Map<Device, Long> getReadBps() throws IOException {
+@@ -88,7 +88,7 @@ public class BlkioCore implements CgroupCore {
+     }
+ 
+     public void setWriteBps(Device device, long bps) throws IOException {
+-        CgroupUtils.writeFileByLine(CgroupUtils.getDir(this.dir, BLKIO_THROTTLE_WRITE_BPS_DEVICE), makeContext(device, bps));
++        CgroupUtils.writeFileByLine(CgroupUtils.getDir(this.dir, BLKIO_THROTTLE_WRITE_BPS_DEVICE), device.makeContext(bps, this));
+     }
+ 
+     public Map<Device, Long> getWriteBps() throws IOException {
+@@ -96,7 +96,7 @@ public class BlkioCore implements CgroupCore {
+     }
+ 
+     public void setReadIOps(Device device, long iops) throws IOException {
+-        CgroupUtils.writeFileByLine(CgroupUtils.getDir(this.dir, BLKIO_THROTTLE_READ_IOPS_DEVICE), makeContext(device, iops));
++        CgroupUtils.writeFileByLine(CgroupUtils.getDir(this.dir, BLKIO_THROTTLE_READ_IOPS_DEVICE), device.makeContext(iops, this));
+     }
+ 
+     public Map<Device, Long> getReadIOps() throws IOException {
+@@ -104,7 +104,7 @@ public class BlkioCore implements CgroupCore {
+     }
+ 
+     public void setWriteIOps(Device device, long iops) throws IOException {
+-        CgroupUtils.writeFileByLine(CgroupUtils.getDir(this.dir, BLKIO_THROTTLE_WRITE_IOPS_DEVICE), makeContext(device, iops));
++        CgroupUtils.writeFileByLine(CgroupUtils.getDir(this.dir, BLKIO_THROTTLE_WRITE_IOPS_DEVICE), device.makeContext(iops, this));
+     }
+ 
+     public Map<Device, Long> getWriteIOps() throws IOException {
+@@ -155,12 +155,6 @@ public class BlkioCore implements CgroupCore {
+         CgroupUtils.writeFileByLine(CgroupUtils.getDir(this.dir, BLKIO_RESET_STATS), "1");
+     }
+ 
+-    private String makeContext(Device device, Object data) {
+-        StringBuilder sb = new StringBuilder();
+-        sb.append(device.toString()).append(" ").append(data);
+-        return sb.toString();
+-    }
+-
+     private Map<Device, Long> parseConfig(String config) throws IOException {
+         List<String> strings = CgroupUtils.readFileByLine(CgroupUtils.getDir(this.dir, config));
+         Map<Device, Long> result = new HashMap<Device, Long>();
+diff --git a/storm-client/src/jvm/org/apache/storm/daemon/StormCommon.java b/storm-client/src/jvm/org/apache/storm/daemon/StormCommon.java
+index 2bb1871..4c9be96 100644
+--- a/storm-client/src/jvm/org/apache/storm/daemon/StormCommon.java
++++ b/storm-client/src/jvm/org/apache/storm/daemon/StormCommon.java
+@@ -282,12 +282,12 @@ public class StormCommon {
+             common.set_json_conf(JSONValue.toJSONString(spoutConf));
+             common.put_to_streams(Acker.ACKER_INIT_STREAM_ID,
+                                   Thrift.outputFields(Arrays.asList("id", "init-val", "spout-task")));
+-            common.put_to_inputs(Utils.getGlobalStreamId(Acker.ACKER_COMPONENT_ID, Acker.ACKER_ACK_STREAM_ID),
+-                                 Thrift.prepareDirectGrouping());
+-            common.put_to_inputs(Utils.getGlobalStreamId(Acker.ACKER_COMPONENT_ID, Acker.ACKER_FAIL_STREAM_ID),
+-                                 Thrift.prepareDirectGrouping());
+-            common.put_to_inputs(Utils.getGlobalStreamId(Acker.ACKER_COMPONENT_ID, Acker.ACKER_RESET_TIMEOUT_STREAM_ID),
+-                                 Thrift.prepareDirectGrouping());
++            Utils.getGlobalStreamId(Acker.ACKER_COMPONENT_ID, Acker.ACKER_ACK_STREAM_ID).put_to_inputs(
++                    Thrift.prepareDirectGrouping(), common);
++            Utils.getGlobalStreamId(Acker.ACKER_COMPONENT_ID, Acker.ACKER_FAIL_STREAM_ID).put_to_inputs(
++                    Thrift.prepareDirectGrouping(), common);
++            Utils.getGlobalStreamId(Acker.ACKER_COMPONENT_ID, Acker.ACKER_RESET_TIMEOUT_STREAM_ID).put_to_inputs(
++                    Thrift.prepareDirectGrouping(), common);
+         }
+ 
+         topology.put_to_bolts(Acker.ACKER_COMPONENT_ID, acker);
+@@ -437,7 +437,7 @@ public class StormCommon {
+     }
+ 
+     public static StormTopology systemTopology(Map<String, Object> topoConf, StormTopology topology) throws InvalidTopologyException {
+-        return _instance.systemTopologyImpl(topoConf, topology);
++        return topology.systemTopologyImpl(topoConf, _instance);
+     }
+ 
+     public static boolean hasAckers(Map<String, Object> topoConf) {
+@@ -516,24 +516,6 @@ public class StormCommon {
+         return new Acker();
+     }
+ 
+-    protected StormTopology systemTopologyImpl(Map<String, Object> topoConf, StormTopology topology) throws InvalidTopologyException {
+-        validateBasic(topology);
+-
+-        StormTopology ret = topology.deepCopy();
+-        addAcker(topoConf, ret);
+-        if (hasEventLoggers(topoConf)) {
+-            addEventLogger(topoConf, ret);
+-        }
+-        addMetricComponents(topoConf, ret);
+-        addSystemComponents(topoConf, ret);
+-        addMetricStreams(ret);
+-        addSystemStreams(ret);
+-
+-        validateStructure(ret);
+-
+-        return ret;
+-    }
+-
+     /*
+      * Returns map from task -> componentId
+      */
+diff --git a/storm-client/src/jvm/org/apache/storm/daemon/Task.java b/storm-client/src/jvm/org/apache/storm/daemon/Task.java
+index 2f2d53b..ec39257 100644
+--- a/storm-client/src/jvm/org/apache/storm/daemon/Task.java
++++ b/storm-client/src/jvm/org/apache/storm/daemon/Task.java
+@@ -26,7 +26,6 @@ import org.apache.storm.Config;
+ import org.apache.storm.Thrift;
+ import org.apache.storm.daemon.worker.WorkerState;
+ import org.apache.storm.executor.Executor;
+-import org.apache.storm.executor.ExecutorTransfer;
+ import org.apache.storm.generated.Bolt;
+ import org.apache.storm.generated.ComponentObject;
+ import org.apache.storm.generated.DebugOptions;
+@@ -38,7 +37,6 @@ import org.apache.storm.generated.StormTopology;
+ import org.apache.storm.grouping.LoadAwareCustomStreamGrouping;
+ import org.apache.storm.hooks.ITaskHook;
+ import org.apache.storm.hooks.info.EmitInfo;
+-import org.apache.storm.metrics2.StormMetricRegistry;
+ import org.apache.storm.metrics2.TaskMetrics;
+ import org.apache.storm.spout.ShellSpout;
+ import org.apache.storm.stats.CommonStats;
+@@ -202,16 +200,6 @@ public class Task {
+         return taskMetrics;
+     }
+ 
+-    // Non Blocking call. If cannot emit to destination immediately, such tuples will be added to `pendingEmits` argument
+-    public void sendUnanchored(String stream, List<Object> values, ExecutorTransfer transfer, Queue<AddressedTuple> pendingEmits) {
+-        Tuple tuple = getTuple(stream, values);
+-        List<Integer> tasks = getOutgoingTasks(stream, values);
+-        for (Integer t : tasks) {
+-            AddressedTuple addressedTuple = new AddressedTuple(t, tuple);
+-            transfer.tryTransfer(addressedTuple, pendingEmits);
+-        }
+-    }
+-
+     /**
+      * Send sampled data to the eventlogger if the global or component level debug flag is set (via nimbus api).
+      */
+@@ -224,9 +212,9 @@ public class Task {
+         }
+         double spct = ((debugOptions != null) && (debugOptions.is_enable())) ? debugOptions.get_samplingpct() : 0;
+         if (spct > 0 && (random.nextDouble() * 100) < spct) {
+-            sendUnanchored(StormCommon.EVENTLOGGER_STREAM_ID,
++            executor.getExecutorTransfer().sendUnanchored(StormCommon.EVENTLOGGER_STREAM_ID,
+                            new Values(componentId, messageId, System.currentTimeMillis(), values),
+-                           executor.getExecutorTransfer(), overflow);
++                    overflow, this);
+         }
+     }
+ 
+diff --git a/storm-client/src/jvm/org/apache/storm/daemon/supervisor/AdvancedFSOps.java b/storm-client/src/jvm/org/apache/storm/daemon/supervisor/AdvancedFSOps.java
+index 5cd04f7..625ebd3 100644
+--- a/storm-client/src/jvm/org/apache/storm/daemon/supervisor/AdvancedFSOps.java
++++ b/storm-client/src/jvm/org/apache/storm/daemon/supervisor/AdvancedFSOps.java
+@@ -37,7 +37,9 @@ import java.util.List;
+ import java.util.Map;
+ import java.util.Set;
+ import org.apache.storm.Config;
++import org.apache.storm.generated.StormTopology;
+ import org.apache.storm.shade.org.apache.commons.io.FileUtils;
++import org.apache.storm.utils.ConfigUtils;
+ import org.apache.storm.utils.ObjectReader;
+ import org.apache.storm.utils.Utils;
+ import org.slf4j.Logger;
+@@ -331,6 +333,12 @@ public class AdvancedFSOps implements IAdvancedFSOps {
+         Files.createSymbolicLink(plink, ptarget);
+     }
+ 
++    public StormTopology readSupervisorTopologyImpl(Map<String, Object> conf, String stormId, ConfigUtils configUtils) throws IOException {
++        String stormRoot = configUtils.supervisorStormDistRoot(conf, stormId);
++        String topologyPath = configUtils.supervisorStormCodePath(stormRoot);
++        return configUtils.readSupervisorStormCodeGivenPath(topologyPath, this);
++    }
++
+     private static class AdvancedRunAsUserFSOps extends AdvancedFSOps {
+         private final Map<String, Object> _conf;
+ 
+diff --git a/storm-client/src/jvm/org/apache/storm/drpc/DRPCInvocationsClient.java b/storm-client/src/jvm/org/apache/storm/drpc/DRPCInvocationsClient.java
+index e30549b..6af572a 100644
+--- a/storm-client/src/jvm/org/apache/storm/drpc/DRPCInvocationsClient.java
++++ b/storm-client/src/jvm/org/apache/storm/drpc/DRPCInvocationsClient.java
+@@ -121,4 +121,13 @@ public class DRPCInvocationsClient extends ThriftClient implements DistributedRP
+             throw e;
+         }
+     }
++
++    public void reconnectSync(DRPCSpout drpcSpout) {
++        try {
++            DRPCSpout.LOG.info("reconnecting... ");
++            reconnectClient(); //Blocking call
++        } catch (TException e2) {
++            DRPCSpout.LOG.error("Failed to connect to DRPC server", e2);
++        }
++    }
+ }
+diff --git a/storm-client/src/jvm/org/apache/storm/drpc/DRPCSpout.java b/storm-client/src/jvm/org/apache/storm/drpc/DRPCSpout.java
+index f8b6bc7..724d2a0 100644
+--- a/storm-client/src/jvm/org/apache/storm/drpc/DRPCSpout.java
++++ b/storm-client/src/jvm/org/apache/storm/drpc/DRPCSpout.java
+@@ -89,15 +89,6 @@ public class DRPCSpout extends BaseRichSpout {
+         }));
+     }
+ 
+-    private void reconnectSync(DRPCInvocationsClient client) {
+-        try {
+-            LOG.info("reconnecting... ");
+-            client.reconnectClient(); //Blocking call
+-        } catch (TException e2) {
+-            LOG.error("Failed to connect to DRPC server", e2);
+-        }
+-    }
+-
+     private void checkFutures() {
+         Iterator<Future<Void>> i = _futures.iterator();
+         while (i.hasNext()) {
+@@ -242,7 +233,7 @@ public class DRPCSpout extends BaseRichSpout {
+                     LOG.error("Failed to fail request", tex);
+                     break;
+                 }
+-                reconnectSync((DRPCInvocationsClient) client);
++                ((DRPCInvocationsClient) client).reconnectSync(this);
+             }
+         }
+     }
+diff --git a/storm-client/src/jvm/org/apache/storm/executor/Executor.java b/storm-client/src/jvm/org/apache/storm/executor/Executor.java
+index c69596e..4fcbdea 100644
+--- a/storm-client/src/jvm/org/apache/storm/executor/Executor.java
++++ b/storm-client/src/jvm/org/apache/storm/executor/Executor.java
+@@ -37,7 +37,6 @@ import org.apache.storm.cluster.ClusterUtils;
+ import org.apache.storm.cluster.DaemonType;
+ import org.apache.storm.cluster.IStormClusterState;
+ import org.apache.storm.daemon.Acker;
+-import org.apache.storm.daemon.GrouperFactory;
+ import org.apache.storm.daemon.StormCommon;
+ import org.apache.storm.daemon.Task;
+ import org.apache.storm.daemon.metrics.ErrorReportingMetrics;
+@@ -49,7 +48,6 @@ import org.apache.storm.executor.error.ReportErrorAndDie;
+ import org.apache.storm.executor.spout.SpoutExecutor;
+ import org.apache.storm.generated.Bolt;
+ import org.apache.storm.generated.DebugOptions;
+-import org.apache.storm.generated.Grouping;
+ import org.apache.storm.generated.SpoutSpec;
+ import org.apache.storm.generated.StormTopology;
+ import org.apache.storm.grouping.LoadAwareCustomStreamGrouping;
+@@ -65,7 +63,6 @@ import org.apache.storm.stats.ClientStatsUtil;
+ import org.apache.storm.stats.CommonStats;
+ import org.apache.storm.task.WorkerTopologyContext;
+ import org.apache.storm.tuple.AddressedTuple;
+-import org.apache.storm.tuple.Fields;
+ import org.apache.storm.tuple.TupleImpl;
+ import org.apache.storm.tuple.Values;
+ import org.apache.storm.utils.ConfigUtils;
+@@ -146,7 +143,7 @@ public abstract class Executor implements Callable, JCQueue.Consumer {
+ 
+         this.intervalToTaskToMetricToRegistry = new HashMap<>();
+         this.taskToComponent = workerData.getTaskToComponent();
+-        this.streamToComponentToGrouper = outboundComponents(workerTopologyContext, componentId, topoConf);
++        this.streamToComponentToGrouper = workerTopologyContext.outboundComponents(componentId, topoConf, this);
+         if (this.streamToComponentToGrouper != null) {
+             this.groupers = streamToComponentToGrouper.values().stream()
+                                                       .filter(Objects::nonNull)
+@@ -311,8 +308,8 @@ public abstract class Executor implements Callable, JCQueue.Consumer {
+                     }
+                 }
+                 if (!dataPoints.isEmpty()) {
+-                    task.sendUnanchored(Constants.METRICS_STREAM_ID,
+-                                        new Values(taskInfo, dataPoints), executorTransfer, pendingEmits);
++                    executorTransfer.sendUnanchored(Constants.METRICS_STREAM_ID,
++                                        new Values(taskInfo, dataPoints), pendingEmits, task);
+                     executorTransfer.flush();
+                 }
+             }
+@@ -392,41 +389,6 @@ public abstract class Executor implements Callable, JCQueue.Consumer {
+         }
+     }
+ 
+-    /**
+-     * Returns map of stream id to component id to grouper.
+-     */
+-    private Map<String, Map<String, LoadAwareCustomStreamGrouping>> outboundComponents(
+-        WorkerTopologyContext workerTopologyContext, String componentId, Map<String, Object> topoConf) {
+-        Map<String, Map<String, LoadAwareCustomStreamGrouping>> ret = new HashMap<>();
+-
+-        Map<String, Map<String, Grouping>> outputGroupings = workerTopologyContext.getTargets(componentId);
+-        for (Map.Entry<String, Map<String, Grouping>> entry : outputGroupings.entrySet()) {
+-            String streamId = entry.getKey();
+-            Map<String, Grouping> componentGrouping = entry.getValue();
+-            Fields outFields = workerTopologyContext.getComponentOutputFields(componentId, streamId);
+-            Map<String, LoadAwareCustomStreamGrouping> componentGrouper = new HashMap<String, LoadAwareCustomStreamGrouping>();
+-            for (Map.Entry<String, Grouping> cg : componentGrouping.entrySet()) {
+-                String component = cg.getKey();
+-                Grouping grouping = cg.getValue();
+-                List<Integer> outTasks = workerTopologyContext.getComponentTasks(component);
+-                LoadAwareCustomStreamGrouping grouper = GrouperFactory.mkGrouper(
+-                    workerTopologyContext, componentId, streamId, outFields, grouping, outTasks, topoConf);
+-                componentGrouper.put(component, grouper);
+-            }
+-            if (componentGrouper.size() > 0) {
+-                ret.put(streamId, componentGrouper);
+-            }
+-        }
+-
+-        for (String stream : workerTopologyContext.getComponentCommon(componentId).get_streams().keySet()) {
+-            if (!ret.containsKey(stream)) {
+-                ret.put(stream, null);
+-            }
+-        }
+-
+-        return ret;
+-    }
+-
+     // =============================================================================
+     // ============================ getter methods =================================
+     // =============================================================================
+diff --git a/storm-client/src/jvm/org/apache/storm/executor/ExecutorTransfer.java b/storm-client/src/jvm/org/apache/storm/executor/ExecutorTransfer.java
+index eee553e..614064e 100644
+--- a/storm-client/src/jvm/org/apache/storm/executor/ExecutorTransfer.java
++++ b/storm-client/src/jvm/org/apache/storm/executor/ExecutorTransfer.java
+@@ -13,13 +13,16 @@
+ package org.apache.storm.executor;
+ 
+ import java.util.ArrayList;
++import java.util.List;
+ import java.util.Map;
+ import java.util.Queue;
+ import java.util.concurrent.atomic.AtomicReferenceArray;
+ import org.apache.storm.Config;
++import org.apache.storm.daemon.Task;
+ import org.apache.storm.daemon.worker.WorkerState;
+ import org.apache.storm.serialization.KryoTupleSerializer;
+ import org.apache.storm.tuple.AddressedTuple;
++import org.apache.storm.tuple.Tuple;
+ import org.apache.storm.utils.JCQueue;
+ import org.apache.storm.utils.ObjectReader;
+ import org.apache.storm.utils.Utils;
+@@ -110,4 +113,13 @@ public class ExecutorTransfer {
+         }
+     }
+ 
++    // Non Blocking call. If cannot emit to destination immediately, such tuples will be added to `pendingEmits` argument
++    public void sendUnanchored(String stream, List<Object> values, Queue<AddressedTuple> pendingEmits, Task task) {
++        Tuple tuple = task.getTuple(stream, values);
++        List<Integer> tasks = task.getOutgoingTasks(stream, values);
++        for (Integer t : tasks) {
++            AddressedTuple addressedTuple = new AddressedTuple(t, tuple);
++            tryTransfer(addressedTuple, pendingEmits);
++        }
++    }
+ }
+diff --git a/storm-client/src/jvm/org/apache/storm/executor/bolt/BoltOutputCollectorImpl.java b/storm-client/src/jvm/org/apache/storm/executor/bolt/BoltOutputCollectorImpl.java
+index b8a582b..670f085 100644
+--- a/storm-client/src/jvm/org/apache/storm/executor/bolt/BoltOutputCollectorImpl.java
++++ b/storm-client/src/jvm/org/apache/storm/executor/bolt/BoltOutputCollectorImpl.java
+@@ -29,7 +29,6 @@ import org.apache.storm.tuple.MessageId;
+ import org.apache.storm.tuple.Tuple;
+ import org.apache.storm.tuple.TupleImpl;
+ import org.apache.storm.tuple.Values;
+-import org.apache.storm.utils.Time;
+ import org.apache.storm.utils.Utils;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+@@ -124,11 +123,11 @@ public class BoltOutputCollectorImpl implements IOutputCollector {
+         long ackValue = ((TupleImpl) input).getAckVal();
+         Map<Long, Long> anchorsToIds = input.getMessageId().getAnchorsToIds();
+         for (Map.Entry<Long, Long> entry : anchorsToIds.entrySet()) {
+-            task.sendUnanchored(Acker.ACKER_ACK_STREAM_ID,
++            executor.getExecutorTransfer().sendUnanchored(Acker.ACKER_ACK_STREAM_ID,
+                                 new Values(entry.getKey(), Utils.bitXor(entry.getValue(), ackValue)),
+-                                executor.getExecutorTransfer(), executor.getPendingEmits());
++                    executor.getPendingEmits(), task);
+         }
+-        long delta = tupleTimeDelta((TupleImpl) input);
++        long delta = ((TupleImpl) input).tupleTimeDelta(this);
+         if (isDebug) {
+             LOG.info("BOLT ack TASK: {} TIME: {} TUPLE: {}", taskId, delta, input);
+         }
+@@ -150,10 +149,10 @@ public class BoltOutputCollectorImpl implements IOutputCollector {
+         }
+         Set<Long> roots = input.getMessageId().getAnchors();
+         for (Long root : roots) {
+-            task.sendUnanchored(Acker.ACKER_FAIL_STREAM_ID,
+-                                new Values(root), executor.getExecutorTransfer(), executor.getPendingEmits());
++            executor.getExecutorTransfer().sendUnanchored(Acker.ACKER_FAIL_STREAM_ID,
++                                new Values(root), executor.getPendingEmits(), task);
+         }
+-        long delta = tupleTimeDelta((TupleImpl) input);
++        long delta = ((TupleImpl) input).tupleTimeDelta(this);
+         if (isDebug) {
+             LOG.info("BOLT fail TASK: {} TIME: {} TUPLE: {}", taskId, delta, input);
+         }
+@@ -169,8 +168,8 @@ public class BoltOutputCollectorImpl implements IOutputCollector {
+     public void resetTimeout(Tuple input) {
+         Set<Long> roots = input.getMessageId().getAnchors();
+         for (Long root : roots) {
+-            task.sendUnanchored(Acker.ACKER_RESET_TIMEOUT_STREAM_ID, new Values(root),
+-                                executor.getExecutorTransfer(), executor.getPendingEmits());
++            executor.getExecutorTransfer().sendUnanchored(Acker.ACKER_RESET_TIMEOUT_STREAM_ID, new Values(root),
++                    executor.getPendingEmits(), task);
+         }
+     }
+ 
+@@ -190,14 +189,6 @@ public class BoltOutputCollectorImpl implements IOutputCollector {
+         executor.getReportError().report(error);
+     }
+ 
+-    private long tupleTimeDelta(TupleImpl tuple) {
+-        Long ms = tuple.getProcessSampleStartTime();
+-        if (ms != null) {
+-            return Time.deltaMs(ms);
+-        }
+-        return -1;
+-    }
+-
+     private void putXor(Map<Long, Long> pending, Long key, Long id) {
+         Long curr = pending.get(key);
+         if (curr == null) {
+diff --git a/storm-client/src/jvm/org/apache/storm/executor/spout/SpoutOutputCollectorImpl.java b/storm-client/src/jvm/org/apache/storm/executor/spout/SpoutOutputCollectorImpl.java
+index e10b2c2..d23e432 100644
+--- a/storm-client/src/jvm/org/apache/storm/executor/spout/SpoutOutputCollectorImpl.java
++++ b/storm-client/src/jvm/org/apache/storm/executor/spout/SpoutOutputCollectorImpl.java
+@@ -158,7 +158,7 @@ public class SpoutOutputCollectorImpl implements ISpoutOutputCollector {
+ 
+             pending.put(rootId, info);
+             List<Object> ackInitTuple = new Values(rootId, Utils.bitXorVals(ackSeq), this.taskId);
+-            taskData.sendUnanchored(Acker.ACKER_INIT_STREAM_ID, ackInitTuple, executor.getExecutorTransfer(), executor.getPendingEmits());
++            executor.getExecutorTransfer().sendUnanchored(Acker.ACKER_INIT_STREAM_ID, ackInitTuple, executor.getPendingEmits(), taskData);
+         } else if (messageId != null) {
+             // Reusing TupleInfo object as we directly call executor.ackSpoutMsg() & are not sending msgs. perf critical
+             if (isDebug) {
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/AccessControl.java b/storm-client/src/jvm/org/apache/storm/generated/AccessControl.java
+index 58b166b..cbe072a 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/AccessControl.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/AccessControl.java
+@@ -23,6 +23,10 @@
+  */
+ package org.apache.storm.generated;
+ 
++import org.apache.storm.blobstore.BlobStoreAclHandler;
++
++import java.util.Set;
++
+ @SuppressWarnings({"cast", "rawtypes", "serial", "unchecked", "unused"})
+ @javax.annotation.Generated(value = "Autogenerated by Thrift Compiler (0.12.0)")
+ public class AccessControl implements org.apache.storm.thrift.TBase<AccessControl, AccessControl._Fields>, java.io.Serializable, Cloneable, Comparable<AccessControl> {
+@@ -39,7 +43,21 @@ public class AccessControl implements org.apache.storm.thrift.TBase<AccessContro
+   private @org.apache.storm.thrift.annotation.Nullable java.lang.String name; // optional
+   private int access; // required
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public int getAllowed(Set<String> users, BlobStoreAclHandler blobStoreAclHandler) {
++        switch (get_type()) {
++            case OTHER:
++                return get_access();
++            case USER:
++                if (users.contains(get_name())) {
++                    return get_access();
++                }
++                return 0;
++            default:
++                return 0;
++        }
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+     /**
+      * 
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/Assignment.java b/storm-client/src/jvm/org/apache/storm/generated/Assignment.java
+index bc11340..9e71730 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/Assignment.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/Assignment.java
+@@ -328,14 +328,7 @@ public class Assignment implements org.apache.storm.thrift.TBase<Assignment, Ass
+     return (this.executor_node_port == null) ? 0 : this.executor_node_port.size();
+   }
+ 
+-  public void put_to_executor_node_port(java.util.List<java.lang.Long> key, NodeInfo val) {
+-    if (this.executor_node_port == null) {
+-      this.executor_node_port = new java.util.HashMap<java.util.List<java.lang.Long>,NodeInfo>();
+-    }
+-    this.executor_node_port.put(key, val);
+-  }
+-
+-  @org.apache.storm.thrift.annotation.Nullable
++    @org.apache.storm.thrift.annotation.Nullable
+   public java.util.Map<java.util.List<java.lang.Long>,NodeInfo> get_executor_node_port() {
+     return this.executor_node_port;
+   }
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/BoltAggregateStats.java b/storm-client/src/jvm/org/apache/storm/generated/BoltAggregateStats.java
+index de829cb..7fe1605 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/BoltAggregateStats.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/BoltAggregateStats.java
+@@ -41,7 +41,13 @@ public class BoltAggregateStats implements org.apache.storm.thrift.TBase<BoltAgg
+   private long executed; // optional
+   private double capacity; // optional
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void set_bolt(SpecificAggregateStats specificAggregateStats) {
++        if (this == null) throw new NullPointerException();
++      setField_ = SpecificAggregateStats._Fields.BOLT;
++      value_ = this;
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+     EXECUTE_LATENCY_MS((short)1, "execute_latency_ms"),
+     PROCESS_LATENCY_MS((short)2, "process_latency_ms"),
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/BoltStats.java b/storm-client/src/jvm/org/apache/storm/generated/BoltStats.java
+index a66b1a9..bb31ff1 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/BoltStats.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/BoltStats.java
+@@ -43,7 +43,13 @@ public class BoltStats implements org.apache.storm.thrift.TBase<BoltStats, BoltS
+   private @org.apache.storm.thrift.annotation.Nullable java.util.Map<java.lang.String,java.util.Map<GlobalStreamId,java.lang.Long>> executed; // required
+   private @org.apache.storm.thrift.annotation.Nullable java.util.Map<java.lang.String,java.util.Map<GlobalStreamId,java.lang.Double>> execute_ms_avg; // required
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void set_bolt(ExecutorSpecificStats executorSpecificStats) {
++        if (this == null) throw new NullPointerException();
++      setField_ = ExecutorSpecificStats._Fields.BOLT;
++      value_ = this;
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+     ACKED((short)1, "acked"),
+     FAILED((short)2, "failed"),
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/ClusterSummary.java b/storm-client/src/jvm/org/apache/storm/generated/ClusterSummary.java
+index 01497a9..4636161 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/ClusterSummary.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/ClusterSummary.java
+@@ -183,14 +183,7 @@ public class ClusterSummary implements org.apache.storm.thrift.TBase<ClusterSumm
+     return (this.supervisors == null) ? null : this.supervisors.iterator();
+   }
+ 
+-  public void add_to_supervisors(SupervisorSummary elem) {
+-    if (this.supervisors == null) {
+-      this.supervisors = new java.util.ArrayList<SupervisorSummary>();
+-    }
+-    this.supervisors.add(elem);
+-  }
+-
+-  @org.apache.storm.thrift.annotation.Nullable
++    @org.apache.storm.thrift.annotation.Nullable
+   public java.util.List<SupervisorSummary> get_supervisors() {
+     return this.supervisors;
+   }
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/ClusterWorkerHeartbeat.java b/storm-client/src/jvm/org/apache/storm/generated/ClusterWorkerHeartbeat.java
+index 43aa8fe..f69e70b 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/ClusterWorkerHeartbeat.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/ClusterWorkerHeartbeat.java
+@@ -218,14 +218,7 @@ public class ClusterWorkerHeartbeat implements org.apache.storm.thrift.TBase<Clu
+     return (this.executor_stats == null) ? 0 : this.executor_stats.size();
+   }
+ 
+-  public void put_to_executor_stats(ExecutorInfo key, ExecutorStats val) {
+-    if (this.executor_stats == null) {
+-      this.executor_stats = new java.util.HashMap<ExecutorInfo,ExecutorStats>();
+-    }
+-    this.executor_stats.put(key, val);
+-  }
+-
+-  @org.apache.storm.thrift.annotation.Nullable
++    @org.apache.storm.thrift.annotation.Nullable
+   public java.util.Map<ExecutorInfo,ExecutorStats> get_executor_stats() {
+     return this.executor_stats;
+   }
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/ComponentAggregateStats.java b/storm-client/src/jvm/org/apache/storm/generated/ComponentAggregateStats.java
+index eed66e6..25d76e3 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/ComponentAggregateStats.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/ComponentAggregateStats.java
+@@ -41,7 +41,14 @@ public class ComponentAggregateStats implements org.apache.storm.thrift.TBase<Co
+   private @org.apache.storm.thrift.annotation.Nullable SpecificAggregateStats specific_stats; // optional
+   private @org.apache.storm.thrift.annotation.Nullable ErrorInfo last_error; // optional
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void put_to_id_to_spout_agg_stats(String key, TopologyPageInfo topologyPageInfo) {
++        if (topologyPageInfo.get_id_to_spout_agg_stats() == null) {
++        topologyPageInfo.set_id_to_spout_agg_stats(new java.util.HashMap<String, ComponentAggregateStats>());
++      }
++      topologyPageInfo.get_id_to_spout_agg_stats().put(key, this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+     /**
+      * 
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/ComponentCommon.java b/storm-client/src/jvm/org/apache/storm/generated/ComponentCommon.java
+index cffaea4..eb99f64 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/ComponentCommon.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/ComponentCommon.java
+@@ -203,14 +203,7 @@ public class ComponentCommon implements org.apache.storm.thrift.TBase<ComponentC
+     return (this.inputs == null) ? 0 : this.inputs.size();
+   }
+ 
+-  public void put_to_inputs(GlobalStreamId key, Grouping val) {
+-    if (this.inputs == null) {
+-      this.inputs = new java.util.HashMap<GlobalStreamId,Grouping>();
+-    }
+-    this.inputs.put(key, val);
+-  }
+-
+-  @org.apache.storm.thrift.annotation.Nullable
++    @org.apache.storm.thrift.annotation.Nullable
+   public java.util.Map<GlobalStreamId,Grouping> get_inputs() {
+     return this.inputs;
+   }
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/ComponentObject.java b/storm-client/src/jvm/org/apache/storm/generated/ComponentObject.java
+index e6562c0..fcc2fd8 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/ComponentObject.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/ComponentObject.java
+@@ -139,7 +139,7 @@ public class ComponentObject extends org.apache.storm.thrift.TUnion<ComponentObj
+ 
+   public static ComponentObject shell(ShellComponent value) {
+     ComponentObject x = new ComponentObject();
+-    x.set_shell(value);
++    value.set_shell(x);
+     return x;
+   }
+ 
+@@ -345,13 +345,7 @@ public class ComponentObject extends org.apache.storm.thrift.TUnion<ComponentObj
+     }
+   }
+ 
+-  public void set_shell(ShellComponent value) {
+-    if (value == null) throw new java.lang.NullPointerException();
+-    setField_ = _Fields.SHELL;
+-    value_ = value;
+-  }
+-
+-  public JavaObject get_java_object() {
++    public JavaObject get_java_object() {
+     if (getSetField() == _Fields.JAVA_OBJECT) {
+       return (JavaObject)getFieldValue();
+     } else {
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/ComponentPageInfo.java b/storm-client/src/jvm/org/apache/storm/generated/ComponentPageInfo.java
+index bb96e9a..c921932 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/ComponentPageInfo.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/ComponentPageInfo.java
+@@ -624,14 +624,7 @@ public class ComponentPageInfo implements org.apache.storm.thrift.TBase<Componen
+     return (this.exec_stats == null) ? null : this.exec_stats.iterator();
+   }
+ 
+-  public void add_to_exec_stats(ExecutorAggregateStats elem) {
+-    if (this.exec_stats == null) {
+-      this.exec_stats = new java.util.ArrayList<ExecutorAggregateStats>();
+-    }
+-    this.exec_stats.add(elem);
+-  }
+-
+-  @org.apache.storm.thrift.annotation.Nullable
++    @org.apache.storm.thrift.annotation.Nullable
+   public java.util.List<ExecutorAggregateStats> get_exec_stats() {
+     return this.exec_stats;
+   }
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/DebugOptions.java b/storm-client/src/jvm/org/apache/storm/generated/DebugOptions.java
+index 20554c3..0058951 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/DebugOptions.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/DebugOptions.java
+@@ -37,7 +37,14 @@ public class DebugOptions implements org.apache.storm.thrift.TBase<DebugOptions,
+   private boolean enable; // optional
+   private double samplingpct; // optional
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void put_to_component_debug(String key, StormBase stormBase) {
++        if (stormBase.get_component_debug() == null) {
++        stormBase.set_component_debug(new java.util.HashMap<String, DebugOptions>());
++      }
++      stormBase.get_component_debug().put(key, this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+     ENABLE((short)1, "enable"),
+     SAMPLINGPCT((short)2, "samplingpct");
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/ExecutorAggregateStats.java b/storm-client/src/jvm/org/apache/storm/generated/ExecutorAggregateStats.java
+index 99c7e51..2c6a00f 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/ExecutorAggregateStats.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/ExecutorAggregateStats.java
+@@ -37,7 +37,14 @@ public class ExecutorAggregateStats implements org.apache.storm.thrift.TBase<Exe
+   private @org.apache.storm.thrift.annotation.Nullable ExecutorSummary exec_summary; // optional
+   private @org.apache.storm.thrift.annotation.Nullable ComponentAggregateStats stats; // optional
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void add_to_exec_stats(ComponentPageInfo componentPageInfo) {
++        if (componentPageInfo.get_exec_stats() == null) {
++        componentPageInfo.set_exec_stats(new java.util.ArrayList<ExecutorAggregateStats>());
++      }
++      componentPageInfo.get_exec_stats().add(this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+     EXEC_SUMMARY((short)1, "exec_summary"),
+     STATS((short)2, "stats");
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/ExecutorInfo.java b/storm-client/src/jvm/org/apache/storm/generated/ExecutorInfo.java
+index de0f007..36a6ec1 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/ExecutorInfo.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/ExecutorInfo.java
+@@ -37,7 +37,14 @@ public class ExecutorInfo implements org.apache.storm.thrift.TBase<ExecutorInfo,
+   private int task_start; // required
+   private int task_end; // required
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void add_to_executors(LocalAssignment localAssignment) {
++        if (localAssignment.get_executors() == null) {
++        localAssignment.set_executors(new java.util.ArrayList<ExecutorInfo>());
++      }
++      localAssignment.get_executors().add(this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+     TASK_START((short)1, "task_start"),
+     TASK_END((short)2, "task_end");
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/ExecutorSpecificStats.java b/storm-client/src/jvm/org/apache/storm/generated/ExecutorSpecificStats.java
+index b6301d6..869b6ff 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/ExecutorSpecificStats.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/ExecutorSpecificStats.java
+@@ -121,7 +121,7 @@ public class ExecutorSpecificStats extends org.apache.storm.thrift.TUnion<Execut
+ 
+   public static ExecutorSpecificStats bolt(BoltStats value) {
+     ExecutorSpecificStats x = new ExecutorSpecificStats();
+-    x.set_bolt(value);
++    value.set_bolt(x);
+     return x;
+   }
+ 
+@@ -275,13 +275,7 @@ public class ExecutorSpecificStats extends org.apache.storm.thrift.TUnion<Execut
+     }
+   }
+ 
+-  public void set_bolt(BoltStats value) {
+-    if (value == null) throw new java.lang.NullPointerException();
+-    setField_ = _Fields.BOLT;
+-    value_ = value;
+-  }
+-
+-  public SpoutStats get_spout() {
++    public SpoutStats get_spout() {
+     if (getSetField() == _Fields.SPOUT) {
+       return (SpoutStats)getFieldValue();
+     } else {
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/ExecutorStats.java b/storm-client/src/jvm/org/apache/storm/generated/ExecutorStats.java
+index b66fd67..509c7b7 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/ExecutorStats.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/ExecutorStats.java
+@@ -41,7 +41,14 @@ public class ExecutorStats implements org.apache.storm.thrift.TBase<ExecutorStat
+   private @org.apache.storm.thrift.annotation.Nullable ExecutorSpecificStats specific; // required
+   private double rate; // required
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void put_to_executor_stats(ExecutorInfo key, ClusterWorkerHeartbeat clusterWorkerHeartbeat) {
++        if (clusterWorkerHeartbeat.get_executor_stats() == null) {
++        clusterWorkerHeartbeat.set_executor_stats(new java.util.HashMap<ExecutorInfo, ExecutorStats>());
++      }
++      clusterWorkerHeartbeat.get_executor_stats().put(key, this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+     EMITTED((short)1, "emitted"),
+     TRANSFERRED((short)2, "transferred"),
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/ExecutorSummary.java b/storm-client/src/jvm/org/apache/storm/generated/ExecutorSummary.java
+index 1e59c59..c96b9b1 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/ExecutorSummary.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/ExecutorSummary.java
+@@ -45,7 +45,14 @@ public class ExecutorSummary implements org.apache.storm.thrift.TBase<ExecutorSu
+   private int uptime_secs; // required
+   private @org.apache.storm.thrift.annotation.Nullable ExecutorStats stats; // optional
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void add_to_executors(TopologyInfo topologyInfo) {
++        if (topologyInfo.get_executors() == null) {
++        topologyInfo.set_executors(new java.util.ArrayList<ExecutorSummary>());
++      }
++      topologyInfo.get_executors().add(this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+     EXECUTOR_INFO((short)1, "executor_info"),
+     COMPONENT_ID((short)2, "component_id"),
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/GlobalStreamId.java b/storm-client/src/jvm/org/apache/storm/generated/GlobalStreamId.java
+index d442ee5..d473bad 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/GlobalStreamId.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/GlobalStreamId.java
+@@ -37,7 +37,14 @@ public class GlobalStreamId implements org.apache.storm.thrift.TBase<GlobalStrea
+   private @org.apache.storm.thrift.annotation.Nullable java.lang.String componentId; // required
+   private @org.apache.storm.thrift.annotation.Nullable java.lang.String streamId; // required
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void put_to_inputs(Grouping val, ComponentCommon componentCommon) {
++        if (componentCommon.get_inputs() == null) {
++        componentCommon.set_inputs(new java.util.HashMap<GlobalStreamId, Grouping>());
++      }
++      componentCommon.get_inputs().put(this, val);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+     COMPONENT_ID((short)1, "componentId"),
+     STREAM_ID((short)2, "streamId");
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/Grouping.java b/storm-client/src/jvm/org/apache/storm/generated/Grouping.java
+index dae7db2..3327628 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/Grouping.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/Grouping.java
+@@ -164,7 +164,7 @@ public class Grouping extends org.apache.storm.thrift.TUnion<Grouping, Grouping.
+ 
+   public static Grouping shuffle(NullStruct value) {
+     Grouping x = new Grouping();
+-    x.set_shuffle(value);
++    value.set_shuffle(x);
+     return x;
+   }
+ 
+@@ -578,13 +578,7 @@ public class Grouping extends org.apache.storm.thrift.TUnion<Grouping, Grouping.
+     }
+   }
+ 
+-  public void set_shuffle(NullStruct value) {
+-    if (value == null) throw new java.lang.NullPointerException();
+-    setField_ = _Fields.SHUFFLE;
+-    value_ = value;
+-  }
+-
+-  public NullStruct get_all() {
++    public NullStruct get_all() {
+     if (getSetField() == _Fields.ALL) {
+       return (NullStruct)getFieldValue();
+     } else {
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/HBMessageData.java b/storm-client/src/jvm/org/apache/storm/generated/HBMessageData.java
+index 7415754..e38800f 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/HBMessageData.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/HBMessageData.java
+@@ -169,7 +169,7 @@ public class HBMessageData extends org.apache.storm.thrift.TUnion<HBMessageData,
+ 
+   public static HBMessageData nodes(HBNodes value) {
+     HBMessageData x = new HBMessageData();
+-    x.set_nodes(value);
++    value.set_nodes(x);
+     return x;
+   }
+ 
+@@ -498,13 +498,7 @@ public class HBMessageData extends org.apache.storm.thrift.TUnion<HBMessageData,
+     }
+   }
+ 
+-  public void set_nodes(HBNodes value) {
+-    if (value == null) throw new java.lang.NullPointerException();
+-    setField_ = _Fields.NODES;
+-    value_ = value;
+-  }
+-
+-  public byte[] get_message_blob() {
++    public byte[] get_message_blob() {
+     set_message_blob(org.apache.storm.thrift.TBaseHelper.rightSize(buffer_for_message_blob()));
+     java.nio.ByteBuffer b = buffer_for_message_blob();
+     return b == null ? null : b.array();
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/HBNodes.java b/storm-client/src/jvm/org/apache/storm/generated/HBNodes.java
+index 174dc26..9242a11 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/HBNodes.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/HBNodes.java
+@@ -35,7 +35,13 @@ public class HBNodes implements org.apache.storm.thrift.TBase<HBNodes, HBNodes._
+ 
+   private @org.apache.storm.thrift.annotation.Nullable java.util.List<java.lang.String> pulseIds; // required
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void set_nodes(HBMessageData hbMessageData) {
++        if (this == null) throw new NullPointerException();
++      setField_ = HBMessageData._Fields.NODES;
++      value_ = this;
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+     PULSE_IDS((short)1, "pulseIds");
+ 
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/HBPulse.java b/storm-client/src/jvm/org/apache/storm/generated/HBPulse.java
+index 84458bf..c7552cc 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/HBPulse.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/HBPulse.java
+@@ -37,7 +37,14 @@ public class HBPulse implements org.apache.storm.thrift.TBase<HBPulse, HBPulse._
+   private @org.apache.storm.thrift.annotation.Nullable java.lang.String id; // required
+   private @org.apache.storm.thrift.annotation.Nullable java.nio.ByteBuffer details; // required
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void add_to_pulses(HBRecords hbRecords) {
++        if (hbRecords.get_pulses() == null) {
++        hbRecords.set_pulses(new java.util.ArrayList<HBPulse>());
++      }
++      hbRecords.get_pulses().add(this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+     ID((short)1, "id"),
+     DETAILS((short)2, "details");
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/HBRecords.java b/storm-client/src/jvm/org/apache/storm/generated/HBRecords.java
+index 26e2648..e86b41c 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/HBRecords.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/HBRecords.java
+@@ -147,14 +147,7 @@ public class HBRecords implements org.apache.storm.thrift.TBase<HBRecords, HBRec
+     return (this.pulses == null) ? null : this.pulses.iterator();
+   }
+ 
+-  public void add_to_pulses(HBPulse elem) {
+-    if (this.pulses == null) {
+-      this.pulses = new java.util.ArrayList<HBPulse>();
+-    }
+-    this.pulses.add(elem);
+-  }
+-
+-  @org.apache.storm.thrift.annotation.Nullable
++    @org.apache.storm.thrift.annotation.Nullable
+   public java.util.List<HBPulse> get_pulses() {
+     return this.pulses;
+   }
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/HBServerMessageType.java b/storm-client/src/jvm/org/apache/storm/generated/HBServerMessageType.java
+index 7973290..b75a993 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/HBServerMessageType.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/HBServerMessageType.java
+@@ -24,6 +24,9 @@
+ package org.apache.storm.generated;
+ 
+ 
++import org.apache.storm.messaging.netty.INettySerializable;
++import org.apache.storm.pacemaker.codec.ThriftEncoder;
++
+ @javax.annotation.Generated(value = "Autogenerated by Thrift Compiler (0.12.0)")
+ public enum HBServerMessageType implements org.apache.storm.thrift.TEnum {
+   CREATE_PATH(0),
+@@ -108,4 +111,24 @@ public enum HBServerMessageType implements org.apache.storm.thrift.TEnum {
+         return null;
+     }
+   }
++
++    public HBMessage encodeNettySerializable(ByteBufAllocator alloc,
++                                             INettySerializable netty_message, ThriftEncoder thriftEncoder) {
++
++        HBMessageData message_data = new HBMessageData();
++        HBMessage m = new HBMessage();
++        byte[] messageBuffer = new byte[netty_message.encodeLength()];
++        ByteBuf wrappedBuffer = Unpooled.wrappedBuffer(messageBuffer);
++        try {
++            wrappedBuffer.resetWriterIndex();
++            netty_message.write(wrappedBuffer);
++
++            message_data.set_message_blob(messageBuffer);
++            m.set_type(this);
++            m.set_data(message_data);
++            return m;
++        } finally {
++            wrappedBuffer.release();
++        }
++    }
+ }
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/JavaObject.java b/storm-client/src/jvm/org/apache/storm/generated/JavaObject.java
+index ff84aa3..4daa6bb 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/JavaObject.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/JavaObject.java
+@@ -184,14 +184,7 @@ public class JavaObject implements org.apache.storm.thrift.TBase<JavaObject, Jav
+     return (this.args_list == null) ? null : this.args_list.iterator();
+   }
+ 
+-  public void add_to_args_list(JavaObjectArg elem) {
+-    if (this.args_list == null) {
+-      this.args_list = new java.util.ArrayList<JavaObjectArg>();
+-    }
+-    this.args_list.add(elem);
+-  }
+-
+-  @org.apache.storm.thrift.annotation.Nullable
++    @org.apache.storm.thrift.annotation.Nullable
+   public java.util.List<JavaObjectArg> get_args_list() {
+     return this.args_list;
+   }
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/JavaObjectArg.java b/storm-client/src/jvm/org/apache/storm/generated/JavaObjectArg.java
+index 89ad6c6..3e9f55c 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/JavaObjectArg.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/JavaObjectArg.java
+@@ -34,7 +34,14 @@ public class JavaObjectArg extends org.apache.storm.thrift.TUnion<JavaObjectArg,
+   private static final org.apache.storm.thrift.protocol.TField BINARY_ARG_FIELD_DESC = new org.apache.storm.thrift.protocol.TField("binary_arg", org.apache.storm.thrift.protocol.TType.STRING, (short)5);
+   private static final org.apache.storm.thrift.protocol.TField DOUBLE_ARG_FIELD_DESC = new org.apache.storm.thrift.protocol.TField("double_arg", org.apache.storm.thrift.protocol.TType.DOUBLE, (short)6);
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void add_to_args_list(JavaObject javaObject) {
++        if (javaObject.get_args_list() == null) {
++        javaObject.set_args_list(new java.util.ArrayList<JavaObjectArg>());
++      }
++      javaObject.get_args_list().add(this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+     INT_ARG((short)1, "int_arg"),
+     LONG_ARG((short)2, "long_arg"),
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/KillOptions.java b/storm-client/src/jvm/org/apache/storm/generated/KillOptions.java
+index 1ab7693..89fe1ea 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/KillOptions.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/KillOptions.java
+@@ -35,7 +35,13 @@ public class KillOptions implements org.apache.storm.thrift.TBase<KillOptions, K
+ 
+   private int wait_secs; // optional
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void set_kill_options(TopologyActionOptions topologyActionOptions) {
++        if (this == null) throw new NullPointerException();
++      setField_ = TopologyActionOptions._Fields.KILL_OPTIONS;
++      value_ = this;
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+     WAIT_SECS((short)1, "wait_secs");
+ 
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/LSTopoHistory.java b/storm-client/src/jvm/org/apache/storm/generated/LSTopoHistory.java
+index ef7e0ab..d853a43 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/LSTopoHistory.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/LSTopoHistory.java
+@@ -41,7 +41,14 @@ public class LSTopoHistory implements org.apache.storm.thrift.TBase<LSTopoHistor
+   private @org.apache.storm.thrift.annotation.Nullable java.util.List<java.lang.String> users; // required
+   private @org.apache.storm.thrift.annotation.Nullable java.util.List<java.lang.String> groups; // required
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void add_to_topo_history(LSTopoHistoryList lsTopoHistoryList) {
++        if (lsTopoHistoryList.get_topo_history() == null) {
++        lsTopoHistoryList.set_topo_history(new java.util.ArrayList<LSTopoHistory>());
++      }
++      lsTopoHistoryList.get_topo_history().add(this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+     TOPOLOGY_ID((short)1, "topology_id"),
+     TIME_STAMP((short)2, "time_stamp"),
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/LSTopoHistoryList.java b/storm-client/src/jvm/org/apache/storm/generated/LSTopoHistoryList.java
+index 17afd66..5420fc4 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/LSTopoHistoryList.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/LSTopoHistoryList.java
+@@ -147,14 +147,7 @@ public class LSTopoHistoryList implements org.apache.storm.thrift.TBase<LSTopoHi
+     return (this.topo_history == null) ? null : this.topo_history.iterator();
+   }
+ 
+-  public void add_to_topo_history(LSTopoHistory elem) {
+-    if (this.topo_history == null) {
+-      this.topo_history = new java.util.ArrayList<LSTopoHistory>();
+-    }
+-    this.topo_history.add(elem);
+-  }
+-
+-  @org.apache.storm.thrift.annotation.Nullable
++    @org.apache.storm.thrift.annotation.Nullable
+   public java.util.List<LSTopoHistory> get_topo_history() {
+     return this.topo_history;
+   }
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/LocalAssignment.java b/storm-client/src/jvm/org/apache/storm/generated/LocalAssignment.java
+index 22095f9..5f0da86 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/LocalAssignment.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/LocalAssignment.java
+@@ -220,14 +220,7 @@ public class LocalAssignment implements org.apache.storm.thrift.TBase<LocalAssig
+     return (this.executors == null) ? null : this.executors.iterator();
+   }
+ 
+-  public void add_to_executors(ExecutorInfo elem) {
+-    if (this.executors == null) {
+-      this.executors = new java.util.ArrayList<ExecutorInfo>();
+-    }
+-    this.executors.add(elem);
+-  }
+-
+-  @org.apache.storm.thrift.annotation.Nullable
++    @org.apache.storm.thrift.annotation.Nullable
+   public java.util.List<ExecutorInfo> get_executors() {
+     return this.executors;
+   }
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/LogConfig.java b/storm-client/src/jvm/org/apache/storm/generated/LogConfig.java
+index 1b6e3b2..a239fe6 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/LogConfig.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/LogConfig.java
+@@ -145,14 +145,7 @@ public class LogConfig implements org.apache.storm.thrift.TBase<LogConfig, LogCo
+     return (this.named_logger_level == null) ? 0 : this.named_logger_level.size();
+   }
+ 
+-  public void put_to_named_logger_level(java.lang.String key, LogLevel val) {
+-    if (this.named_logger_level == null) {
+-      this.named_logger_level = new java.util.HashMap<java.lang.String,LogLevel>();
+-    }
+-    this.named_logger_level.put(key, val);
+-  }
+-
+-  @org.apache.storm.thrift.annotation.Nullable
++    @org.apache.storm.thrift.annotation.Nullable
+   public java.util.Map<java.lang.String,LogLevel> get_named_logger_level() {
+     return this.named_logger_level;
+   }
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/LogLevel.java b/storm-client/src/jvm/org/apache/storm/generated/LogLevel.java
+index 7879c73..09fb06d 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/LogLevel.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/LogLevel.java
+@@ -43,7 +43,14 @@ public class LogLevel implements org.apache.storm.thrift.TBase<LogLevel, LogLeve
+   private long reset_log_level_timeout_epoch; // optional
+   private @org.apache.storm.thrift.annotation.Nullable java.lang.String reset_log_level; // optional
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void put_to_named_logger_level(String key, LogConfig logConfig) {
++        if (logConfig.get_named_logger_level() == null) {
++        logConfig.set_named_logger_level(new java.util.HashMap<String, LogLevel>());
++      }
++      logConfig.get_named_logger_level().put(key, this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+     /**
+      * 
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/NodeInfo.java b/storm-client/src/jvm/org/apache/storm/generated/NodeInfo.java
+index 863c162..3041ab1 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/NodeInfo.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/NodeInfo.java
+@@ -37,7 +37,14 @@ public class NodeInfo implements org.apache.storm.thrift.TBase<NodeInfo, NodeInf
+   private @org.apache.storm.thrift.annotation.Nullable java.lang.String node; // required
+   private @org.apache.storm.thrift.annotation.Nullable java.util.Set<java.lang.Long> port; // required
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void put_to_executor_node_port(java.util.List<Long> key, Assignment assignment) {
++        if (assignment.get_executor_node_port() == null) {
++        assignment.set_executor_node_port(new java.util.HashMap<java.util.List<Long>, NodeInfo>());
++      }
++      assignment.get_executor_node_port().put(key, this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+     NODE((short)1, "node"),
+     PORT((short)2, "port");
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/NullStruct.java b/storm-client/src/jvm/org/apache/storm/generated/NullStruct.java
+index e1b4d5d..67aa889 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/NullStruct.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/NullStruct.java
+@@ -32,8 +32,14 @@ public class NullStruct implements org.apache.storm.thrift.TBase<NullStruct, Nul
+   private static final org.apache.storm.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new NullStructStandardSchemeFactory();
+   private static final org.apache.storm.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new NullStructTupleSchemeFactory();
+ 
++    public void set_shuffle(Grouping grouping) {
++        if (this == null) throw new NullPointerException();
++      setField_ = Grouping._Fields.SHUFFLE;
++      value_ = this;
++    }
++
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+ ;
+ 
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/SettableBlobMeta.java b/storm-client/src/jvm/org/apache/storm/generated/SettableBlobMeta.java
+index c33548e..937440f 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/SettableBlobMeta.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/SettableBlobMeta.java
+@@ -23,6 +23,12 @@
+  */
+ package org.apache.storm.generated;
+ 
++import org.apache.storm.blobstore.AtomicOutputStream;
++import org.apache.storm.blobstore.BlobStore;
++
++import javax.security.auth.Subject;
++import java.io.IOException;
++
+ @SuppressWarnings({"cast", "rawtypes", "serial", "unchecked", "unused"})
+ @javax.annotation.Generated(value = "Autogenerated by Thrift Compiler (0.12.0)")
+ public class SettableBlobMeta implements org.apache.storm.thrift.TBase<SettableBlobMeta, SettableBlobMeta._Fields>, java.io.Serializable, Cloneable, Comparable<SettableBlobMeta> {
+@@ -37,7 +43,33 @@ public class SettableBlobMeta implements org.apache.storm.thrift.TBase<SettableB
+   private @org.apache.storm.thrift.annotation.Nullable java.util.List<AccessControl> acl; // required
+   private int replication_factor; // optional
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    /**
++     * Wrapper called to create the blob which contains the byte data
++     *
++     * @param key  Key for the blob.
++     * @param data Byte data that needs to be uploaded.
++     * @param who  Is the subject creating the blob.
++     * @param blobStore
++     * @throws AuthorizationException
++     * @throws KeyAlreadyExistsException
++     * @throws IOException
++     */
++    public void createBlob(String key, byte[] data, Subject who, BlobStore blobStore) throws AuthorizationException,
++        KeyAlreadyExistsException, IOException {
++        AtomicOutputStream out = null;
++        try {
++            out = blobStore.createBlob(key, this, who);
++            out.write(data);
++            out.close();
++            out = null;
++        } finally {
++            if (out != null) {
++                out.cancel();
++            }
++        }
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+     ACL((short)1, "acl"),
+     REPLICATION_FACTOR((short)2, "replication_factor");
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/ShellComponent.java b/storm-client/src/jvm/org/apache/storm/generated/ShellComponent.java
+index c58828d..65d2034 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/ShellComponent.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/ShellComponent.java
+@@ -37,7 +37,13 @@ public class ShellComponent implements org.apache.storm.thrift.TBase<ShellCompon
+   private @org.apache.storm.thrift.annotation.Nullable java.lang.String execution_command; // required
+   private @org.apache.storm.thrift.annotation.Nullable java.lang.String script; // required
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void set_shell(ComponentObject componentObject) {
++        if (this == null) throw new NullPointerException();
++      setField_ = ComponentObject._Fields.SHELL;
++      value_ = this;
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+     EXECUTION_COMMAND((short)1, "execution_command"),
+     SCRIPT((short)2, "script");
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/SpecificAggregateStats.java b/storm-client/src/jvm/org/apache/storm/generated/SpecificAggregateStats.java
+index a58a286..1c6b7d2 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/SpecificAggregateStats.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/SpecificAggregateStats.java
+@@ -121,7 +121,7 @@ public class SpecificAggregateStats extends org.apache.storm.thrift.TUnion<Speci
+ 
+   public static SpecificAggregateStats bolt(BoltAggregateStats value) {
+     SpecificAggregateStats x = new SpecificAggregateStats();
+-    x.set_bolt(value);
++    value.set_bolt(x);
+     return x;
+   }
+ 
+@@ -275,13 +275,7 @@ public class SpecificAggregateStats extends org.apache.storm.thrift.TUnion<Speci
+     }
+   }
+ 
+-  public void set_bolt(BoltAggregateStats value) {
+-    if (value == null) throw new java.lang.NullPointerException();
+-    setField_ = _Fields.BOLT;
+-    value_ = value;
+-  }
+-
+-  public SpoutAggregateStats get_spout() {
++    public SpoutAggregateStats get_spout() {
+     if (getSetField() == _Fields.SPOUT) {
+       return (SpoutAggregateStats)getFieldValue();
+     } else {
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/StormBase.java b/storm-client/src/jvm/org/apache/storm/generated/StormBase.java
+index 7a68c20..0c12df5 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/StormBase.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/StormBase.java
+@@ -495,14 +495,7 @@ public class StormBase implements org.apache.storm.thrift.TBase<StormBase, Storm
+     return (this.component_debug == null) ? 0 : this.component_debug.size();
+   }
+ 
+-  public void put_to_component_debug(java.lang.String key, DebugOptions val) {
+-    if (this.component_debug == null) {
+-      this.component_debug = new java.util.HashMap<java.lang.String,DebugOptions>();
+-    }
+-    this.component_debug.put(key, val);
+-  }
+-
+-  @org.apache.storm.thrift.annotation.Nullable
++    @org.apache.storm.thrift.annotation.Nullable
+   public java.util.Map<java.lang.String,DebugOptions> get_component_debug() {
+     return this.component_debug;
+   }
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/StormTopology.java b/storm-client/src/jvm/org/apache/storm/generated/StormTopology.java
+index dc1fd18..2c252a5 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/StormTopology.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/StormTopology.java
+@@ -23,6 +23,10 @@
+  */
+ package org.apache.storm.generated;
+ 
++import org.apache.storm.daemon.StormCommon;
++
++import java.util.Map;
++
+ @SuppressWarnings({"cast", "rawtypes", "serial", "unchecked", "unused"})
+ @javax.annotation.Generated(value = "Autogenerated by Thrift Compiler (0.12.0)")
+ public class StormTopology implements org.apache.storm.thrift.TBase<StormTopology, StormTopology._Fields>, java.io.Serializable, Cloneable, Comparable<StormTopology> {
+@@ -53,7 +57,25 @@ public class StormTopology implements org.apache.storm.thrift.TBase<StormTopolog
+   private @org.apache.storm.thrift.annotation.Nullable java.util.Map<java.lang.String,java.util.Set<java.lang.String>> component_to_shared_memory; // optional
+   private @org.apache.storm.thrift.annotation.Nullable java.util.Map<java.lang.String,SharedMemory> shared_memory; // optional
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public StormTopology systemTopologyImpl(Map<String, Object> topoConf, StormCommon stormCommon) throws InvalidTopologyException {
++        stormCommon.validateBasic(this);
++
++        StormTopology ret = deepCopy();
++        stormCommon.addAcker(topoConf, ret);
++        if (stormCommon.hasEventLoggers(topoConf)) {
++            stormCommon.addEventLogger(topoConf, ret);
++        }
++        stormCommon.addMetricComponents(topoConf, ret);
++        stormCommon.addSystemComponents(topoConf, ret);
++        stormCommon.addMetricStreams(ret);
++        stormCommon.addSystemStreams(ret);
++
++        stormCommon.validateStructure(ret);
++
++        return ret;
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+     SPOUTS((short)1, "spouts"),
+     BOLTS((short)2, "bolts"),
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/SupervisorPageInfo.java b/storm-client/src/jvm/org/apache/storm/generated/SupervisorPageInfo.java
+index a77f242..32c41cd 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/SupervisorPageInfo.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/SupervisorPageInfo.java
+@@ -197,14 +197,7 @@ public class SupervisorPageInfo implements org.apache.storm.thrift.TBase<Supervi
+     return (this.worker_summaries == null) ? null : this.worker_summaries.iterator();
+   }
+ 
+-  public void add_to_worker_summaries(WorkerSummary elem) {
+-    if (this.worker_summaries == null) {
+-      this.worker_summaries = new java.util.ArrayList<WorkerSummary>();
+-    }
+-    this.worker_summaries.add(elem);
+-  }
+-
+-  @org.apache.storm.thrift.annotation.Nullable
++    @org.apache.storm.thrift.annotation.Nullable
+   public java.util.List<WorkerSummary> get_worker_summaries() {
+     return this.worker_summaries;
+   }
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/SupervisorSummary.java b/storm-client/src/jvm/org/apache/storm/generated/SupervisorSummary.java
+index 8cb28ec..b4b6598 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/SupervisorSummary.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/SupervisorSummary.java
+@@ -55,7 +55,14 @@ public class SupervisorSummary implements org.apache.storm.thrift.TBase<Supervis
+   private double fragmented_mem; // optional
+   private double fragmented_cpu; // optional
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void add_to_supervisors(ClusterSummary clusterSummary) {
++        if (clusterSummary.get_supervisors() == null) {
++        clusterSummary.set_supervisors(new java.util.ArrayList<SupervisorSummary>());
++      }
++      clusterSummary.get_supervisors().add(this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+     HOST((short)1, "host"),
+     UPTIME_SECS((short)2, "uptime_secs"),
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/SupervisorWorkerHeartbeat.java b/storm-client/src/jvm/org/apache/storm/generated/SupervisorWorkerHeartbeat.java
+index 497a447..dde877e 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/SupervisorWorkerHeartbeat.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/SupervisorWorkerHeartbeat.java
+@@ -39,7 +39,14 @@ public class SupervisorWorkerHeartbeat implements org.apache.storm.thrift.TBase<
+   private @org.apache.storm.thrift.annotation.Nullable java.util.List<ExecutorInfo> executors; // required
+   private int time_secs; // required
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void add_to_worker_heartbeats(SupervisorWorkerHeartbeats supervisorWorkerHeartbeats) {
++        if (supervisorWorkerHeartbeats.get_worker_heartbeats() == null) {
++        supervisorWorkerHeartbeats.set_worker_heartbeats(new java.util.ArrayList<SupervisorWorkerHeartbeat>());
++      }
++      supervisorWorkerHeartbeats.get_worker_heartbeats().add(this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+     STORM_ID((short)1, "storm_id"),
+     EXECUTORS((short)2, "executors"),
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/SupervisorWorkerHeartbeats.java b/storm-client/src/jvm/org/apache/storm/generated/SupervisorWorkerHeartbeats.java
+index 20edbfb..eb196a0 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/SupervisorWorkerHeartbeats.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/SupervisorWorkerHeartbeats.java
+@@ -184,14 +184,7 @@ public class SupervisorWorkerHeartbeats implements org.apache.storm.thrift.TBase
+     return (this.worker_heartbeats == null) ? null : this.worker_heartbeats.iterator();
+   }
+ 
+-  public void add_to_worker_heartbeats(SupervisorWorkerHeartbeat elem) {
+-    if (this.worker_heartbeats == null) {
+-      this.worker_heartbeats = new java.util.ArrayList<SupervisorWorkerHeartbeat>();
+-    }
+-    this.worker_heartbeats.add(elem);
+-  }
+-
+-  @org.apache.storm.thrift.annotation.Nullable
++    @org.apache.storm.thrift.annotation.Nullable
+   public java.util.List<SupervisorWorkerHeartbeat> get_worker_heartbeats() {
+     return this.worker_heartbeats;
+   }
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/ThriftSerializedObject.java b/storm-client/src/jvm/org/apache/storm/generated/ThriftSerializedObject.java
+index 8a77daa..d3cfe09 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/ThriftSerializedObject.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/ThriftSerializedObject.java
+@@ -23,6 +23,8 @@
+  */
+ package org.apache.storm.generated;
+ 
++import org.apache.storm.utils.LocalState;
++
+ @SuppressWarnings({"cast", "rawtypes", "serial", "unchecked", "unused"})
+ @javax.annotation.Generated(value = "Autogenerated by Thrift Compiler (0.12.0)")
+ public class ThriftSerializedObject implements org.apache.storm.thrift.TBase<ThriftSerializedObject, ThriftSerializedObject._Fields>, java.io.Serializable, Cloneable, Comparable<ThriftSerializedObject> {
+@@ -37,7 +39,24 @@ public class ThriftSerializedObject implements org.apache.storm.thrift.TBase<Thr
+   private @org.apache.storm.thrift.annotation.Nullable java.lang.String name; // required
+   private @org.apache.storm.thrift.annotation.Nullable java.nio.ByteBuffer bits; // required
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public TBase deserialize(TDeserializer td, LocalState localState) {
++        try {
++            Class<?> clazz;
++            try {
++                clazz = Class.forName(get_name());
++            } catch (ClassNotFoundException ex) {
++                //Try to maintain rolling upgrade compatible with 0.10 releases
++                clazz = Class.forName(get_name().replaceAll("^backtype\\.storm\\.", "org.apache.storm."));
++            }
++            TBase instance = (TBase) clazz.newInstance();
++            td.deserialize(instance, get_bits());
++            return instance;
++        } catch (Exception e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+     NAME((short)1, "name"),
+     BITS((short)2, "bits");
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/TopologyActionOptions.java b/storm-client/src/jvm/org/apache/storm/generated/TopologyActionOptions.java
+index f0ce214..03be34e 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/TopologyActionOptions.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/TopologyActionOptions.java
+@@ -121,7 +121,7 @@ public class TopologyActionOptions extends org.apache.storm.thrift.TUnion<Topolo
+ 
+   public static TopologyActionOptions kill_options(KillOptions value) {
+     TopologyActionOptions x = new TopologyActionOptions();
+-    x.set_kill_options(value);
++    value.set_kill_options(x);
+     return x;
+   }
+ 
+@@ -275,13 +275,7 @@ public class TopologyActionOptions extends org.apache.storm.thrift.TUnion<Topolo
+     }
+   }
+ 
+-  public void set_kill_options(KillOptions value) {
+-    if (value == null) throw new java.lang.NullPointerException();
+-    setField_ = _Fields.KILL_OPTIONS;
+-    value_ = value;
+-  }
+-
+-  public RebalanceOptions get_rebalance_options() {
++    public RebalanceOptions get_rebalance_options() {
+     if (getSetField() == _Fields.REBALANCE_OPTIONS) {
+       return (RebalanceOptions)getFieldValue();
+     } else {
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/TopologyInfo.java b/storm-client/src/jvm/org/apache/storm/generated/TopologyInfo.java
+index 0596f79..f2b38c4 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/TopologyInfo.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/TopologyInfo.java
+@@ -439,14 +439,7 @@ public class TopologyInfo implements org.apache.storm.thrift.TBase<TopologyInfo,
+     return (this.executors == null) ? null : this.executors.iterator();
+   }
+ 
+-  public void add_to_executors(ExecutorSummary elem) {
+-    if (this.executors == null) {
+-      this.executors = new java.util.ArrayList<ExecutorSummary>();
+-    }
+-    this.executors.add(elem);
+-  }
+-
+-  @org.apache.storm.thrift.annotation.Nullable
++    @org.apache.storm.thrift.annotation.Nullable
+   public java.util.List<ExecutorSummary> get_executors() {
+     return this.executors;
+   }
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/TopologyPageInfo.java b/storm-client/src/jvm/org/apache/storm/generated/TopologyPageInfo.java
+index 90d950a..d3f35e2 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/TopologyPageInfo.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/TopologyPageInfo.java
+@@ -698,14 +698,7 @@ public class TopologyPageInfo implements org.apache.storm.thrift.TBase<TopologyP
+     return (this.id_to_spout_agg_stats == null) ? 0 : this.id_to_spout_agg_stats.size();
+   }
+ 
+-  public void put_to_id_to_spout_agg_stats(java.lang.String key, ComponentAggregateStats val) {
+-    if (this.id_to_spout_agg_stats == null) {
+-      this.id_to_spout_agg_stats = new java.util.HashMap<java.lang.String,ComponentAggregateStats>();
+-    }
+-    this.id_to_spout_agg_stats.put(key, val);
+-  }
+-
+-  @org.apache.storm.thrift.annotation.Nullable
++    @org.apache.storm.thrift.annotation.Nullable
+   public java.util.Map<java.lang.String,ComponentAggregateStats> get_id_to_spout_agg_stats() {
+     return this.id_to_spout_agg_stats;
+   }
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/WorkerMetricList.java b/storm-client/src/jvm/org/apache/storm/generated/WorkerMetricList.java
+index 6ca8470..2aacf56 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/WorkerMetricList.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/WorkerMetricList.java
+@@ -147,14 +147,7 @@ public class WorkerMetricList implements org.apache.storm.thrift.TBase<WorkerMet
+     return (this.metrics == null) ? null : this.metrics.iterator();
+   }
+ 
+-  public void add_to_metrics(WorkerMetricPoint elem) {
+-    if (this.metrics == null) {
+-      this.metrics = new java.util.ArrayList<WorkerMetricPoint>();
+-    }
+-    this.metrics.add(elem);
+-  }
+-
+-  @org.apache.storm.thrift.annotation.Nullable
++    @org.apache.storm.thrift.annotation.Nullable
+   public java.util.List<WorkerMetricPoint> get_metrics() {
+     return this.metrics;
+   }
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/WorkerMetricPoint.java b/storm-client/src/jvm/org/apache/storm/generated/WorkerMetricPoint.java
+index ca3b14e..b915656 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/WorkerMetricPoint.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/WorkerMetricPoint.java
+@@ -45,7 +45,14 @@ public class WorkerMetricPoint implements org.apache.storm.thrift.TBase<WorkerMe
+   private @org.apache.storm.thrift.annotation.Nullable java.lang.String executorId; // required
+   private @org.apache.storm.thrift.annotation.Nullable java.lang.String streamId; // required
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void add_to_metrics(WorkerMetricList workerMetricList) {
++        if (workerMetricList.get_metrics() == null) {
++        workerMetricList.set_metrics(new java.util.ArrayList<WorkerMetricPoint>());
++      }
++      workerMetricList.get_metrics().add(this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+     METRIC_NAME((short)1, "metricName"),
+     TIMESTAMP((short)2, "timestamp"),
+diff --git a/storm-client/src/jvm/org/apache/storm/generated/WorkerSummary.java b/storm-client/src/jvm/org/apache/storm/generated/WorkerSummary.java
+index 4bbcdf0..b3cc7c7 100644
+--- a/storm-client/src/jvm/org/apache/storm/generated/WorkerSummary.java
++++ b/storm-client/src/jvm/org/apache/storm/generated/WorkerSummary.java
+@@ -63,7 +63,14 @@ public class WorkerSummary implements org.apache.storm.thrift.TBase<WorkerSummar
+   private double assigned_memoffheap; // optional
+   private double assigned_cpu; // optional
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void add_to_worker_summaries(SupervisorPageInfo supervisorPageInfo) {
++        if (supervisorPageInfo.get_worker_summaries() == null) {
++        supervisorPageInfo.set_worker_summaries(new java.util.ArrayList<WorkerSummary>());
++      }
++      supervisorPageInfo.get_worker_summaries().add(this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.storm.thrift.TFieldIdEnum {
+     SUPERVISOR_ID((short)1, "supervisor_id"),
+     HOST((short)2, "host"),
+diff --git a/storm-client/src/jvm/org/apache/storm/metric/SystemBolt.java b/storm-client/src/jvm/org/apache/storm/metric/SystemBolt.java
+index a168230..cd27fd0 100644
+--- a/storm-client/src/jvm/org/apache/storm/metric/SystemBolt.java
++++ b/storm-client/src/jvm/org/apache/storm/metric/SystemBolt.java
+@@ -28,7 +28,6 @@ import org.apache.storm.task.OutputCollector;
+ import org.apache.storm.task.TopologyContext;
+ import org.apache.storm.tuple.Tuple;
+ import org.apache.storm.utils.ObjectReader;
+-import org.apache.storm.utils.ReflectionUtils;
+ 
+ 
+ // There is one task inside one executor for each worker of the topology.
+@@ -77,21 +76,8 @@ public class SystemBolt implements IBolt {
+             context.registerMetric("GC/" + b.getName().replaceAll("\\W", ""), new GarbageCollectorMetric(b), bucketSize);
+         }
+ 
+-        registerMetrics(context, (Map<String, String>) topoConf.get(Config.WORKER_METRICS), bucketSize, topoConf);
+-        registerMetrics(context, (Map<String, String>) topoConf.get(Config.TOPOLOGY_WORKER_METRICS), bucketSize, topoConf);
+-    }
+-
+-    private void registerMetrics(TopologyContext context, Map<String, String> metrics, int bucketSize, Map<String, Object> conf) {
+-        if (metrics == null) {
+-            return;
+-        }
+-        for (Map.Entry<String, String> metric : metrics.entrySet()) {
+-            try {
+-                context.registerMetric(metric.getKey(), (IMetric) ReflectionUtils.newInstance(metric.getValue(), conf), bucketSize);
+-            } catch (Exception e) {
+-                throw new RuntimeException(e);
+-            }
+-        }
++        context.registerMetrics((Map<String, String>) topoConf.get(Config.WORKER_METRICS), bucketSize, topoConf, this);
++        context.registerMetrics((Map<String, String>) topoConf.get(Config.TOPOLOGY_WORKER_METRICS), bucketSize, topoConf, this);
+     }
+ 
+     @Override
+diff --git a/storm-client/src/jvm/org/apache/storm/multilang/BoltMsg.java b/storm-client/src/jvm/org/apache/storm/multilang/BoltMsg.java
+index 5153664..e358b3c 100644
+--- a/storm-client/src/jvm/org/apache/storm/multilang/BoltMsg.java
++++ b/storm-client/src/jvm/org/apache/storm/multilang/BoltMsg.java
+@@ -12,6 +12,9 @@
+ 
+ package org.apache.storm.multilang;
+ 
++import org.apache.storm.utils.ShellProcess;
++
++import java.io.IOException;
+ import java.util.List;
+ 
+ /**
+@@ -67,4 +70,10 @@ public class BoltMsg {
+     public void setTuple(List<Object> tuple) {
+         this.tuple = tuple;
+     }
++
++    public void writeBoltMsg(ShellProcess shellProcess) throws IOException {
++        shellProcess.serializer.writeBoltMsg(this);
++        // Log any info sent on the error stream
++        shellProcess.logErrorStream();
++    }
+ }
+diff --git a/storm-client/src/jvm/org/apache/storm/pacemaker/codec/ThriftEncoder.java b/storm-client/src/jvm/org/apache/storm/pacemaker/codec/ThriftEncoder.java
+index 349803f..dedf5b8 100644
+--- a/storm-client/src/jvm/org/apache/storm/pacemaker/codec/ThriftEncoder.java
++++ b/storm-client/src/jvm/org/apache/storm/pacemaker/codec/ThriftEncoder.java
+@@ -14,7 +14,6 @@ package org.apache.storm.pacemaker.codec;
+ 
+ import java.util.List;
+ import org.apache.storm.generated.HBMessage;
+-import org.apache.storm.generated.HBMessageData;
+ import org.apache.storm.generated.HBServerMessageType;
+ import org.apache.storm.messaging.netty.ControlMessage;
+ import org.apache.storm.messaging.netty.INettySerializable;
+@@ -33,26 +32,6 @@ public class ThriftEncoder extends MessageToMessageEncoder<Object> {
+     private static final Logger LOG = LoggerFactory
+         .getLogger(ThriftEncoder.class);
+ 
+-    private HBMessage encodeNettySerializable(ByteBufAllocator alloc,
+-        INettySerializable netty_message, HBServerMessageType mType) {
+-
+-        HBMessageData message_data = new HBMessageData();
+-        HBMessage m = new HBMessage();
+-        byte[] messageBuffer = new byte[netty_message.encodeLength()];
+-        ByteBuf wrappedBuffer = Unpooled.wrappedBuffer(messageBuffer);
+-        try {
+-            wrappedBuffer.resetWriterIndex();
+-            netty_message.write(wrappedBuffer);
+-            
+-            message_data.set_message_blob(messageBuffer);
+-            m.set_type(mType);
+-            m.set_data(message_data);
+-            return m;
+-        } finally {
+-            wrappedBuffer.release();
+-        }
+-    }
+-
+     @Override
+     protected void encode(ChannelHandlerContext channelHandlerContext, Object msg, List<Object> out) throws Exception {
+         if (msg == null) {
+@@ -75,7 +54,7 @@ public class ThriftEncoder extends MessageToMessageEncoder<Object> {
+                 LOG.error("Didn't recognise INettySerializable: " + nettyMsg.toString());
+                 throw new RuntimeException("Unrecognized INettySerializable.");
+             }
+-            m = encodeNettySerializable(alloc, nettyMsg, type);
++            m = type.encodeNettySerializable(alloc, nettyMsg, this);
+         } else {
+             m = (HBMessage) msg;
+         }
+diff --git a/storm-client/src/jvm/org/apache/storm/security/auth/ReqContext.java b/storm-client/src/jvm/org/apache/storm/security/auth/ReqContext.java
+index 0be4810..a9b0de8 100644
+--- a/storm-client/src/jvm/org/apache/storm/security/auth/ReqContext.java
++++ b/storm-client/src/jvm/org/apache/storm/security/auth/ReqContext.java
+@@ -25,6 +25,8 @@ import java.security.Principal;
+ import java.util.Set;
+ import java.util.concurrent.atomic.AtomicInteger;
+ import javax.security.auth.Subject;
++
++import org.apache.storm.security.auth.authorizer.DRPCSimpleACLAuthorizer;
+ import org.apache.storm.shade.com.google.common.annotations.VisibleForTesting;
+ 
+ /**
+@@ -155,4 +157,14 @@ public class ReqContext {
+     public int requestID() {
+         return reqID;
+     }
++
++    public String getUserFromContext(DRPCSimpleACLAuthorizer drpcSimpleACLAuthorizer) {
++        if (this != null) {
++            Principal princ = principal();
++            if (princ != null) {
++                return princ.getName();
++            }
++        }
++        return null;
++    }
+ }
+diff --git a/storm-client/src/jvm/org/apache/storm/security/auth/authorizer/DRPCSimpleACLAuthorizer.java b/storm-client/src/jvm/org/apache/storm/security/auth/authorizer/DRPCSimpleACLAuthorizer.java
+index 3912fec..342ba54 100644
+--- a/storm-client/src/jvm/org/apache/storm/security/auth/authorizer/DRPCSimpleACLAuthorizer.java
++++ b/storm-client/src/jvm/org/apache/storm/security/auth/authorizer/DRPCSimpleACLAuthorizer.java
+@@ -13,7 +13,6 @@
+ package org.apache.storm.security.auth.authorizer;
+ 
+ import java.lang.reflect.Field;
+-import java.security.Principal;
+ import java.util.Collection;
+ import java.util.HashMap;
+ import java.util.HashSet;
+@@ -86,16 +85,6 @@ public class DRPCSimpleACLAuthorizer extends DRPCAuthorizerBase {
+         _ptol = ClientAuthUtils.getPrincipalToLocalPlugin(conf);
+     }
+ 
+-    private String getUserFromContext(ReqContext context) {
+-        if (context != null) {
+-            Principal princ = context.principal();
+-            if (princ != null) {
+-                return princ.getName();
+-            }
+-        }
+-        return null;
+-    }
+-
+     private String getLocalUserFromContext(ReqContext context) {
+         if (context != null) {
+             return _ptol.toLocal(context.principal());
+@@ -121,7 +110,7 @@ public class DRPCSimpleACLAuthorizer extends DRPCAuthorizerBase {
+                     LOG.warn("Caught Exception while accessing ACL", ex);
+                     return false;
+                 }
+-                String principal = getUserFromContext(context);
++                String principal = context.getUserFromContext(this);
+                 String user = getLocalUserFromContext(context);
+                 if (value == null) {
+                     LOG.warn("Configuration for function '" + function + "' is " +
+diff --git a/storm-client/src/jvm/org/apache/storm/task/ShellBolt.java b/storm-client/src/jvm/org/apache/storm/task/ShellBolt.java
+index 6b2a11f..5e69076 100644
+--- a/storm-client/src/jvm/org/apache/storm/task/ShellBolt.java
++++ b/storm-client/src/jvm/org/apache/storm/task/ShellBolt.java
+@@ -374,13 +374,13 @@ public class ShellBolt implements IBolt {
+                         LOG.debug("BOLT - sending heartbeat request to subprocess");
+ 
+                         String genId = Long.toString(_rand.nextLong());
+-                        _process.writeBoltMsg(createHeartbeatBoltMessage(genId));
++                        createHeartbeatBoltMessage(genId).writeBoltMsg(_process);
+                         sendHeartbeatFlag.compareAndSet(true, false);
+                     }
+ 
+                     Object write = _pendingWrites.poll(1, SECONDS);
+                     if (write instanceof BoltMsg) {
+-                        _process.writeBoltMsg((BoltMsg) write);
++                        ((BoltMsg) write).writeBoltMsg(_process);
+                     } else if (write instanceof List<?>) {
+                         _process.writeTaskIds((List<Integer>) write);
+                     } else if (write != null) {
+diff --git a/storm-client/src/jvm/org/apache/storm/task/TopologyContext.java b/storm-client/src/jvm/org/apache/storm/task/TopologyContext.java
+index d6461d4..41d7a4d 100644
+--- a/storm-client/src/jvm/org/apache/storm/task/TopologyContext.java
++++ b/storm-client/src/jvm/org/apache/storm/task/TopologyContext.java
+@@ -28,6 +28,7 @@ import org.apache.storm.generated.GlobalStreamId;
+ import org.apache.storm.generated.Grouping;
+ import org.apache.storm.generated.StormTopology;
+ import org.apache.storm.hooks.ITaskHook;
++import org.apache.storm.metric.SystemBolt;
+ import org.apache.storm.metric.api.CombinedMetric;
+ import org.apache.storm.metric.api.ICombiner;
+ import org.apache.storm.metric.api.IMetric;
+@@ -38,6 +39,7 @@ import org.apache.storm.shade.org.apache.commons.lang.NotImplementedException;
+ import org.apache.storm.shade.org.json.simple.JSONValue;
+ import org.apache.storm.state.ISubscribedState;
+ import org.apache.storm.tuple.Fields;
++import org.apache.storm.utils.ReflectionUtils;
+ import org.apache.storm.utils.Utils;
+ 
+ /**
+@@ -422,4 +424,17 @@ public class TopologyContext extends WorkerTopologyContext implements IMetricsCo
+     private String metricName(String name) {
+         return metricRegistry.metricName(name, this);
+     }
++
++    public void registerMetrics(Map<String, String> metrics, int bucketSize, Map<String, Object> conf, SystemBolt systemBolt) {
++        if (metrics == null) {
++            return;
++        }
++        for (Map.Entry<String, String> metric : metrics.entrySet()) {
++            try {
++                registerMetric(metric.getKey(), (IMetric) ReflectionUtils.newInstance(metric.getValue(), conf), bucketSize);
++            } catch (Exception e) {
++                throw new RuntimeException(e);
++            }
++        }
++    }
+ }
+diff --git a/storm-client/src/jvm/org/apache/storm/task/WorkerTopologyContext.java b/storm-client/src/jvm/org/apache/storm/task/WorkerTopologyContext.java
+index 6c6e5a4..0c3e879 100644
+--- a/storm-client/src/jvm/org/apache/storm/task/WorkerTopologyContext.java
++++ b/storm-client/src/jvm/org/apache/storm/task/WorkerTopologyContext.java
+@@ -14,12 +14,18 @@ package org.apache.storm.task;
+ 
+ import java.io.File;
+ import java.io.IOException;
++import java.util.HashMap;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.concurrent.ExecutorService;
+ import java.util.concurrent.atomic.AtomicReference;
++
++import org.apache.storm.daemon.GrouperFactory;
++import org.apache.storm.executor.Executor;
++import org.apache.storm.generated.Grouping;
+ import org.apache.storm.generated.NodeInfo;
+ import org.apache.storm.generated.StormTopology;
++import org.apache.storm.grouping.LoadAwareCustomStreamGrouping;
+ import org.apache.storm.tuple.Fields;
+ 
+ public class WorkerTopologyContext extends GeneralTopologyContext {
+@@ -133,4 +139,42 @@ public class WorkerTopologyContext extends GeneralTopologyContext {
+     public ExecutorService getSharedExecutor() {
+         return (ExecutorService) _defaultResources.get(SHARED_EXECUTOR);
+     }
++
++    /**
++     * Returns map of stream id to component id to grouper.
++     * @param componentId
++     * @param topoConf
++     * @param executor
++     */
++    public Map<String, Map<String, LoadAwareCustomStreamGrouping>> outboundComponents(
++            String componentId, Map<String, Object> topoConf, Executor executor) {
++        Map<String, Map<String, LoadAwareCustomStreamGrouping>> ret = new HashMap<>();
++
++        Map<String, Map<String, Grouping>> outputGroupings = getTargets(componentId);
++        for (Map.Entry<String, Map<String, Grouping>> entry : outputGroupings.entrySet()) {
++            String streamId = entry.getKey();
++            Map<String, Grouping> componentGrouping = entry.getValue();
++            Fields outFields = getComponentOutputFields(componentId, streamId);
++            Map<String, LoadAwareCustomStreamGrouping> componentGrouper = new HashMap<String, LoadAwareCustomStreamGrouping>();
++            for (Map.Entry<String, Grouping> cg : componentGrouping.entrySet()) {
++                String component = cg.getKey();
++                Grouping grouping = cg.getValue();
++                List<Integer> outTasks = getComponentTasks(component);
++                LoadAwareCustomStreamGrouping grouper = GrouperFactory.mkGrouper(
++                        this, componentId, streamId, outFields, grouping, outTasks, topoConf);
++                componentGrouper.put(component, grouper);
++            }
++            if (componentGrouper.size() > 0) {
++                ret.put(streamId, componentGrouper);
++            }
++        }
++
++        for (String stream : getComponentCommon(componentId).get_streams().keySet()) {
++            if (!ret.containsKey(stream)) {
++                ret.put(stream, null);
++            }
++        }
++
++        return ret;
++    }
+ }
+diff --git a/storm-client/src/jvm/org/apache/storm/topology/ConfigurableTopology.java b/storm-client/src/jvm/org/apache/storm/topology/ConfigurableTopology.java
+index 3915198..28b32b9 100644
+--- a/storm-client/src/jvm/org/apache/storm/topology/ConfigurableTopology.java
++++ b/storm-client/src/jvm/org/apache/storm/topology/ConfigurableTopology.java
+@@ -29,7 +29,6 @@ import java.util.Iterator;
+ import java.util.List;
+ import java.util.Map;
+ import org.apache.storm.Config;
+-import org.apache.storm.StormSubmitter;
+ import org.apache.storm.shade.org.apache.commons.lang.StringUtils;
+ import org.apache.storm.shade.org.yaml.snakeyaml.Yaml;
+ import org.apache.storm.shade.org.yaml.snakeyaml.constructor.SafeConstructor;
+@@ -109,21 +108,7 @@ public abstract class ConfigurableTopology {
+             throw new RuntimeException(
+                 "No value found for " + Config.TOPOLOGY_NAME);
+         }
+-        return submit(name, conf, builder);
+-    }
+-
+-    /**
+-     * Submits the topology under a specific name
+-     **/
+-    protected int submit(String name, Config conf, TopologyBuilder builder) {
+-        try {
+-            StormSubmitter.submitTopology(name, conf,
+-                                          builder.createTopology());
+-        } catch (Exception e) {
+-            e.printStackTrace();
+-            return -1;
+-        }
+-        return 0;
++        return conf.submit(name, builder, this);
+     }
+ 
+     private String[] parse(String args[]) {
+diff --git a/storm-client/src/jvm/org/apache/storm/topology/TopologyBuilder.java b/storm-client/src/jvm/org/apache/storm/topology/TopologyBuilder.java
+index eafc728..18416c6 100644
+--- a/storm-client/src/jvm/org/apache/storm/topology/TopologyBuilder.java
++++ b/storm-client/src/jvm/org/apache/storm/topology/TopologyBuilder.java
+@@ -538,7 +538,7 @@ public class TopologyBuilder {
+             }
+         }
+         for (GlobalStreamId streamId : checkPointInputs) {
+-            component.put_to_inputs(streamId, Grouping.all(new NullStruct()));
++            streamId.put_to_inputs(Grouping.all(new NullStruct()), component);
+         }
+     }
+ 
+@@ -709,7 +709,7 @@ public class TopologyBuilder {
+         }
+ 
+         private BoltDeclarer grouping(String componentId, String streamId, Grouping grouping) {
+-            commons.get(_boltId).put_to_inputs(new GlobalStreamId(componentId, streamId), grouping);
++            new GlobalStreamId(componentId, streamId).put_to_inputs(grouping, commons.get(_boltId));
+             return this;
+         }
+ 
+diff --git a/storm-client/src/jvm/org/apache/storm/trident/fluent/GroupedStream.java b/storm-client/src/jvm/org/apache/storm/trident/fluent/GroupedStream.java
+index 1a84dcd..84255a1 100644
+--- a/storm-client/src/jvm/org/apache/storm/trident/fluent/GroupedStream.java
++++ b/storm-client/src/jvm/org/apache/storm/trident/fluent/GroupedStream.java
+@@ -47,13 +47,7 @@ public class GroupedStream implements IAggregatableStream, GlobalAggregationSche
+     }
+ 
+     public Stream aggregate(Aggregator agg, Fields functionFields) {
+-        return aggregate(null, agg, functionFields);
+-    }
+-
+-    public Stream aggregate(Fields inputFields, Aggregator agg, Fields functionFields) {
+-        return new ChainedAggregatorDeclarer(this, this)
+-            .aggregate(inputFields, agg, functionFields)
+-            .chainEnd();
++        return null.aggregate(agg, functionFields, this);
+     }
+ 
+     public Stream aggregate(CombinerAggregator agg, Fields functionFields) {
+diff --git a/storm-client/src/jvm/org/apache/storm/trident/graph/GraphGrouper.java b/storm-client/src/jvm/org/apache/storm/trident/graph/GraphGrouper.java
+index 88ccfeb..5084e17 100644
+--- a/storm-client/src/jvm/org/apache/storm/trident/graph/GraphGrouper.java
++++ b/storm-client/src/jvm/org/apache/storm/trident/graph/GraphGrouper.java
+@@ -55,7 +55,7 @@ public class GraphGrouper {
+         while (somethingHappened) {
+             somethingHappened = false;
+             for (Group g : currGroups) {
+-                Collection<Group> outgoingGroups = outgoingGroups(g);
++                Collection<Group> outgoingGroups = g.outgoingGroups(this);
+                 if (outgoingGroups.size() == 1) {
+                     Group out = outgoingGroups.iterator().next();
+                     if (out != null) {
+@@ -88,17 +88,6 @@ public class GraphGrouper {
+         }
+     }
+ 
+-    public Collection<Group> outgoingGroups(Group g) {
+-        Set<Group> ret = new HashSet<>();
+-        for (Node n : g.outgoingNodes()) {
+-            Group other = nodeGroup(n);
+-            if (other == null || !other.equals(g)) {
+-                ret.add(other);
+-            }
+-        }
+-        return ret;
+-    }
+-
+     public Collection<Group> incomingGroups(Group g) {
+         Set<Group> ret = new HashSet<>();
+         for (Node n : g.incomingNodes()) {
+diff --git a/storm-client/src/jvm/org/apache/storm/trident/graph/Group.java b/storm-client/src/jvm/org/apache/storm/trident/graph/Group.java
+index 681b429..8f3ccc6 100644
+--- a/storm-client/src/jvm/org/apache/storm/trident/graph/Group.java
++++ b/storm-client/src/jvm/org/apache/storm/trident/graph/Group.java
+@@ -12,13 +12,8 @@
+ 
+ package org.apache.storm.trident.graph;
+ 
+-import java.util.Arrays;
+-import java.util.HashMap;
+-import java.util.HashSet;
+-import java.util.List;
+-import java.util.Map;
+-import java.util.Set;
+-import java.util.UUID;
++import java.util.*;
++
+ import org.apache.storm.generated.SharedMemory;
+ import org.apache.storm.shade.org.jgrapht.DirectedGraph;
+ import org.apache.storm.trident.planner.Node;
+@@ -154,4 +149,15 @@ public class Group {
+     public String toString() {
+         return nodes.toString();
+     }
++
++    public Collection<Group> outgoingGroups(GraphGrouper graphGrouper) {
++        Set<Group> ret = new HashSet<>();
++        for (Node n : outgoingNodes()) {
++            Group other = graphGrouper.nodeGroup(n);
++            if (other == null || !other.equals(this)) {
++                ret.add(other);
++            }
++        }
++        return ret;
++    }
+ }
+diff --git a/storm-client/src/jvm/org/apache/storm/tuple/Fields.java b/storm-client/src/jvm/org/apache/storm/tuple/Fields.java
+index 5661516..bf72bd6 100644
+--- a/storm-client/src/jvm/org/apache/storm/tuple/Fields.java
++++ b/storm-client/src/jvm/org/apache/storm/tuple/Fields.java
+@@ -12,6 +12,11 @@
+ 
+ package org.apache.storm.tuple;
+ 
++import org.apache.storm.trident.Stream;
++import org.apache.storm.trident.fluent.ChainedAggregatorDeclarer;
++import org.apache.storm.trident.fluent.GroupedStream;
++import org.apache.storm.trident.operation.Aggregator;
++
+ import java.io.Serializable;
+ import java.util.ArrayList;
+ import java.util.Arrays;
+@@ -133,4 +138,10 @@ public class Fields implements Iterable<String>, Serializable {
+     public int hashCode() {
+         return _fields.hashCode();
+     }
++
++    public Stream aggregate(Aggregator agg, Fields functionFields, GroupedStream groupedStream) {
++        return new ChainedAggregatorDeclarer(groupedStream, groupedStream)
++            .aggregate(this, agg, functionFields)
++            .chainEnd();
++    }
+ }
+diff --git a/storm-client/src/jvm/org/apache/storm/tuple/TupleImpl.java b/storm-client/src/jvm/org/apache/storm/tuple/TupleImpl.java
+index 27fa958..05b7f5f 100644
+--- a/storm-client/src/jvm/org/apache/storm/tuple/TupleImpl.java
++++ b/storm-client/src/jvm/org/apache/storm/tuple/TupleImpl.java
+@@ -14,8 +14,11 @@ package org.apache.storm.tuple;
+ 
+ import java.util.Collections;
+ import java.util.List;
++
++import org.apache.storm.executor.bolt.BoltOutputCollectorImpl;
+ import org.apache.storm.generated.GlobalStreamId;
+ import org.apache.storm.task.GeneralTopologyContext;
++import org.apache.storm.utils.Time;
+ 
+ public class TupleImpl implements Tuple {
+     private final String srcComponent;
+@@ -270,4 +273,12 @@ public class TupleImpl implements Tuple {
+     public int hashCode() {
+         return System.identityHashCode(this);
+     }
++
++    public long tupleTimeDelta(BoltOutputCollectorImpl boltOutputCollector) {
++        Long ms = getProcessSampleStartTime();
++        if (ms != null) {
++            return Time.deltaMs(ms);
++        }
++        return -1;
++    }
+ }
+diff --git a/storm-client/src/jvm/org/apache/storm/utils/ConfigUtils.java b/storm-client/src/jvm/org/apache/storm/utils/ConfigUtils.java
+index 424407c..1aea99c 100644
+--- a/storm-client/src/jvm/org/apache/storm/utils/ConfigUtils.java
++++ b/storm-client/src/jvm/org/apache/storm/utils/ConfigUtils.java
+@@ -199,7 +199,7 @@ public class ConfigUtils {
+     }
+ 
+     public static StormTopology readSupervisorTopology(Map<String, Object> conf, String stormId, AdvancedFSOps ops) throws IOException {
+-        return _instance.readSupervisorTopologyImpl(conf, stormId, ops);
++        return ops.readSupervisorTopologyImpl(conf, stormId, _instance);
+     }
+ 
+     public static String supervisorStormCodePath(String stormRoot) {
+@@ -422,12 +422,6 @@ public class ConfigUtils {
+         return listValue;
+     }
+ 
+-    public StormTopology readSupervisorTopologyImpl(Map<String, Object> conf, String stormId, AdvancedFSOps ops) throws IOException {
+-        String stormRoot = supervisorStormDistRoot(conf, stormId);
+-        String topologyPath = supervisorStormCodePath(stormRoot);
+-        return readSupervisorStormCodeGivenPath(topologyPath, ops);
+-    }
+-
+     public Map<String, Object> readStormConfigImpl() {
+         Map<String, Object> conf = Utils.readStormConfig();
+         ConfigValidation.validateFields(conf);
+diff --git a/storm-client/src/jvm/org/apache/storm/utils/LocalState.java b/storm-client/src/jvm/org/apache/storm/utils/LocalState.java
+index b2ca316..57ac43a 100644
+--- a/storm-client/src/jvm/org/apache/storm/utils/LocalState.java
++++ b/storm-client/src/jvm/org/apache/storm/utils/LocalState.java
+@@ -70,28 +70,11 @@ public class LocalState {
+         Map<String, TBase> result = new HashMap<>();
+         TDeserializer td = new TDeserializer();
+         for (Map.Entry<String, ThriftSerializedObject> ent : partialDeserializeLatestVersion(td).entrySet()) {
+-            result.put(ent.getKey(), deserialize(ent.getValue(), td));
++            result.put(ent.getKey(), ent.getValue().deserialize(td, this));
+         }
+         return result;
+     }
+ 
+-    private TBase deserialize(ThriftSerializedObject obj, TDeserializer td) {
+-        try {
+-            Class<?> clazz;
+-            try {
+-                clazz = Class.forName(obj.get_name());
+-            } catch (ClassNotFoundException ex) {
+-                //Try to maintain rolling upgrade compatible with 0.10 releases
+-                clazz = Class.forName(obj.get_name().replaceAll("^backtype\\.storm\\.", "org.apache.storm."));
+-            }
+-            TBase instance = (TBase) clazz.newInstance();
+-            td.deserialize(instance, obj.get_bits());
+-            return instance;
+-        } catch (Exception e) {
+-            throw new RuntimeException(e);
+-        }
+-    }
+-
+     private Map<String, ThriftSerializedObject> partialDeserializeLatestVersion(TDeserializer td) {
+         try {
+             String latestPath = _vs.mostRecentVersionPath();
+@@ -135,7 +118,7 @@ public class LocalState {
+         ThriftSerializedObject tso = partial.get(key);
+         TBase ret = null;
+         if (tso != null) {
+-            ret = deserialize(tso, td);
++            ret = tso.deserialize(td, this);
+         }
+         return ret;
+     }
+diff --git a/storm-client/src/jvm/org/apache/storm/utils/ShellProcess.java b/storm-client/src/jvm/org/apache/storm/utils/ShellProcess.java
+index d857b64..4086ec0 100644
+--- a/storm-client/src/jvm/org/apache/storm/utils/ShellProcess.java
++++ b/storm-client/src/jvm/org/apache/storm/utils/ShellProcess.java
+@@ -20,7 +20,6 @@ import java.util.HashMap;
+ import java.util.List;
+ import java.util.Map;
+ import org.apache.storm.Config;
+-import org.apache.storm.multilang.BoltMsg;
+ import org.apache.storm.multilang.ISerializer;
+ import org.apache.storm.multilang.NoOutputException;
+ import org.apache.storm.multilang.ShellMsg;
+@@ -122,12 +121,6 @@ public class ShellProcess implements Serializable {
+         }
+     }
+ 
+-    public void writeBoltMsg(BoltMsg msg) throws IOException {
+-        serializer.writeBoltMsg(msg);
+-        // Log any info sent on the error stream
+-        logErrorStream();
+-    }
+-
+     public void writeSpoutMsg(SpoutMsg msg) throws IOException {
+         serializer.writeSpoutMsg(msg);
+         // Log any info sent on the error stream
+diff --git a/storm-client/test/jvm/org/apache/storm/daemon/worker/LogConfigManagerTest.java b/storm-client/test/jvm/org/apache/storm/daemon/worker/LogConfigManagerTest.java
+index bf8ded8..8d2997f 100644
+--- a/storm-client/test/jvm/org/apache/storm/daemon/worker/LogConfigManagerTest.java
++++ b/storm-client/test/jvm/org/apache/storm/daemon/worker/LogConfigManagerTest.java
+@@ -184,7 +184,7 @@ public class LogConfigManagerTest {
+             AtomicReference<TreeMap<String, LogLevel>> mockConfigAtom = new AtomicReference<>(null);
+ 
+             long inThirtySeconds = Time.currentTimeMillis() + 30_000;
+-            mockConfig.put_to_named_logger_level("ROOT", ll("DEBUG", inThirtySeconds));
++            ll("DEBUG", inThirtySeconds).put_to_named_logger_level("ROOT", mockConfig);
+ 
+             LogConfigManager underTest = spy(new LogConfigManagerUnderTest(mockConfigAtom));
+             underTest.processLogConfigChange(mockConfig);
+@@ -208,10 +208,10 @@ public class LogConfigManagerTest {
+             LogConfig mockConfig = new LogConfig();
+             AtomicReference<TreeMap<String, LogLevel>> mockConfigAtom = new AtomicReference<>(null);
+             long inThirtySeconds = Time.currentTimeMillis() + 30_000;
+-            mockConfig.put_to_named_logger_level("ROOT", ll("DEBUG", inThirtySeconds));
+-            mockConfig.put_to_named_logger_level("my_debug_logger", ll("DEBUG", inThirtySeconds));
+-            mockConfig.put_to_named_logger_level("my_info_logger", ll("INFO", inThirtySeconds));
+-            mockConfig.put_to_named_logger_level("my_error_logger", ll("ERROR", inThirtySeconds));
++            ll("DEBUG", inThirtySeconds).put_to_named_logger_level("ROOT", mockConfig);
++            ll("DEBUG", inThirtySeconds).put_to_named_logger_level("my_debug_logger", mockConfig);
++            ll("INFO", inThirtySeconds).put_to_named_logger_level("my_info_logger", mockConfig);
++            ll("ERROR", inThirtySeconds).put_to_named_logger_level("my_error_logger", mockConfig);
+ 
+             LOG.info("Tests {}", mockConfigAtom.get());
+ 
+diff --git a/storm-core/src/jvm/org/apache/storm/command/SetLogLevel.java b/storm-core/src/jvm/org/apache/storm/command/SetLogLevel.java
+index 7e9815a..3c9c0a8 100644
+--- a/storm-core/src/jvm/org/apache/storm/command/SetLogLevel.java
++++ b/storm-core/src/jvm/org/apache/storm/command/SetLogLevel.java
+@@ -47,7 +47,7 @@ public class SetLogLevel {
+         }
+ 
+         for (Map.Entry<String, LogLevel> entry : logLevelMap.entrySet()) {
+-            logConfig.put_to_named_logger_level(entry.getKey(), entry.getValue());
++            entry.getValue().put_to_named_logger_level(entry.getKey(), logConfig);
+         }
+ 
+         NimbusClient.withConfiguredClient(new NimbusClient.WithNimbus() {
+diff --git a/storm-server/src/main/java/org/apache/storm/daemon/nimbus/Nimbus.java b/storm-server/src/main/java/org/apache/storm/daemon/nimbus/Nimbus.java
+index 07bba66..2f07a72 100644
+--- a/storm-server/src/main/java/org/apache/storm/daemon/nimbus/Nimbus.java
++++ b/storm-server/src/main/java/org/apache/storm/daemon/nimbus/Nimbus.java
+@@ -138,9 +138,6 @@ import org.apache.storm.generated.WorkerMetricPoint;
+ import org.apache.storm.generated.WorkerMetrics;
+ import org.apache.storm.generated.WorkerResources;
+ import org.apache.storm.generated.WorkerSummary;
+-import org.apache.storm.generated.WorkerToken;
+-import org.apache.storm.generated.WorkerTokenInfo;
+-import org.apache.storm.generated.WorkerTokenServiceType;
+ import org.apache.storm.logging.ThriftAccessLogger;
+ import org.apache.storm.metric.ClusterMetricsConsumerExecutor;
+ import org.apache.storm.metric.StormMetricsRegistry;
+@@ -325,7 +322,7 @@ public class Nimbus implements Iface, Shutdownable, DaemonCommon {
+         TopologyActionOptions tao = new TopologyActionOptions();
+         KillOptions opts = new KillOptions();
+         opts.set_wait_secs(delay);
+-        tao.set_kill_options(opts);
++        opts.set_kill_options(tao);
+         sb.set_topology_action_options(tao);
+         sb.set_component_executors(Collections.emptyMap());
+         sb.set_component_debug(Collections.emptyMap());
+@@ -2037,7 +2034,7 @@ public class Nimbus implements Iface, Shutdownable, DaemonCommon {
+         Map<String, Set<List<Integer>>> topoToExec = computeTopologyToExecutors(bases);
+ 
+         Set<String> zkHeartbeatTopologies = topologies.getTopologies().stream()
+-                                                      .filter(topo -> !supportRpcHeartbeat(topo))
++                                                      .filter(topo -> !topo.supportRpcHeartbeat(this))
+                                                       .map(TopologyDetails::getId)
+                                                       .collect(Collectors.toSet());
+ 
+@@ -2097,18 +2094,6 @@ public class Nimbus implements Iface, Shutdownable, DaemonCommon {
+         return cluster.getAssignments();
+     }
+ 
+-    private boolean supportRpcHeartbeat(TopologyDetails topo) {
+-        if (!topo.getTopology().is_set_storm_version()) {
+-            // current version supports RPC heartbeat
+-            return true;
+-        }
+-
+-        String stormVersionStr = topo.getTopology().get_storm_version();
+-
+-        SimpleVersion stormVersion = new SimpleVersion(stormVersionStr);
+-        return stormVersion.compareTo(MIN_VERSION_SUPPORT_RPC_HEARTBEAT) >= 0;
+-    }
+-
+     private TopologyResources getResourcesForTopology(String topoId, StormBase base)
+         throws NotAliveException, AuthorizationException, InvalidTopologyException, IOException {
+         TopologyResources ret = idToResources.get().get(topoId);
+@@ -3295,7 +3280,7 @@ public class Nimbus implements Iface, Shutdownable, DaemonCommon {
+                     switch (action) {
+                         case UPDATE:
+                             setLoggerTimeouts(logConfig);
+-                            mergedLogConfig.put_to_named_logger_level(loggerName, logConfig);
++                            logConfig.put_to_named_logger_level(loggerName, mergedLogConfig);
+                             break;
+                         case REMOVE:
+                             Map<String, LogLevel> nl = mergedLogConfig.get_named_logger_level();
+@@ -3370,7 +3355,7 @@ public class Nimbus implements Iface, Shutdownable, DaemonCommon {
+             //For backwards compatability
+             updates.set_component_executors(Collections.emptyMap());
+             String key = hasCompId ? componentId : topoId;
+-            updates.put_to_component_debug(key, options);
++            options.put_to_component_debug(key, updates);
+ 
+             LOG.info("Nimbus setting debug to {} for storm-name '{}' storm-id '{}' sanpling pct '{}'"
+                      + (hasCompId ? " component-id '" + componentId + "'" : ""),
+@@ -4185,7 +4170,7 @@ public class Nimbus implements Iface, Shutdownable, DaemonCommon {
+                     for (WorkerSummary workerSummary : StatsUtil.aggWorkerStats(topoId, topoName, taskToComp, beats,
+                                                                                 exec2NodePort, nodeToHost, workerResources, includeSys,
+                                                                                 isAllowed, sid)) {
+-                        pageInfo.add_to_worker_summaries(workerSummary);
++                        workerSummary.add_to_worker_summaries(pageInfo);
+                     }
+                 }
+             }
+diff --git a/storm-server/src/main/java/org/apache/storm/daemon/nimbus/TopoCache.java b/storm-server/src/main/java/org/apache/storm/daemon/nimbus/TopoCache.java
+index 0b0e70c..f8c71cb 100644
+--- a/storm-server/src/main/java/org/apache/storm/daemon/nimbus/TopoCache.java
++++ b/storm-server/src/main/java/org/apache/storm/daemon/nimbus/TopoCache.java
+@@ -105,7 +105,7 @@ public class TopoCache {
+         final String key = ConfigUtils.masterStormCodeKey(topoId);
+         final List<AccessControl> acl = BlobStoreAclHandler.DEFAULT;
+         SettableBlobMeta meta = new SettableBlobMeta(acl);
+-        store.createBlob(key, Utils.serialize(topo), meta, who);
++        meta.createBlob(key, Utils.serialize(topo), who, store);
+         topos.put(topoId, new WithAcl<>(meta.get_acl(), topo));
+     }
+ 
+@@ -188,7 +188,7 @@ public class TopoCache {
+         final String key = ConfigUtils.masterStormConfKey(topoId);
+         final List<AccessControl> acl = BlobStoreAclHandler.DEFAULT;
+         SettableBlobMeta meta = new SettableBlobMeta(acl);
+-        store.createBlob(key, Utils.toCompressedJsonConf(topoConf), meta, who);
++        meta.createBlob(key, Utils.toCompressedJsonConf(topoConf), who, store);
+         confs.put(topoId, new WithAcl<>(meta.get_acl(), topoConf));
+     }
+ 
+diff --git a/storm-server/src/main/java/org/apache/storm/daemon/supervisor/Container.java b/storm-server/src/main/java/org/apache/storm/daemon/supervisor/Container.java
+index 8b58483..e5a9286 100644
+--- a/storm-server/src/main/java/org/apache/storm/daemon/supervisor/Container.java
++++ b/storm-server/src/main/java/org/apache/storm/daemon/supervisor/Container.java
+@@ -716,7 +716,7 @@ public abstract class Container implements Killable {
+                     INVALID_EXECUTOR_ID, INVALID_STREAM_ID);
+ 
+                 WorkerMetricList metricList = new WorkerMetricList();
+-                metricList.add_to_metrics(workerMetric);
++                workerMetric.add_to_metrics(metricList);
+                 WorkerMetrics metrics = new WorkerMetrics(_topologyId, _port, hostname, metricList);
+ 
+                 exec.execute(_port, () -> {
+diff --git a/storm-server/src/main/java/org/apache/storm/localizer/LocalizedResourceRetentionSet.java b/storm-server/src/main/java/org/apache/storm/localizer/LocalizedResourceRetentionSet.java
+index 372334b..a6693e6 100644
+--- a/storm-server/src/main/java/org/apache/storm/localizer/LocalizedResourceRetentionSet.java
++++ b/storm-server/src/main/java/org/apache/storm/localizer/LocalizedResourceRetentionSet.java
+@@ -90,7 +90,7 @@ public class LocalizedResourceRetentionSet {
+                 if (!store.isRemoteBlobExists(resource.getKey())) {
+                     //The key was removed so we should delete it too.
+                     Map<String, ? extends LocallyCachedBlob> set = rsrc.getValue();
+-                    if (removeBlob(resource, set)) {
++                    if (resource.removeBlob(set, this)) {
+                         bytesOver -= resource.getSizeOnDisk();
+                         LOG.info("Deleted blob: {} (REMOVED FROM CLUSTER).", resource.getKey());
+                         i.remove();
+@@ -106,7 +106,7 @@ public class LocalizedResourceRetentionSet {
+             Map.Entry<LocallyCachedBlob, Map<String, ? extends LocallyCachedBlob>> rsrc = i.next();
+             LocallyCachedBlob resource = rsrc.getKey();
+             Map<String, ? extends LocallyCachedBlob> set = rsrc.getValue();
+-            if (removeBlob(resource, set)) {
++            if (resource.removeBlob(set, this)) {
+                 bytesOver -= resource.getSizeOnDisk();
+                 LOG.info("Deleted blob: {} (OVER SIZE LIMIT).", resource.getKey());
+                 i.remove();
+@@ -114,21 +114,6 @@ public class LocalizedResourceRetentionSet {
+         }
+     }
+ 
+-    private boolean removeBlob(LocallyCachedBlob blob, Map<String, ? extends LocallyCachedBlob> blobs) {
+-        synchronized (blob) {
+-            if (!blob.isUsed()) {
+-                try {
+-                    blob.completelyRemove();
+-                } catch (Exception e) {
+-                    LOG.warn("Tried to remove {} but failed with", blob, e);
+-                }
+-                blobs.remove(blob.getKey());
+-                return true;
+-            }
+-            return false;
+-        }
+-    }
+-
+     @Override
+     public String toString() {
+         return "Cache: " + currentSize;
+diff --git a/storm-server/src/main/java/org/apache/storm/localizer/LocallyCachedBlob.java b/storm-server/src/main/java/org/apache/storm/localizer/LocallyCachedBlob.java
+index c948240..3ef0347 100644
+--- a/storm-server/src/main/java/org/apache/storm/localizer/LocallyCachedBlob.java
++++ b/storm-server/src/main/java/org/apache/storm/localizer/LocallyCachedBlob.java
+@@ -295,6 +295,21 @@ public abstract class LocallyCachedBlob {
+ 
+     public abstract boolean isFullyDownloaded();
+ 
++    public boolean removeBlob(Map<String, ? extends LocallyCachedBlob> blobs, LocalizedResourceRetentionSet localizedResourceRetentionSet) {
++        synchronized (this) {
++            if (!isUsed()) {
++                try {
++                    completelyRemove();
++                } catch (Exception e) {
++                    LocalizedResourceRetentionSet.LOG.warn("Tried to remove {} but failed with", this, e);
++                }
++                blobs.remove(getKey());
++                return true;
++            }
++            return false;
++        }
++    }
++
+     static class DownloadMeta {
+         private final Path downloadPath;
+         private final long version;
+diff --git a/storm-server/src/main/java/org/apache/storm/metric/StormMetricsRegistry.java b/storm-server/src/main/java/org/apache/storm/metric/StormMetricsRegistry.java
+index cc98804..5597522 100644
+--- a/storm-server/src/main/java/org/apache/storm/metric/StormMetricsRegistry.java
++++ b/storm-server/src/main/java/org/apache/storm/metric/StormMetricsRegistry.java
+@@ -22,8 +22,17 @@ import com.codahale.metrics.Reservoir;
+ import com.codahale.metrics.Timer;
+ import java.util.List;
+ import java.util.Map;
++
++import org.apache.storm.blobstore.BlobStore;
++import org.apache.storm.cluster.IStormClusterState;
+ import org.apache.storm.daemon.metrics.MetricsUtils;
+ import org.apache.storm.daemon.metrics.reporters.PreparableReporter;
++import org.apache.storm.daemon.nimbus.TopoCache;
++import org.apache.storm.nimbus.ILeaderElector;
++import org.apache.storm.nimbus.NimbusInfo;
++import org.apache.storm.zookeeper.LeaderElectorImp;
++import org.apache.storm.zookeeper.LeaderListenerCallbackFactory;
++import org.apache.storm.zookeeper.Zookeeper;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ 
+@@ -86,4 +95,11 @@ public class StormMetricsRegistry {
+             reportersStarted = false;
+         }
+     }
++
++    public ILeaderElector zkLeaderElectorImpl(Map<String, Object> conf, CuratorFramework zk, BlobStore blobStore,
++                                              final TopoCache tc, IStormClusterState clusterState, List<ACL> acls, Zookeeper zookeeper) {
++        String id = NimbusInfo.fromConf(conf).toHostPortString();
++        return new LeaderElectorImp(zk, id,
++            new LeaderListenerCallbackFactory(conf, zk, blobStore, tc, clusterState, acls, this));
++    }
+ }
+diff --git a/storm-server/src/main/java/org/apache/storm/scheduler/Cluster.java b/storm-server/src/main/java/org/apache/storm/scheduler/Cluster.java
+index 0f09aa7..a33452b 100644
+--- a/storm-server/src/main/java/org/apache/storm/scheduler/Cluster.java
++++ b/storm-server/src/main/java/org/apache/storm/scheduler/Cluster.java
+@@ -18,15 +18,8 @@
+ 
+ package org.apache.storm.scheduler;
+ 
+-import java.util.ArrayList;
+-import java.util.Collection;
+-import java.util.Collections;
+-import java.util.HashMap;
+-import java.util.HashSet;
+-import java.util.List;
+-import java.util.Map;
++import java.util.*;
+ import java.util.Map.Entry;
+-import java.util.Set;
+ import java.util.function.Function;
+ import java.util.stream.Collectors;
+ import org.apache.storm.Config;
+@@ -37,6 +30,7 @@ import org.apache.storm.generated.SharedMemory;
+ import org.apache.storm.generated.WorkerResources;
+ import org.apache.storm.networktopography.DNSToSwitchMapping;
+ import org.apache.storm.networktopography.DefaultRackDNSToSwitchMapping;
++import org.apache.storm.scheduler.blacklist.strategies.DefaultBlacklistStrategy;
+ import org.apache.storm.scheduler.resource.normalization.NormalizedResourceOffer;
+ import org.apache.storm.scheduler.resource.normalization.NormalizedResourceRequest;
+ import org.apache.storm.scheduler.resource.normalization.NormalizedResources;
+@@ -551,7 +545,7 @@ public class Cluster implements ISchedulingState {
+         double maxHeap) {
+ 
+         NormalizedResourceRequest requestedResources = td.getTotalResources(exec);
+-        if (!resourcesAvailable.couldFit(minWorkerCpu, requestedResources)) {
++        if (!requestedResources.couldFit(minWorkerCpu, resourcesAvailable)) {
+             return false;
+         }
+ 
+@@ -1072,4 +1066,20 @@ public class Cluster implements ISchedulingState {
+     public double getMinWorkerCpu() {
+         return minWorkerCpu;
+     }
++
++    public Map<String, Set<String>> createHostToSupervisorMap(final List<String> blacklistedNodeIds, DefaultBlacklistStrategy defaultBlacklistStrategy) {
++        Map<String, Set<String>> hostToSupervisorMap = new TreeMap<>();
++        for (String supervisorId : blacklistedNodeIds) {
++            String hostname = getHost(supervisorId);
++            if (hostname != null) {
++                Set<String> supervisorIds = hostToSupervisorMap.get(hostname);
++                if (supervisorIds == null) {
++                    supervisorIds = new HashSet<>();
++                    hostToSupervisorMap.put(hostname, supervisorIds);
++                }
++                supervisorIds.add(supervisorId);
++            }
++        }
++        return hostToSupervisorMap;
++    }
+ }
+diff --git a/storm-server/src/main/java/org/apache/storm/scheduler/Component.java b/storm-server/src/main/java/org/apache/storm/scheduler/Component.java
+index c4a28c3..7c3af9f 100644
+--- a/storm-server/src/main/java/org/apache/storm/scheduler/Component.java
++++ b/storm-server/src/main/java/org/apache/storm/scheduler/Component.java
+@@ -18,10 +18,10 @@
+ 
+ package org.apache.storm.scheduler;
+ 
+-import java.util.HashSet;
+-import java.util.List;
+-import java.util.Set;
++import java.util.*;
++
+ import org.apache.storm.generated.ComponentType;
++import org.apache.storm.scheduler.resource.strategies.scheduling.BaseResourceAwareStrategy;
+ 
+ public class Component {
+     private final String id;
+@@ -85,4 +85,29 @@ public class Component {
+                + getExecs()
+                + "}";
+     }
++
++    /**
++     * Sort a component's neighbors by the number of connections it needs to make with this component.
++     *
++     * @param componentMap all the components to sort
++     * @param baseResourceAwareStrategy
++     * @return a sorted set of components
++     */
++    public Set<Component> sortNeighbors(
++            final Map<String, Component> componentMap, BaseResourceAwareStrategy baseResourceAwareStrategy) {
++        Set<Component> sortedComponents =
++            new TreeSet<>((o1, o2) -> {
++                int connections1 = o1.getExecs().size() * getExecs().size();
++                int connections2 = o2.getExecs().size() * getExecs().size();
++                if (connections1 < connections2) {
++                    return -1;
++                } else if (connections1 > connections2) {
++                    return 1;
++                } else {
++                    return o1.getId().compareTo(o2.getId());
++                }
++            });
++        sortedComponents.addAll(componentMap.values());
++        return sortedComponents;
++    }
+ }
+diff --git a/storm-server/src/main/java/org/apache/storm/scheduler/IsolationScheduler.java b/storm-server/src/main/java/org/apache/storm/scheduler/IsolationScheduler.java
+index 03c0c6a..76af973 100644
+--- a/storm-server/src/main/java/org/apache/storm/scheduler/IsolationScheduler.java
++++ b/storm-server/src/main/java/org/apache/storm/scheduler/IsolationScheduler.java
+@@ -136,7 +136,7 @@ public class IsolationScheduler implements IScheduler {
+         } else {
+             // run default scheduler on non-isolated topologies
+             Set<String> allocatedTopologies = allocatedTopologies(topologyWorkerSpecs);
+-            Topologies leftOverTopologies = leftoverTopologies(topologies, allocatedTopologies);
++            Topologies leftOverTopologies = topologies.leftoverTopologies(allocatedTopologies, this);
+             DefaultScheduler.defaultSchedule(leftOverTopologies, cluster);
+         }
+         cluster.setBlacklistedHosts(origBlacklist);
+@@ -360,18 +360,6 @@ public class IsolationScheduler implements IScheduler {
+         return allocatedTopologies;
+     }
+ 
+-    private Topologies leftoverTopologies(Topologies topologies, Set<String> filterIds) {
+-        Collection<TopologyDetails> topos = topologies.getTopologies();
+-        Map<String, TopologyDetails> leftoverTopologies = new HashMap<String, TopologyDetails>();
+-        for (TopologyDetails topo : topos) {
+-            String id = topo.getId();
+-            if (!filterIds.contains(id)) {
+-                leftoverTopologies.put(id, topo);
+-            }
+-        }
+-        return new Topologies(leftoverTopologies);
+-    }
+-
+     class AssignmentInfo {
+         private WorkerSlot workerSlot;
+         private String topologyId;
+diff --git a/storm-server/src/main/java/org/apache/storm/scheduler/Topologies.java b/storm-server/src/main/java/org/apache/storm/scheduler/Topologies.java
+index b222916..8f77201 100644
+--- a/storm-server/src/main/java/org/apache/storm/scheduler/Topologies.java
++++ b/storm-server/src/main/java/org/apache/storm/scheduler/Topologies.java
+@@ -18,12 +18,7 @@
+ 
+ package org.apache.storm.scheduler;
+ 
+-import java.util.Collection;
+-import java.util.Collections;
+-import java.util.HashMap;
+-import java.util.HashSet;
+-import java.util.Iterator;
+-import java.util.Map;
++import java.util.*;
+ 
+ public class Topologies implements Iterable<TopologyDetails> {
+     Map<String, TopologyDetails> topologies;
+@@ -140,4 +135,16 @@ public class Topologies implements Iterable<TopologyDetails> {
+     public Iterator<TopologyDetails> iterator() {
+         return topologies.values().iterator();
+     }
++
++    public Topologies leftoverTopologies(Set<String> filterIds, IsolationScheduler isolationScheduler) {
++        Collection<TopologyDetails> topos = getTopologies();
++        Map<String, TopologyDetails> leftoverTopologies = new HashMap<String, TopologyDetails>();
++        for (TopologyDetails topo : topos) {
++            String id = topo.getId();
++            if (!filterIds.contains(id)) {
++                leftoverTopologies.put(id, topo);
++            }
++        }
++        return new Topologies(leftoverTopologies);
++    }
+ }
+diff --git a/storm-server/src/main/java/org/apache/storm/scheduler/TopologyDetails.java b/storm-server/src/main/java/org/apache/storm/scheduler/TopologyDetails.java
+index 757f256..b538646 100644
+--- a/storm-server/src/main/java/org/apache/storm/scheduler/TopologyDetails.java
++++ b/storm-server/src/main/java/org/apache/storm/scheduler/TopologyDetails.java
+@@ -26,6 +26,7 @@ import java.util.List;
+ import java.util.Map;
+ import java.util.Set;
+ import org.apache.storm.Config;
++import org.apache.storm.daemon.nimbus.Nimbus;
+ import org.apache.storm.generated.Bolt;
+ import org.apache.storm.generated.ComponentCommon;
+ import org.apache.storm.generated.ComponentType;
+@@ -35,6 +36,7 @@ import org.apache.storm.generated.SpoutSpec;
+ import org.apache.storm.generated.StormTopology;
+ import org.apache.storm.scheduler.resource.normalization.NormalizedResourceRequest;
+ import org.apache.storm.utils.ObjectReader;
++import org.apache.storm.utils.SimpleVersion;
+ import org.apache.storm.utils.Time;
+ import org.apache.storm.utils.Utils;
+ import org.slf4j.Logger;
+@@ -559,4 +561,16 @@ public class TopologyDetails {
+         }
+         return (topologyId.equals(((TopologyDetails) o).getId()));
+     }
++
++    public boolean supportRpcHeartbeat(Nimbus nimbus) {
++        if (!getTopology().is_set_storm_version()) {
++            // current version supports RPC heartbeat
++            return true;
++        }
++
++        String stormVersionStr = getTopology().get_storm_version();
++
++        SimpleVersion stormVersion = new SimpleVersion(stormVersionStr);
++        return stormVersion.compareTo(Nimbus.MIN_VERSION_SUPPORT_RPC_HEARTBEAT) >= 0;
++    }
+ }
+diff --git a/storm-server/src/main/java/org/apache/storm/scheduler/blacklist/strategies/DefaultBlacklistStrategy.java b/storm-server/src/main/java/org/apache/storm/scheduler/blacklist/strategies/DefaultBlacklistStrategy.java
+index 8a36669..140fcdb 100644
+--- a/storm-server/src/main/java/org/apache/storm/scheduler/blacklist/strategies/DefaultBlacklistStrategy.java
++++ b/storm-server/src/main/java/org/apache/storm/scheduler/blacklist/strategies/DefaultBlacklistStrategy.java
+@@ -142,7 +142,7 @@ public class DefaultBlacklistStrategy implements IBlacklistStrategy {
+                 LOG.info("Need {} slots more. Releasing some blacklisted nodes to cover it.", shortageSlots);
+ 
+                 //release earliest blacklist - but release all supervisors on a given blacklisted host.
+-                Map<String, Set<String>> hostToSupervisorIds = createHostToSupervisorMap(blacklistedNodeIds, cluster);
++                Map<String, Set<String>> hostToSupervisorIds = cluster.createHostToSupervisorMap(blacklistedNodeIds, this);
+                 for (Set<String> supervisorIds : hostToSupervisorIds.values()) {
+                     for (String supervisorId : supervisorIds) {
+                         SupervisorDetails sd = availableSupervisors.get(supervisorId);
+@@ -179,19 +179,4 @@ public class DefaultBlacklistStrategy implements IBlacklistStrategy {
+         }
+     }
+ 
+-    protected Map<String, Set<String>> createHostToSupervisorMap(final List<String> blacklistedNodeIds, Cluster cluster) {
+-        Map<String, Set<String>> hostToSupervisorMap = new TreeMap<>();
+-        for (String supervisorId : blacklistedNodeIds) {
+-            String hostname = cluster.getHost(supervisorId);
+-            if (hostname != null) {
+-                Set<String> supervisorIds = hostToSupervisorMap.get(hostname);
+-                if (supervisorIds == null) {
+-                    supervisorIds = new HashSet<>();
+-                    hostToSupervisorMap.put(hostname, supervisorIds);
+-                }
+-                supervisorIds.add(supervisorId);
+-            }
+-        }
+-        return hostToSupervisorMap;
+-    }
+ }
+diff --git a/storm-server/src/main/java/org/apache/storm/scheduler/blacklist/strategies/RasBlacklistStrategy.java b/storm-server/src/main/java/org/apache/storm/scheduler/blacklist/strategies/RasBlacklistStrategy.java
+index 574fe91..04617bb 100644
+--- a/storm-server/src/main/java/org/apache/storm/scheduler/blacklist/strategies/RasBlacklistStrategy.java
++++ b/storm-server/src/main/java/org/apache/storm/scheduler/blacklist/strategies/RasBlacklistStrategy.java
+@@ -82,7 +82,7 @@ public class RasBlacklistStrategy extends DefaultBlacklistStrategy {
+                 LOG.info("Need {} and {} slots more. Releasing some blacklisted nodes to cover it.", shortage, shortageSlots);
+ 
+                 //release earliest blacklist - but release all supervisors on a given blacklisted host.
+-                Map<String, Set<String>> hostToSupervisorIds = createHostToSupervisorMap(blacklistedNodeIds, cluster);
++                Map<String, Set<String>> hostToSupervisorIds = cluster.createHostToSupervisorMap(blacklistedNodeIds, RasBlacklistStrategy.this);
+                 for (Set<String> supervisorIds : hostToSupervisorIds.values()) {
+                     for (String supervisorId : supervisorIds) {
+                         SupervisorDetails sd = availableSupervisors.get(supervisorId);
+diff --git a/storm-server/src/main/java/org/apache/storm/scheduler/resource/RAS_Node.java b/storm-server/src/main/java/org/apache/storm/scheduler/resource/RAS_Node.java
+index e1cd1cf..dc0e021 100644
+--- a/storm-server/src/main/java/org/apache/storm/scheduler/resource/RAS_Node.java
++++ b/storm-server/src/main/java/org/apache/storm/scheduler/resource/RAS_Node.java
+@@ -385,7 +385,7 @@ public class RAS_Node {
+         }
+         NormalizedResourceOffer avail = getTotalAvailableResources();
+         NormalizedResourceRequest requestedResources = td.getTotalResources(exec);
+-        return avail.couldFit(cluster.getMinWorkerCpu(), requestedResources);
++        return requestedResources.couldFit(cluster.getMinWorkerCpu(), avail);
+     }
+ 
+     @Override
+diff --git a/storm-server/src/main/java/org/apache/storm/scheduler/resource/normalization/NormalizedResourceOffer.java b/storm-server/src/main/java/org/apache/storm/scheduler/resource/normalization/NormalizedResourceOffer.java
+index b8a6431..645e740 100644
+--- a/storm-server/src/main/java/org/apache/storm/scheduler/resource/normalization/NormalizedResourceOffer.java
++++ b/storm-server/src/main/java/org/apache/storm/scheduler/resource/normalization/NormalizedResourceOffer.java
+@@ -183,26 +183,4 @@ public class NormalizedResourceOffer implements NormalizedResourcesWithMemory {
+         return totalMemoryMb > 0 || normalizedResources.areAnyOverZero();
+     }
+ 
+-    /**
+-     * Is there any possibility that a resource request could ever fit on this.
+-     * @param minWorkerCpu the configured minimum worker CPU
+-     * @param requestedResources the requested resources
+-     * @return true if there is the possibility it might fit, no guarantee that it will, or false if there is no
+-     *     way it would ever fit.
+-     */
+-    public boolean couldFit(double minWorkerCpu, NormalizedResourceRequest requestedResources) {
+-        if (minWorkerCpu < 0.001) {
+-            return this.couldHoldIgnoringSharedMemory(requestedResources);
+-        } else {
+-            // Assume that there could be a worker already on the node that is under the minWorkerCpu budget.
+-            // It's possible we could combine with it.  Let's disregard minWorkerCpu from the request
+-            // and validate that CPU as a rough fit.
+-            double requestedCpu = Math.max(requestedResources.getTotalCpu() - minWorkerCpu, 0.0);
+-            if (requestedCpu > this.getTotalCpu()) {
+-                return false;
+-            }
+-            // now check memory only
+-            return this.couldHoldIgnoringSharedMemoryAndCpu(requestedResources);
+-        }
+-    }
+ }
+diff --git a/storm-server/src/main/java/org/apache/storm/scheduler/resource/normalization/NormalizedResourceRequest.java b/storm-server/src/main/java/org/apache/storm/scheduler/resource/normalization/NormalizedResourceRequest.java
+index 478a8be..6dac3b5 100644
+--- a/storm-server/src/main/java/org/apache/storm/scheduler/resource/normalization/NormalizedResourceRequest.java
++++ b/storm-server/src/main/java/org/apache/storm/scheduler/resource/normalization/NormalizedResourceRequest.java
+@@ -247,4 +247,27 @@ public class NormalizedResourceRequest implements NormalizedResourcesWithMemory
+     public boolean areAnyOverZero() {
+         return onHeap > 0 || offHeap > 0 || normalizedResources.areAnyOverZero();
+     }
++
++    /**
++     * Is there any possibility that a resource request could ever fit on this.
++     * @param minWorkerCpu the configured minimum worker CPU
++     * @param normalizedResourceOffer
++     * @return true if there is the possibility it might fit, no guarantee that it will, or false if there is no
++     *     way it would ever fit.
++     */
++    public boolean couldFit(double minWorkerCpu, NormalizedResourceOffer normalizedResourceOffer) {
++        if (minWorkerCpu < 0.001) {
++            return normalizedResourceOffer.couldHoldIgnoringSharedMemory(this);
++        } else {
++            // Assume that there could be a worker already on the node that is under the minWorkerCpu budget.
++            // It's possible we could combine with it.  Let's disregard minWorkerCpu from the request
++            // and validate that CPU as a rough fit.
++            double requestedCpu = Math.max(getTotalCpu() - minWorkerCpu, 0.0);
++            if (requestedCpu > normalizedResourceOffer.getTotalCpu()) {
++                return false;
++            }
++            // now check memory only
++            return normalizedResourceOffer.couldHoldIgnoringSharedMemoryAndCpu(this);
++        }
++    }
+ }
+diff --git a/storm-server/src/main/java/org/apache/storm/scheduler/resource/strategies/scheduling/BaseResourceAwareStrategy.java b/storm-server/src/main/java/org/apache/storm/scheduler/resource/strategies/scheduling/BaseResourceAwareStrategy.java
+index 15ddbf6..b0d04b7 100644
+--- a/storm-server/src/main/java/org/apache/storm/scheduler/resource/strategies/scheduling/BaseResourceAwareStrategy.java
++++ b/storm-server/src/main/java/org/apache/storm/scheduler/resource/strategies/scheduling/BaseResourceAwareStrategy.java
+@@ -45,7 +45,6 @@ import org.apache.storm.scheduler.resource.SchedulingResult;
+ import org.apache.storm.scheduler.resource.SchedulingStatus;
+ import org.apache.storm.scheduler.resource.normalization.NormalizedResourceOffer;
+ import org.apache.storm.scheduler.resource.normalization.NormalizedResourceRequest;
+-import org.apache.storm.scheduler.resource.normalization.ResourceMetrics;
+ import org.apache.storm.shade.com.google.common.annotations.VisibleForTesting;
+ import org.apache.storm.shade.com.google.common.collect.Sets;
+ import org.slf4j.Logger;
+@@ -470,31 +469,6 @@ public abstract class BaseResourceAwareStrategy implements IStrategy {
+     }
+ 
+     /**
+-     * Sort a component's neighbors by the number of connections it needs to make with this component.
+-     *
+-     * @param thisComp     the component that we need to sort its neighbors
+-     * @param componentMap all the components to sort
+-     * @return a sorted set of components
+-     */
+-    private Set<Component> sortNeighbors(
+-        final Component thisComp, final Map<String, Component> componentMap) {
+-        Set<Component> sortedComponents =
+-            new TreeSet<>((o1, o2) -> {
+-                int connections1 = o1.getExecs().size() * thisComp.getExecs().size();
+-                int connections2 = o2.getExecs().size() * thisComp.getExecs().size();
+-                if (connections1 < connections2) {
+-                    return -1;
+-                } else if (connections1 > connections2) {
+-                    return 1;
+-                } else {
+-                    return o1.getId().compareTo(o2.getId());
+-                }
+-            });
+-        sortedComponents.addAll(componentMap.values());
+-        return sortedComponents;
+-    }
+-
+-    /**
+      * Order executors based on how many in and out connections it will potentially need to make, in descending order. First order
+      * components by the number of in and out connections it will have.  Then iterate through the sorted list of components. For each
+      * component sort the neighbors of that component by how many connections it will have to make with that component. Add an executor from
+@@ -528,7 +502,7 @@ public abstract class BaseResourceAwareStrategy implements IStrategy {
+             for (String compId : Sets.union(currComp.getChildren(), currComp.getParents())) {
+                 neighbors.put(compId, componentMap.get(compId));
+             }
+-            Set<Component> sortedNeighbors = sortNeighbors(currComp, neighbors);
++            Set<Component> sortedNeighbors = currComp.sortNeighbors(neighbors, this);
+             Queue<ExecutorDetails> currCompExesToSched = compToExecsToSchedule.get(currComp.getId());
+ 
+             boolean flag = false;
+diff --git a/storm-server/src/main/java/org/apache/storm/stats/StatsUtil.java b/storm-server/src/main/java/org/apache/storm/stats/StatsUtil.java
+index f5db87c..4e7dc63 100644
+--- a/storm-server/src/main/java/org/apache/storm/stats/StatsUtil.java
++++ b/storm-server/src/main/java/org/apache/storm/stats/StatsUtil.java
+@@ -2087,7 +2087,7 @@ public class StatsUtil {
+                 ClientStatsUtil.windowSetConverter(ClientStatsUtil.getMapByKey(stats, FAILED), ClientStatsUtil.TO_GSID, TO_STRING));
+             boltStats.set_process_ms_avg(
+                 ClientStatsUtil.windowSetConverter(ClientStatsUtil.getMapByKey(stats, PROC_LATENCIES), ClientStatsUtil.TO_GSID, TO_STRING));
+-            specificStats.set_bolt(boltStats);
++            boltStats.set_bolt(specificStats);
+         } else {
+             SpoutStats spoutStats = new SpoutStats();
+             spoutStats.set_acked(ClientStatsUtil.windowSetConverter(ClientStatsUtil.getMapByKey(stats, ACKED), TO_STRING, TO_STRING));
+diff --git a/storm-server/src/main/java/org/apache/storm/zookeeper/Zookeeper.java b/storm-server/src/main/java/org/apache/storm/zookeeper/Zookeeper.java
+index 9171038..6e805cb 100644
+--- a/storm-server/src/main/java/org/apache/storm/zookeeper/Zookeeper.java
++++ b/storm-server/src/main/java/org/apache/storm/zookeeper/Zookeeper.java
+@@ -119,15 +119,7 @@ public class Zookeeper {
+     public static ILeaderElector zkLeaderElector(Map<String, Object> conf, CuratorFramework zkClient, BlobStore blobStore,
+                                                  final TopoCache tc, IStormClusterState clusterState, List<ACL> acls,
+                                                  StormMetricsRegistry metricsRegistry) {
+-        return _instance.zkLeaderElectorImpl(conf, zkClient, blobStore, tc, clusterState, acls, metricsRegistry);
+-    }
+-
+-    protected ILeaderElector zkLeaderElectorImpl(Map<String, Object> conf, CuratorFramework zk, BlobStore blobStore,
+-                                                 final TopoCache tc, IStormClusterState clusterState, List<ACL> acls,
+-                                                 StormMetricsRegistry metricsRegistry) {
+-        String id = NimbusInfo.fromConf(conf).toHostPortString();
+-        return new LeaderElectorImp(zk, id,
+-            new LeaderListenerCallbackFactory(conf, zk, blobStore, tc, clusterState, acls, metricsRegistry));
++        return metricsRegistry.zkLeaderElectorImpl(conf, zkClient, blobStore, tc, clusterState, acls, _instance);
+     }
+ 
+ }
+diff --git a/storm-server/src/test/java/org/apache/storm/localizer/AsyncLocalizerTest.java b/storm-server/src/test/java/org/apache/storm/localizer/AsyncLocalizerTest.java
+index 8228702..c36a470 100644
+--- a/storm-server/src/test/java/org/apache/storm/localizer/AsyncLocalizerTest.java
++++ b/storm-server/src/test/java/org/apache/storm/localizer/AsyncLocalizerTest.java
+@@ -107,7 +107,7 @@ public class AsyncLocalizerTest {
+         ExecutorInfo ei = new ExecutorInfo();
+         ei.set_task_start(1);
+         ei.set_task_end(1);
+-        la.add_to_executors(ei);
++        ei.add_to_executors(la);
+         final int port = 8080;
+         final String stormLocal = "./target/DOWNLOAD-TEST/storm-local/";
+         ClientBlobStore blobStore = mock(ClientBlobStore.class);
+@@ -176,7 +176,7 @@ public class AsyncLocalizerTest {
+         ExecutorInfo ei = new ExecutorInfo();
+         ei.set_task_start(1);
+         ei.set_task_end(1);
+-        la.add_to_executors(ei);
++        ei.add_to_executors(la);
+         final String topoName = "TOPO";
+         final int port = 8080;
+         final String simpleLocalName = "simple.txt";
+@@ -219,7 +219,7 @@ public class AsyncLocalizerTest {
+         try {
+             when(mockedCU.supervisorStormDistRootImpl(conf, topoId)).thenReturn(stormRoot);
+             when(mockedCU.readSupervisorStormConfImpl(conf, topoId)).thenReturn(topoConf);
+-            when(mockedCU.readSupervisorTopologyImpl(conf, topoId, ops)).thenReturn(st);
++            when(ops.readSupervisorTopologyImpl(conf, topoId, mockedCU)).thenReturn(st);
+ 
+             //Write the mocking backwards so the actual method is not called on the spy object
+             doReturn(CompletableFuture.supplyAsync(() -> null)).when(bl)
+diff --git a/storm-webapp/src/main/java/org/apache/storm/daemon/ui/UIHelpers.java b/storm-webapp/src/main/java/org/apache/storm/daemon/ui/UIHelpers.java
+index 45eb9c2..c141f99 100644
+--- a/storm-webapp/src/main/java/org/apache/storm/daemon/ui/UIHelpers.java
++++ b/storm-webapp/src/main/java/org/apache/storm/daemon/ui/UIHelpers.java
+@@ -2346,7 +2346,7 @@ public class UIHelpers {
+                 logLevel.set_reset_log_level_timeout_secs(Math.toIntExact(timeout));
+             }
+             LogConfig logConfig = new LogConfig();
+-            logConfig.put_to_named_logger_level(loggerNMame, logLevel);
++            logLevel.put_to_named_logger_level(loggerNMame, logConfig);
+             client.setLogConfig(id, logConfig);
+         }
+         return UIHelpers.getTopolgoyLogConfig(client.getLogConfig(id));

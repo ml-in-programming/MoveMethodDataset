@@ -16,3 +16,6 @@
 [submodule "storm/storm"]
 	path = storm/storm
 	url = https://github.com/apache/storm.git
+[submodule "hive/hive"]
+	path = hive/hive
+	url = https://github.com/apache/hive.git

@@ -1,0 +1,145 @@
+2019-05-17 15:00:25,594 [INFO] Project /home/mikhail/Documents/Development/MoveMethodGenerator/../MoveMethodDataset/hive/hive is opened
+2019-05-17 15:03:58,593 [INFO] Total number of java files: 6527
+2019-05-17 15:03:58,593 [INFO] Total number of source java files: 6502
+2019-05-17 15:03:58,593 [INFO] Total number of classes: 4070
+2019-05-17 15:03:58,593 [INFO] Total number of methods: 49449
+2019-05-17 15:03:58,594 [INFO] StaticMethodsFilter filtered: 5744
+2019-05-17 15:03:58,594 [INFO] ConstructorsFilter filtered: 5092
+2019-05-17 15:03:58,594 [INFO] AbstractMethodsFilter filtered: 425
+2019-05-17 15:03:58,594 [INFO] GettersFilter filtered: 5421
+2019-05-17 15:03:58,594 [INFO] SettersFilter filtered: 2823
+2019-05-17 15:03:58,594 [INFO] EmptyMethodsFilter filtered: 1034
+2019-05-17 15:03:58,594 [INFO] ExceptionsThrowersFilter filtered: 800
+2019-05-17 15:03:58,594 [INFO] SingleMethodFilter filtered: 586
+2019-05-17 15:03:58,594 [INFO] SimpleDelegationsFilter filtered: 4426
+2019-05-17 15:03:58,594 [INFO] PrivateMethodsCallersFilter filtered: 5502
+2019-05-17 15:03:58,594 [INFO] PrivateFieldAccessorsFilter filtered: 7596
+2019-05-17 15:03:58,594 [INFO] OverridingMethodsFilter filtered: 4052
+2019-05-17 15:03:58,594 [INFO] OverriddenMethodsFilter filtered: 45
+2019-05-17 15:03:58,594 [INFO] MethodCallWithSuperFilter filtered: 7
+2019-05-17 15:03:58,594 [INFO] PrivateClassUserFilter filtered: 29
+2019-05-17 15:03:58,594 [INFO] GenericTypeUserFilter filtered: 0
+2019-05-17 15:03:58,594 [INFO] NoTargetsMethodsFilter filtered: 5502
+2019-05-17 15:03:58,595 [INFO] Number of methods after filtration: 365
+2019-05-17 15:07:57,133 [INFO] Project /home/mikhail/Documents/Development/MoveMethodGenerator/../MoveMethodDataset/hive/hive is opened
+2019-05-17 15:09:54,600 [ERROR] Exception occurred: Element: class com.intellij.psi.impl.source.tree.java.PsiReferenceExpressionImpl #JAVA  because: containing file is null
+invalidated at: see attachment [com.intellij.psi.PsiInvalidElementAccessException: Element: class com.intellij.psi.impl.source.tree.java.PsiReferenceExpressionImpl #JAVA  because: containing file is null
+invalidated at: see attachment]
+2019-05-17 15:09:54,600 [ERROR] com.intellij.psi.impl.source.tree.CompositePsiElement.getContainingFile(CompositePsiElement.java:107)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.psi.impl.source.codeStyle.CodeEditUtil.saveWhitespacesInfo(CodeEditUtil.java:121)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.psi.impl.source.codeStyle.CodeEditUtil.replaceChild(CodeEditUtil.java:171)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.psi.impl.source.tree.CompositeElement.replaceChildInternal(CompositeElement.java:489)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.psi.impl.source.tree.SharedImplUtil.doReplace(SharedImplUtil.java:211)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.psi.impl.source.tree.CompositePsiElement.replace(CompositePsiElement.java:212)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.refactoring.move.moveInstanceMethod.MoveInstanceMethodProcessor.createMethodToAdd(MoveInstanceMethodProcessor.java:571)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.refactoring.move.moveInstanceMethod.MoveInstanceMethodProcessor.performRefactoring(MoveInstanceMethodProcessor.java:255)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.refactoring.BaseRefactoringProcessor.lambda$doRefactoring$9(BaseRefactoringProcessor.java:481)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.refactoring.BaseRefactoringProcessor.lambda$doRefactoring$10(BaseRefactoringProcessor.java:492)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.openapi.application.impl.ApplicationImpl.lambda$null$15(ApplicationImpl.java:1012)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.openapi.progress.impl.CoreProgressManager.lambda$runProcess$2(CoreProgressManager.java:164)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.openapi.progress.impl.CoreProgressManager.registerIndicatorAndRun(CoreProgressManager.java:586)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.openapi.progress.impl.CoreProgressManager.executeProcessUnderProgress(CoreProgressManager.java:532)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.openapi.progress.impl.ProgressManagerImpl.executeProcessUnderProgress(ProgressManagerImpl.java:86)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.openapi.progress.impl.CoreProgressManager.runProcess(CoreProgressManager.java:151)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.openapi.progress.util.PotemkinProgress.runInSwingThread(PotemkinProgress.java:184)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.openapi.application.impl.ApplicationImpl.lambda$runEdtProgressWriteAction$16(ApplicationImpl.java:1012)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.openapi.application.impl.ApplicationImpl.runWriteActionWithClass(ApplicationImpl.java:1020)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.openapi.application.impl.ApplicationImpl.runEdtProgressWriteAction(ApplicationImpl.java:1010)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.openapi.application.impl.ApplicationImpl.runWriteActionWithNonCancellableProgressInDispatchThread(ApplicationImpl.java:994)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.refactoring.BaseRefactoringProcessor.doRefactoring(BaseRefactoringProcessor.java:492)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.refactoring.BaseRefactoringProcessor.lambda$execute$2(BaseRefactoringProcessor.java:299)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.openapi.command.impl.CoreCommandProcessor.executeCommand(CoreCommandProcessor.java:220)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.openapi.command.impl.CoreCommandProcessor.executeCommand(CoreCommandProcessor.java:178)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.openapi.command.impl.CoreCommandProcessor.executeCommand(CoreCommandProcessor.java:168)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.refactoring.BaseRefactoringProcessor.execute(BaseRefactoringProcessor.java:297)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.refactoring.BaseRefactoringProcessor.doRun(BaseRefactoringProcessor.java:228)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.refactoring.BaseRefactoringProcessor.run(BaseRefactoringProcessor.java:568)
+2019-05-17 15:09:54,601 [ERROR] org.jetbrains.research.groups.ml_methods.move_method_gen.mover.AppStarter.moveMethod(AppStarter.java:213)
+2019-05-17 15:09:54,601 [ERROR] org.jetbrains.research.groups.ml_methods.move_method_gen.mover.AppStarter.lambda$run$3(AppStarter.java:115)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.openapi.project.DumbServiceImpl.lambda$runWhenSmart$0(DumbServiceImpl.java:232)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.ide.startup.impl.StartupManagerImpl.lambda$runWhenProjectIsInitialized$6(StartupManagerImpl.java:392)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.ui.GuiUtils.invokeLaterIfNeeded(GuiUtils.java:377)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.ide.startup.impl.StartupManagerImpl.runWhenProjectIsInitialized(StartupManagerImpl.java:394)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.openapi.project.DumbServiceImpl.runWhenSmart(DumbServiceImpl.java:224)
+2019-05-17 15:09:54,601 [ERROR] org.jetbrains.research.groups.ml_methods.move_method_gen.mover.AppStarter.run(AppStarter.java:107)
+2019-05-17 15:09:54,601 [ERROR] org.jetbrains.research.groups.ml_methods.move_method_gen.ProjectAppStarter.main(ProjectAppStarter.java:108)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.idea.IdeaApplication.lambda$run$1(IdeaApplication.java:211)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.openapi.application.TransactionGuardImpl.performUserActivity(TransactionGuardImpl.java:195)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.idea.IdeaApplication.run(IdeaApplication.java:211)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.idea.IdeaApplication.lambda$initApplication$0(IdeaApplication.java:74)
+2019-05-17 15:09:54,601 [ERROR] java.awt.event.InvocationEvent.dispatch(InvocationEvent.java:311)
+2019-05-17 15:09:54,601 [ERROR] java.awt.EventQueue.dispatchEventImpl(EventQueue.java:764)
+2019-05-17 15:09:54,601 [ERROR] java.awt.EventQueue.access$500(EventQueue.java:98)
+2019-05-17 15:09:54,601 [ERROR] java.awt.EventQueue$3.run(EventQueue.java:715)
+2019-05-17 15:09:54,601 [ERROR] java.awt.EventQueue$3.run(EventQueue.java:709)
+2019-05-17 15:09:54,601 [ERROR] java.security.AccessController.doPrivileged(Native Method)
+2019-05-17 15:09:54,601 [ERROR] java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:74)
+2019-05-17 15:09:54,601 [ERROR] java.awt.EventQueue.dispatchEvent(EventQueue.java:734)
+2019-05-17 15:09:54,601 [ERROR] com.intellij.ide.IdeEventQueue.dispatchEvent(IdeEventQueue.java:347)
+2019-05-17 15:09:54,601 [ERROR] java.awt.EventDispatchThread.pumpOneEventForFilters(EventDispatchThread.java:205)
+2019-05-17 15:09:54,601 [ERROR] java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:116)
+2019-05-17 15:09:54,601 [ERROR] java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:105)
+2019-05-17 15:09:54,601 [ERROR] java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:101)
+2019-05-17 15:09:54,601 [ERROR] java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:93)
+2019-05-17 15:09:54,601 [ERROR] java.awt.EventDispatchThread.run(EventDispatchThread.java:82)
+2019-05-17 15:13:56,823 [INFO] Project /home/mikhail/Documents/Development/MoveMethodGenerator/../MoveMethodDataset/hive/hive is opened
+2019-05-17 15:16:25,695 [ERROR] Exception occurred: Element: class com.intellij.psi.impl.source.tree.java.PsiReferenceExpressionImpl #JAVA  because: containing file is null
+invalidated at: see attachment [com.intellij.psi.PsiInvalidElementAccessException: Element: class com.intellij.psi.impl.source.tree.java.PsiReferenceExpressionImpl #JAVA  because: containing file is null
+invalidated at: see attachment]
+2019-05-17 15:16:25,695 [ERROR] com.intellij.psi.impl.source.tree.CompositePsiElement.getContainingFile(CompositePsiElement.java:107)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.psi.impl.source.codeStyle.CodeEditUtil.saveWhitespacesInfo(CodeEditUtil.java:121)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.psi.impl.source.codeStyle.CodeEditUtil.replaceChild(CodeEditUtil.java:171)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.psi.impl.source.tree.CompositeElement.replaceChildInternal(CompositeElement.java:489)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.psi.impl.source.tree.SharedImplUtil.doReplace(SharedImplUtil.java:211)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.psi.impl.source.tree.CompositePsiElement.replace(CompositePsiElement.java:212)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.refactoring.move.moveInstanceMethod.MoveInstanceMethodProcessor.createMethodToAdd(MoveInstanceMethodProcessor.java:571)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.refactoring.move.moveInstanceMethod.MoveInstanceMethodProcessor.performRefactoring(MoveInstanceMethodProcessor.java:255)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.refactoring.BaseRefactoringProcessor.lambda$doRefactoring$9(BaseRefactoringProcessor.java:481)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.refactoring.BaseRefactoringProcessor.lambda$doRefactoring$10(BaseRefactoringProcessor.java:492)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.openapi.application.impl.ApplicationImpl.lambda$null$15(ApplicationImpl.java:1012)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.openapi.progress.impl.CoreProgressManager.lambda$runProcess$2(CoreProgressManager.java:164)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.openapi.progress.impl.CoreProgressManager.registerIndicatorAndRun(CoreProgressManager.java:586)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.openapi.progress.impl.CoreProgressManager.executeProcessUnderProgress(CoreProgressManager.java:532)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.openapi.progress.impl.ProgressManagerImpl.executeProcessUnderProgress(ProgressManagerImpl.java:86)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.openapi.progress.impl.CoreProgressManager.runProcess(CoreProgressManager.java:151)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.openapi.progress.util.PotemkinProgress.runInSwingThread(PotemkinProgress.java:184)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.openapi.application.impl.ApplicationImpl.lambda$runEdtProgressWriteAction$16(ApplicationImpl.java:1012)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.openapi.application.impl.ApplicationImpl.runWriteActionWithClass(ApplicationImpl.java:1020)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.openapi.application.impl.ApplicationImpl.runEdtProgressWriteAction(ApplicationImpl.java:1010)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.openapi.application.impl.ApplicationImpl.runWriteActionWithNonCancellableProgressInDispatchThread(ApplicationImpl.java:994)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.refactoring.BaseRefactoringProcessor.doRefactoring(BaseRefactoringProcessor.java:492)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.refactoring.BaseRefactoringProcessor.lambda$execute$2(BaseRefactoringProcessor.java:299)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.openapi.command.impl.CoreCommandProcessor.executeCommand(CoreCommandProcessor.java:220)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.openapi.command.impl.CoreCommandProcessor.executeCommand(CoreCommandProcessor.java:178)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.openapi.command.impl.CoreCommandProcessor.executeCommand(CoreCommandProcessor.java:168)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.refactoring.BaseRefactoringProcessor.execute(BaseRefactoringProcessor.java:297)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.refactoring.BaseRefactoringProcessor.doRun(BaseRefactoringProcessor.java:228)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.refactoring.BaseRefactoringProcessor.run(BaseRefactoringProcessor.java:568)
+2019-05-17 15:16:25,696 [ERROR] org.jetbrains.research.groups.ml_methods.move_method_gen.mover.AppStarter.moveMethod(AppStarter.java:213)
+2019-05-17 15:16:25,696 [ERROR] org.jetbrains.research.groups.ml_methods.move_method_gen.mover.AppStarter.lambda$run$3(AppStarter.java:115)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.openapi.project.DumbServiceImpl.lambda$runWhenSmart$0(DumbServiceImpl.java:232)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.ide.startup.impl.StartupManagerImpl.lambda$runWhenProjectIsInitialized$6(StartupManagerImpl.java:392)
+2019-05-17 15:16:25,696 [ERROR] com.intellij.ui.GuiUtils.invokeLaterIfNeeded(GuiUtils.java:377)
+2019-05-17 15:16:25,697 [ERROR] com.intellij.ide.startup.impl.StartupManagerImpl.runWhenProjectIsInitialized(StartupManagerImpl.java:394)
+2019-05-17 15:16:25,697 [ERROR] com.intellij.openapi.project.DumbServiceImpl.runWhenSmart(DumbServiceImpl.java:224)
+2019-05-17 15:16:25,697 [ERROR] org.jetbrains.research.groups.ml_methods.move_method_gen.mover.AppStarter.run(AppStarter.java:107)
+2019-05-17 15:16:25,697 [ERROR] org.jetbrains.research.groups.ml_methods.move_method_gen.ProjectAppStarter.main(ProjectAppStarter.java:108)
+2019-05-17 15:16:25,697 [ERROR] com.intellij.idea.IdeaApplication.lambda$run$1(IdeaApplication.java:211)
+2019-05-17 15:16:25,697 [ERROR] com.intellij.openapi.application.TransactionGuardImpl.performUserActivity(TransactionGuardImpl.java:195)
+2019-05-17 15:16:25,697 [ERROR] com.intellij.idea.IdeaApplication.run(IdeaApplication.java:211)
+2019-05-17 15:16:25,697 [ERROR] com.intellij.idea.IdeaApplication.lambda$initApplication$0(IdeaApplication.java:74)
+2019-05-17 15:16:25,697 [ERROR] java.awt.event.InvocationEvent.dispatch(InvocationEvent.java:311)
+2019-05-17 15:16:25,697 [ERROR] java.awt.EventQueue.dispatchEventImpl(EventQueue.java:764)
+2019-05-17 15:16:25,697 [ERROR] java.awt.EventQueue.access$500(EventQueue.java:98)
+2019-05-17 15:16:25,697 [ERROR] java.awt.EventQueue$3.run(EventQueue.java:715)
+2019-05-17 15:16:25,697 [ERROR] java.awt.EventQueue$3.run(EventQueue.java:709)
+2019-05-17 15:16:25,697 [ERROR] java.security.AccessController.doPrivileged(Native Method)
+2019-05-17 15:16:25,697 [ERROR] java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:74)
+2019-05-17 15:16:25,697 [ERROR] java.awt.EventQueue.dispatchEvent(EventQueue.java:734)
+2019-05-17 15:16:25,697 [ERROR] com.intellij.ide.IdeEventQueue.dispatchEvent(IdeEventQueue.java:347)
+2019-05-17 15:16:25,697 [ERROR] java.awt.EventDispatchThread.pumpOneEventForFilters(EventDispatchThread.java:205)
+2019-05-17 15:16:25,697 [ERROR] java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:116)
+2019-05-17 15:16:25,697 [ERROR] java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:105)
+2019-05-17 15:16:25,697 [ERROR] java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:101)
+2019-05-17 15:16:25,697 [ERROR] java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:93)
+2019-05-17 15:16:25,697 [ERROR] java.awt.EventDispatchThread.run(EventDispatchThread.java:82)
