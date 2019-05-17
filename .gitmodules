@@ -13,6 +13,9 @@
 [submodule "jenkins/jenkins"]
 	path = jenkins/jenkins
 	url = https://github.com/jenkinsci/jenkins.git
+[submodule "storm/storm"]
+	path = storm/storm
+	url = https://github.com/apache/storm.git
 [submodule "drools/drools"]
 	path = drools/drools
 	url = https://github.com/kiegroup/drools.git
