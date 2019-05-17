@@ -1,0 +1,89 @@
+2019-05-17 15:53:35,560 [INFO] Project /home/mikhail/Documents/Development/MoveMethodGenerator/../MoveMethodDataset/buck/buck is opened
+2019-05-17 16:02:22,412 [INFO] Total number of java files: 6077
+2019-05-17 16:02:22,412 [INFO] Total number of source java files: 5718
+2019-05-17 16:02:22,412 [INFO] Total number of classes: 2459
+2019-05-17 16:02:22,412 [INFO] Total number of methods: 23236
+2019-05-17 16:02:22,413 [INFO] StaticMethodsFilter filtered: 3158
+2019-05-17 16:02:22,413 [INFO] ConstructorsFilter filtered: 2467
+2019-05-17 16:02:22,413 [INFO] AbstractMethodsFilter filtered: 320
+2019-05-17 16:02:22,413 [INFO] GettersFilter filtered: 1651
+2019-05-17 16:02:22,413 [INFO] SettersFilter filtered: 79
+2019-05-17 16:02:22,413 [INFO] EmptyMethodsFilter filtered: 933
+2019-05-17 16:02:22,413 [INFO] ExceptionsThrowersFilter filtered: 74
+2019-05-17 16:02:22,413 [INFO] SingleMethodFilter filtered: 298
+2019-05-17 16:02:22,413 [INFO] SimpleDelegationsFilter filtered: 3080
+2019-05-17 16:02:22,413 [INFO] PrivateMethodsCallersFilter filtered: 2902
+2019-05-17 16:02:22,413 [INFO] PrivateFieldAccessorsFilter filtered: 2978
+2019-05-17 16:02:22,413 [INFO] OverridingMethodsFilter filtered: 2048
+2019-05-17 16:02:22,413 [INFO] OverriddenMethodsFilter filtered: 10
+2019-05-17 16:02:22,413 [INFO] MethodCallWithSuperFilter filtered: 1
+2019-05-17 16:02:22,413 [INFO] PrivateClassUserFilter filtered: 7
+2019-05-17 16:02:22,413 [INFO] GenericTypeUserFilter filtered: 0
+2019-05-17 16:02:22,413 [INFO] NoTargetsMethodsFilter filtered: 2909
+2019-05-17 16:02:22,413 [INFO] Number of methods after filtration: 321
+2019-05-17 16:05:11,416 [INFO] Project /home/mikhail/Documents/Development/MoveMethodGenerator/../MoveMethodDataset/buck/buck is opened
+2019-05-17 16:07:45,712 [ERROR] Exception occurred: Element: class com.intellij.psi.impl.source.tree.java.PsiReferenceExpressionImpl #JAVA  because: different providers: DummyHolderViewProvider{myVirtualFile=LightVirtualFile: /DummyHolder, content=VirtualFileContent{size=0}}(121cd8eb); SingleRootFileViewProvider{myVirtualFile=LightVirtualFile: /DummyHolder, content=VirtualFileContent{size=0}}(715d3206)
+invalidated at: see attachment [com.intellij.psi.PsiInvalidElementAccessException: Element: class com.intellij.psi.impl.source.tree.java.PsiReferenceExpressionImpl #JAVA  because: different providers: DummyHolderViewProvider{myVirtualFile=LightVirtualFile: /DummyHolder, content=VirtualFileContent{size=0}}(121cd8eb); SingleRootFileViewProvider{myVirtualFile=LightVirtualFile: /DummyHolder, content=VirtualFileContent{size=0}}(715d3206)
+invalidated at: see attachment]
+2019-05-17 16:07:45,712 [ERROR] com.intellij.psi.util.PsiUtilCore.ensureValid(PsiUtilCore.java:482)
+2019-05-17 16:07:45,712 [ERROR] com.intellij.psi.impl.PsiImplUtil.multiResolveImpl(PsiImplUtil.java:776)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.psi.impl.source.tree.java.PsiReferenceExpressionImpl.multiResolve(PsiReferenceExpressionImpl.java:377)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.psi.impl.source.tree.java.PsiReferenceExpressionImpl.advancedResolve(PsiReferenceExpressionImpl.java:539)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.psi.impl.source.tree.java.PsiReferenceExpressionImpl.resolve(PsiReferenceExpressionImpl.java:839)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.psi.impl.source.tree.JavaTreeCopyHandler.decodeInformation(JavaTreeCopyHandler.java:57)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.psi.impl.source.tree.ChangeUtil.decodeInformation(ChangeUtil.java:69)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.psi.impl.source.tree.ChangeUtil.lambda$decodeInformation$1(ChangeUtil.java:58)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.psi.impl.DebugUtil.performPsiModification(DebugUtil.java:562)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.psi.impl.source.tree.ChangeUtil.decodeInformation(ChangeUtil.java:58)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.psi.impl.source.tree.CompositePsiElement.addAfter(CompositePsiElement.java:164)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.psi.impl.source.javadoc.PsiDocMethodOrFieldRef$MyReference.bindToElement(PsiDocMethodOrFieldRef.java:357)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.refactoring.move.moveInstanceMethod.MoveInstanceMethodProcessor.performRefactoring(MoveInstanceMethodProcessor.java:319)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.refactoring.BaseRefactoringProcessor.lambda$doRefactoring$9(BaseRefactoringProcessor.java:481)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.refactoring.BaseRefactoringProcessor.lambda$doRefactoring$10(BaseRefactoringProcessor.java:492)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.openapi.application.impl.ApplicationImpl.lambda$null$15(ApplicationImpl.java:1012)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.openapi.progress.impl.CoreProgressManager.lambda$runProcess$2(CoreProgressManager.java:164)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.openapi.progress.impl.CoreProgressManager.registerIndicatorAndRun(CoreProgressManager.java:586)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.openapi.progress.impl.CoreProgressManager.executeProcessUnderProgress(CoreProgressManager.java:532)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.openapi.progress.impl.ProgressManagerImpl.executeProcessUnderProgress(ProgressManagerImpl.java:86)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.openapi.progress.impl.CoreProgressManager.runProcess(CoreProgressManager.java:151)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.openapi.progress.util.PotemkinProgress.runInSwingThread(PotemkinProgress.java:184)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.openapi.application.impl.ApplicationImpl.lambda$runEdtProgressWriteAction$16(ApplicationImpl.java:1012)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.openapi.application.impl.ApplicationImpl.runWriteActionWithClass(ApplicationImpl.java:1020)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.openapi.application.impl.ApplicationImpl.runEdtProgressWriteAction(ApplicationImpl.java:1010)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.openapi.application.impl.ApplicationImpl.runWriteActionWithNonCancellableProgressInDispatchThread(ApplicationImpl.java:994)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.refactoring.BaseRefactoringProcessor.doRefactoring(BaseRefactoringProcessor.java:492)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.refactoring.BaseRefactoringProcessor.lambda$execute$2(BaseRefactoringProcessor.java:299)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.openapi.command.impl.CoreCommandProcessor.executeCommand(CoreCommandProcessor.java:220)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.openapi.command.impl.CoreCommandProcessor.executeCommand(CoreCommandProcessor.java:178)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.openapi.command.impl.CoreCommandProcessor.executeCommand(CoreCommandProcessor.java:168)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.refactoring.BaseRefactoringProcessor.execute(BaseRefactoringProcessor.java:297)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.refactoring.BaseRefactoringProcessor.doRun(BaseRefactoringProcessor.java:228)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.refactoring.BaseRefactoringProcessor.run(BaseRefactoringProcessor.java:568)
+2019-05-17 16:07:45,713 [ERROR] org.jetbrains.research.groups.ml_methods.move_method_gen.mover.AppStarter.moveMethod(AppStarter.java:213)
+2019-05-17 16:07:45,713 [ERROR] org.jetbrains.research.groups.ml_methods.move_method_gen.mover.AppStarter.lambda$run$3(AppStarter.java:115)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.openapi.project.DumbServiceImpl.lambda$runWhenSmart$0(DumbServiceImpl.java:232)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.ide.startup.impl.StartupManagerImpl.lambda$runWhenProjectIsInitialized$6(StartupManagerImpl.java:392)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.ui.GuiUtils.invokeLaterIfNeeded(GuiUtils.java:377)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.ide.startup.impl.StartupManagerImpl.runWhenProjectIsInitialized(StartupManagerImpl.java:394)
+2019-05-17 16:07:45,713 [ERROR] com.intellij.openapi.project.DumbServiceImpl.runWhenSmart(DumbServiceImpl.java:224)
+2019-05-17 16:07:45,713 [ERROR] org.jetbrains.research.groups.ml_methods.move_method_gen.mover.AppStarter.run(AppStarter.java:107)
+2019-05-17 16:07:45,714 [ERROR] org.jetbrains.research.groups.ml_methods.move_method_gen.ProjectAppStarter.main(ProjectAppStarter.java:108)
+2019-05-17 16:07:45,714 [ERROR] com.intellij.idea.IdeaApplication.lambda$run$1(IdeaApplication.java:211)
+2019-05-17 16:07:45,714 [ERROR] com.intellij.openapi.application.TransactionGuardImpl.performUserActivity(TransactionGuardImpl.java:195)
+2019-05-17 16:07:45,714 [ERROR] com.intellij.idea.IdeaApplication.run(IdeaApplication.java:211)
+2019-05-17 16:07:45,714 [ERROR] com.intellij.idea.IdeaApplication.lambda$initApplication$0(IdeaApplication.java:74)
+2019-05-17 16:07:45,714 [ERROR] java.awt.event.InvocationEvent.dispatch(InvocationEvent.java:311)
+2019-05-17 16:07:45,714 [ERROR] java.awt.EventQueue.dispatchEventImpl(EventQueue.java:764)
+2019-05-17 16:07:45,714 [ERROR] java.awt.EventQueue.access$500(EventQueue.java:98)
+2019-05-17 16:07:45,714 [ERROR] java.awt.EventQueue$3.run(EventQueue.java:715)
+2019-05-17 16:07:45,714 [ERROR] java.awt.EventQueue$3.run(EventQueue.java:709)
+2019-05-17 16:07:45,714 [ERROR] java.security.AccessController.doPrivileged(Native Method)
+2019-05-17 16:07:45,714 [ERROR] java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:74)
+2019-05-17 16:07:45,714 [ERROR] java.awt.EventQueue.dispatchEvent(EventQueue.java:734)
+2019-05-17 16:07:45,714 [ERROR] com.intellij.ide.IdeEventQueue.dispatchEvent(IdeEventQueue.java:347)
+2019-05-17 16:07:45,714 [ERROR] java.awt.EventDispatchThread.pumpOneEventForFilters(EventDispatchThread.java:205)
+2019-05-17 16:07:45,714 [ERROR] java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:116)
+2019-05-17 16:07:45,714 [ERROR] java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:105)
+2019-05-17 16:07:45,714 [ERROR] java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:101)
+2019-05-17 16:07:45,714 [ERROR] java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:93)
+2019-05-17 16:07:45,714 [ERROR] java.awt.EventDispatchThread.run(EventDispatchThread.java:82)
