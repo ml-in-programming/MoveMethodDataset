@@ -1,0 +1,2580 @@
+diff --git a/actor-sdk/sdk-core-android/android-app/src/main/java/im/actor/Application.java b/actor-sdk/sdk-core-android/android-app/src/main/java/im/actor/Application.java
+index d737d25..69c0ba3 100644
+--- a/actor-sdk/sdk-core-android/android-app/src/main/java/im/actor/Application.java
++++ b/actor-sdk/sdk-core-android/android-app/src/main/java/im/actor/Application.java
+@@ -177,12 +177,11 @@ public class Application extends ActorSDKApplication {
+                         @Override
+                         public ActorSettingsCategories getBeforeSettingsCategories() {
+                             return new ActorSettingsCategories()
+-                                    .addCategory(new ActorSettingsCategory("azaza")
+-                                            .addField(new ActorSettingsField(R.id.terminateSessions)
+-                                                    .setName("blabla")
+-                                                    .setIconResourceId(R.drawable.ic_edit_black_24dp)
+-                                                    .setRightView(blablaCheckBox)
+-                                            )
++                                    .addCategory(new ActorSettingsField(R.id.terminateSessions)
++                                            .setName("blabla")
++                                            .setIconResourceId(R.drawable.ic_edit_black_24dp)
++                                            .setRightView(blablaCheckBox).addField(
++                                                    new ActorSettingsCategory("azaza"))
+                                     );
+                         }
+ 
+diff --git a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/auth/BaseAuthFragment.java b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/auth/BaseAuthFragment.java
+index def1393..7c882c2 100644
+--- a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/auth/BaseAuthFragment.java
++++ b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/auth/BaseAuthFragment.java
+@@ -24,10 +24,7 @@ import android.widget.Toast;
+ 
+ import java.util.regex.Pattern;
+ 
+-import im.actor.core.entity.AuthRes;
+-import im.actor.core.entity.Sex;
+ import im.actor.runtime.mtproto.ConnectionEndpointArray;
+-import im.actor.runtime.promise.Promise;
+ import im.actor.sdk.ActorSDK;
+ import im.actor.sdk.R;
+ import im.actor.sdk.controllers.BaseFragment;
+@@ -78,12 +75,6 @@ public abstract class BaseAuthFragment extends BaseFragment {
+         activity.validateCode(messenger().doValidateCode(code, activity.getTransactionHash()), code);
+     }
+ 
+-    protected void signUp(String name, Sex sex) {
+-        AuthActivity activity = (AuthActivity) getActivity();
+-        Promise<AuthRes> promise = messenger().doSignup(name, sex, activity.getTransactionHash());
+-        ((AuthActivity) getActivity()).signUp(promise, name, sex);
+-    }
+-
+     protected void startAuth(String name) {
+         ((AuthActivity) getActivity()).startAuth(name);
+     }
+diff --git a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/contacts/InviteFragment.java b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/contacts/InviteFragment.java
+index 5ff3292..db0e229 100644
+--- a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/contacts/InviteFragment.java
++++ b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/contacts/InviteFragment.java
+@@ -64,7 +64,7 @@ public class InviteFragment extends BaseFragment {
+                         @Override
+                         public void onClicked(PhoneBookContact item) {
+ 
+-                            onItemClicked(item);
++                            item.onItemClicked(this);
+                         }
+ 
+                         @Override
+@@ -88,39 +88,6 @@ public class InviteFragment extends BaseFragment {
+     }
+ 
+ 
+-    public void onItemClicked(PhoneBookContact contact) {
+-        boolean selected = isSelected(contact);
+-        boolean needDialog = contact.getEmails().size() > 0 && contact.getPhones().size() > 0;
+-
+-        if (needDialog) {
+-            String[] items = new String[selected ? 3 : 2];
+-            items[0] = Long.toString(contact.getPhones().get(0).getNumber());
+-            items[1] = contact.getEmails().get(0).getEmail();
+-            if (selected) {
+-                items[2] = getString(R.string.dialog_cancel);
+-            }
+-            AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+-            builder.setItems(items, (dialog, which) -> {
+-                if (which == 2) {
+-                    unselect(contact);
+-                } else {
+-                    select(contact, which);
+-                }
+-                getAdapter().notifyDataSetChanged();
+-
+-                dialog.dismiss();
+-            }).show();
+-
+-        } else {
+-            if (selected) {
+-                unselect(contact);
+-            } else {
+-                select(contact, -1);
+-            }
+-            getAdapter().notifyDataSetChanged();
+-        }
+-    }
+-
+     public void select(PhoneBookContact id, int type) {
+         getAdapter().select(id, type);
+     }
+diff --git a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/conversation/messages/MessagesAdapter.java b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/conversation/messages/MessagesAdapter.java
+index 018380a..a750b95 100644
+--- a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/conversation/messages/MessagesAdapter.java
++++ b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/conversation/messages/MessagesAdapter.java
+@@ -156,7 +156,7 @@ public class MessagesAdapter extends BindedListAdapter<Message, AbsMessageViewHo
+     @Override
+     public int getItemViewType(int position) {
+         AbsContent content = getItem(position).getContent();
+-        return matcher.getMatchId(content);
++        return content.getMatchId(matcher);
+ 
+     }
+ 
+diff --git a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/conversation/messages/ViewHolderMatcher.java b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/conversation/messages/ViewHolderMatcher.java
+index 7a3b119..9ea3607 100644
+--- a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/conversation/messages/ViewHolderMatcher.java
++++ b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/conversation/messages/ViewHolderMatcher.java
+@@ -5,7 +5,6 @@ import android.view.ViewGroup;
+ import java.util.ArrayList;
+ 
+ import im.actor.core.entity.Peer;
+-import im.actor.core.entity.content.AbsContent;
+ import im.actor.sdk.controllers.conversation.messages.content.AbsMessageViewHolder;
+ import im.actor.sdk.controllers.conversation.messages.content.UnsupportedHolder;
+ import im.actor.sdk.util.ViewUtils;
+@@ -25,15 +24,6 @@ public class ViewHolderMatcher {
+     }
+ 
+ 
+-    public int getMatchId(AbsContent content) {
+-        for (int i = 0; i < layouters.size(); i++) {
+-            if (layouters.get(i).isMatch(content)) {
+-                return i;
+-            }
+-        }
+-        return -1;
+-    }
+-
+     public AbsMessageViewHolder onCreateViewHolder(int id, MessagesAdapter adapter, ViewGroup root, Peer peer) {
+         if (id == -1) {
+             return new UnsupportedHolder(adapter, ViewUtils.inflate(R.layout.adapter_dialog_text, root), peer);
+diff --git a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/conversation/messages/content/ContactHolder.java b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/conversation/messages/content/ContactHolder.java
+index 7005980..1defa0a 100644
+--- a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/conversation/messages/content/ContactHolder.java
++++ b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/conversation/messages/content/ContactHolder.java
+@@ -112,7 +112,7 @@ public class ContactHolder extends MessageHolder {
+             messageBubble.setBackgroundResource(R.drawable.conv_bubble_media_in);
+         }
+         Drawable avatar;
+-        Bitmap b = convertPhoto(contact);
++        Bitmap b = contact.convertPhoto(this);
+         if (b != null) {
+             avatar = getRoundedBitmapDrawable(itemView.getContext(), b);
+         } else {
+@@ -124,26 +124,6 @@ public class ContactHolder extends MessageHolder {
+ 
+     }
+ 
+-    private Bitmap convertPhoto(ContactContent contact) {
+-        Bitmap b = null;
+-        byte[] decodedByte;
+-        try {
+-            decodedByte = Base64.decode(contact.getPhoto64(), Base64.NO_WRAP);
+-            b = BitmapFactory.decodeByteArray(decodedByte, 0, decodedByte.length);
+-        } catch (Exception e) {
+-            //oops
+-        }
+-        if (b == null) {
+-            try {
+-                decodedByte = Base64.decode(contact.getPhoto64(), Base64.URL_SAFE | Base64.NO_WRAP);
+-                b = BitmapFactory.decodeByteArray(decodedByte, 0, decodedByte.length);
+-            } catch (Exception e1) {
+-                //no good
+-            }
+-        }
+-        return b;
+-    }
+-
+     @Override
+     public void onClick(Message currentMessage) {
+ 
+diff --git a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/conversation/messages/content/PhotoHolder.java b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/conversation/messages/content/PhotoHolder.java
+index 2f0197e..8f6f13a 100644
+--- a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/conversation/messages/content/PhotoHolder.java
++++ b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/conversation/messages/content/PhotoHolder.java
+@@ -354,7 +354,7 @@ public class PhotoHolder extends MessageHolder {
+                             if (document instanceof PhotoContent) {
+                                 Intents.openMedia(getAdapter().getMessagesFragment().getActivity(), previewView, reference.getDescriptor(), currentMessage.getSenderId());
+                             } else if (document instanceof VideoContent) {
+-                                playVideo(document, reference);
++                                document.playVideo(reference, this);
+                             } else if (document instanceof AnimationContent) {
+                                 toggleAnimation();
+                             }
+@@ -406,13 +406,6 @@ public class PhotoHolder extends MessageHolder {
+         }
+     }
+ 
+-    public void playVideo(DocumentContent document, FileSystemReference reference) {
+-        Activity activity = getAdapter().getMessagesFragment().getActivity();
+-        if (activity != null) {
+-            activity.startActivity(Intents.openDoc(document.getName(), reference.getDescriptor()));
+-        }
+-    }
+-
+     @Override
+     public void unbind() {
+         super.unbind();
+@@ -544,7 +537,7 @@ public class PhotoHolder extends MessageHolder {
+                 }
+                 if (playRequested) {
+                     playRequested = false;
+-                    playVideo((DocumentContent) currentMessage.getContent(), reference);
++                    ((DocumentContent) currentMessage.getContent()).playVideo(reference, this);
+                 }
+             }
+ 
+diff --git a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/group/GroupInfoFragment.java b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/group/GroupInfoFragment.java
+index 8cbaf20..ce8c6d8 100644
+--- a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/group/GroupInfoFragment.java
++++ b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/group/GroupInfoFragment.java
+@@ -29,13 +29,9 @@ import java.util.ArrayList;
+ import im.actor.core.entity.GroupMember;
+ import im.actor.core.entity.GroupType;
+ import im.actor.core.entity.Peer;
+-import im.actor.core.viewmodel.CommandCallback;
+ import im.actor.core.viewmodel.GroupVM;
+-import im.actor.core.viewmodel.UserPhone;
+ import im.actor.core.viewmodel.UserVM;
+-import im.actor.runtime.actors.messages.Void;
+ import im.actor.sdk.ActorSDK;
+-import im.actor.sdk.ActorSDKLauncher;
+ import im.actor.sdk.ActorStyle;
+ import im.actor.sdk.R;
+ import im.actor.sdk.controllers.ActorBinder;
+@@ -44,7 +40,6 @@ import im.actor.sdk.controllers.activity.BaseActivity;
+ import im.actor.sdk.controllers.BaseFragment;
+ import im.actor.sdk.controllers.group.view.MembersAdapter;
+ import im.actor.sdk.controllers.fragment.preview.ViewAvatarActivity;
+-import im.actor.sdk.util.AlertListBuilder;
+ import im.actor.sdk.util.Screen;
+ import im.actor.sdk.view.TintImageView;
+ import im.actor.sdk.view.adapters.RecyclerListView;
+@@ -313,7 +308,7 @@ public class GroupInfoFragment extends BaseFragment {
+                 if (groupMember.getUid() != myUid()) {
+                     UserVM userVM = users().get(groupMember.getUid());
+                     if (userVM != null) {
+-                        groupUserAdapter.onMemberClick(groupVM, userVM, groupMember.isAdministrator(), groupMember.getInviterUid() == myUid(), (BaseActivity) getActivity());
++                        groupVM.onMemberClick(userVM, groupMember.isAdministrator(), groupMember.getInviterUid() == myUid(), (BaseActivity) getActivity(), groupUserAdapter);
+                         return true;
+                     }
+                 }
+diff --git a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/group/MembersFragment.java b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/group/MembersFragment.java
+index 4584c2b..86a2b43 100644
+--- a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/group/MembersFragment.java
++++ b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/group/MembersFragment.java
+@@ -140,7 +140,7 @@ public class MembersFragment extends BaseFragment {
+                     if (groupMember.getUid() != myUid()) {
+                         UserVM userVM = users().get(groupMember.getUid());
+                         if (userVM != null) {
+-                            adapter.onMemberClick(groupVM, userVM, groupMember.isAdministrator(), groupMember.getInviterUid() == myUid(), (BaseActivity) getActivity());
++                            groupVM.onMemberClick(userVM, groupMember.isAdministrator(), groupMember.getInviterUid() == myUid(), (BaseActivity) getActivity(), adapter);
+                             return true;
+                         }
+                     }
+diff --git a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/group/view/MembersAdapter.java b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/group/view/MembersAdapter.java
+index 0585b67..fc35424 100644
+--- a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/group/view/MembersAdapter.java
++++ b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/group/view/MembersAdapter.java
+@@ -15,20 +15,10 @@ import com.google.i18n.phonenumbers.Phonenumber;
+ import java.util.ArrayList;
+ import java.util.Arrays;
+ import java.util.Collection;
+-import java.util.Optional;
+ 
+-import im.actor.core.viewmodel.CommandCallback;
+-import im.actor.core.viewmodel.GroupVM;
+-import im.actor.core.viewmodel.UserPhone;
+-import im.actor.runtime.actors.messages.*;
+-import im.actor.runtime.actors.messages.Void;
+ import im.actor.sdk.ActorSDK;
+-import im.actor.sdk.ActorSDKLauncher;
+ import im.actor.sdk.R;
+ import im.actor.sdk.controllers.ActorBinder;
+-import im.actor.sdk.controllers.Intents;
+-import im.actor.sdk.controllers.activity.BaseActivity;
+-import im.actor.sdk.util.AlertListBuilder;
+ import im.actor.sdk.util.Screen;
+ import im.actor.sdk.view.avatar.AvatarView;
+ import im.actor.sdk.view.adapters.HolderAdapter;
+@@ -211,89 +201,4 @@ public class MembersAdapter extends HolderAdapter<GroupMember> {
+         BINDER.unbindAll();
+     }
+ 
+-    public void onMemberClick(GroupVM groupVM, UserVM userVM, boolean isAdministrator, boolean isInvitedByMe, BaseActivity activity) {
+-        AlertListBuilder alertListBuilder = new AlertListBuilder();
+-        final ArrayList<UserPhone> phones = userVM.getPhones().get();
+-        alertListBuilder.addItem(activity.getString(R.string.group_context_message).replace("{0}", userVM.getName().get()), () -> activity.startActivity(Intents.openPrivateDialog(userVM.getId(), true, activity)));
+-        if (phones.size() != 0) {
+-            alertListBuilder.addItem(activity.getString(R.string.group_context_call).replace("{0}", userVM.getName().get()), () -> {
+-                if (phones.size() == 1) {
+-                    activity.startActivity(Intents.call(phones.get(0).getPhone()));
+-                } else {
+-                    CharSequence[] sequences = new CharSequence[phones.size()];
+-                    for (int i = 0; i < sequences.length; i++) {
+-                        try {
+-                            Phonenumber.PhoneNumber number = PhoneNumberUtil.getInstance().parse("+" + phones.get(i).getPhone(), "us");
+-                            sequences[i] = phones.get(i).getTitle() + ": " + PhoneNumberUtil.getInstance().format(number, PhoneNumberUtil.PhoneNumberFormat.INTERNATIONAL);
+-                        } catch (NumberParseException e) {
+-                            e.printStackTrace();
+-                            sequences[i] = phones.get(i).getTitle() + ": +" + phones.get(i).getPhone();
+-                        }
+-                    }
+-                    new AlertDialog.Builder(activity)
+-                            .setItems(sequences, (dialog1, which1) -> {
+-                                activity.startActivity(Intents.call(phones.get(which1).getPhone()));
+-                            })
+-                            .show()
+-                            .setCanceledOnTouchOutside(true);
+-                }
+-            });
+-        }
+-        alertListBuilder.addItem(activity.getString(R.string.group_context_view).replace("{0}", userVM.getName().get()), () -> ActorSDKLauncher.startProfileActivity(activity, userVM.getId()));
+-        if (groupVM.getIsCanKickAnyone().get() || (groupVM.getIsCanKickInvited().get() && isInvitedByMe)) {
+-            alertListBuilder.addItem(activity.getString(R.string.group_context_remove).replace("{0}", userVM.getName().get()), () -> {
+-                new AlertDialog.Builder(activity)
+-                        .setMessage(activity.getString(R.string.alert_group_remove_text).replace("{0}", userVM.getName().get()))
+-                        .setPositiveButton(R.string.alert_group_remove_yes, (dialog2, which1) -> {
+-                            activity.execute(messenger().kickMember(groupVM.getId(), userVM.getId()),
+-                                    R.string.progress_common, new CommandCallback<Void>() {
+-                                        @Override
+-                                        public void onResult(Void res1) {
+-
+-                                        }
+-
+-                                        @Override
+-                                        public void onError(Exception e) {
+-                                            Toast.makeText(activity, R.string.toast_unable_kick, Toast.LENGTH_SHORT).show();
+-                                        }
+-                                    });
+-                        })
+-                        .setNegativeButton(R.string.dialog_cancel, null)
+-                        .show()
+-                        .setCanceledOnTouchOutside(true);
+-            });
+-        }
+-        if (groupVM.getIsCanEditAdmins().get() && !userVM.isBot()) {
+-            alertListBuilder.addItem(!isAdministrator ? activity.getResources().getString(R.string.group_make_admin) : activity.getResources().getString(R.string.group_revoke_admin), () -> {
+-                if (!isAdministrator) {
+-                    messenger().makeAdmin(groupVM.getId(), userVM.getId()).start(new CommandCallback<Void>() {
+-                        @Override
+-                        public void onResult(Void res) {
+-
+-                        }
+-
+-                        @Override
+-                        public void onError(Exception e) {
+-
+-                        }
+-                    });
+-                } else {
+-                    messenger().revokeAdmin(groupVM.getId(), userVM.getId()).start(new CommandCallback<Void>() {
+-                        @Override
+-                        public void onResult(Void res) {
+-
+-                        }
+-
+-                        @Override
+-                        public void onError(Exception e) {
+-
+-                        }
+-                    });
+-                }
+-            });
+-        }
+-        alertListBuilder.build(activity)
+-                .show()
+-                .setCanceledOnTouchOutside(true);
+-    }
+ }
+diff --git a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/pickers/file/ExploreItemViewHolder.java b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/pickers/file/ExploreItemViewHolder.java
+index a68866d..6c1dd10 100644
+--- a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/pickers/file/ExploreItemViewHolder.java
++++ b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/pickers/file/ExploreItemViewHolder.java
+@@ -7,6 +7,7 @@ import android.widget.TextView;
+ 
+ import im.actor.sdk.ActorSDK;
+ import im.actor.sdk.R;
++import im.actor.sdk.controllers.pickers.file.items.ExplorerItem;
+ 
+ /**
+  * Created by kiolt_000 on 09/10/2014.
+@@ -70,4 +71,15 @@ public class ExploreItemViewHolder {
+     public void setType(String fileType) {
+         typeView.setText(fileType);
+     }
++
++    public void bindImage(ExplorerItem explorerItem) {
++
++        if (explorerItem.getImage() != 0) {
++            setIcon(explorerItem.getImage());
++            setType("");
++        } else {
++            setIcon(R.drawable.picker_file);
++            setType(explorerItem.getFileType());
++        }
++    }
+ }
+diff --git a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/pickers/file/ExplorerAdapter.java b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/pickers/file/ExplorerAdapter.java
+index 40dfea7..2515735 100644
+--- a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/pickers/file/ExplorerAdapter.java
++++ b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/pickers/file/ExplorerAdapter.java
+@@ -62,7 +62,7 @@ public class ExplorerAdapter extends BaseAdapter {
+         ExplorerItem item = getItem(position);
+ 
+ 
+-        item.bindImage(holder);
++        holder.bindImage(item);
+         item.bindData(holder);
+         if (getCount() == 1) {
+             holder.disableDivider();
+diff --git a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/pickers/file/items/ExplorerItem.java b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/pickers/file/items/ExplorerItem.java
+index 4cf000e..90d05d0 100644
+--- a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/pickers/file/items/ExplorerItem.java
++++ b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/pickers/file/items/ExplorerItem.java
+@@ -112,17 +112,6 @@ public class ExplorerItem {
+ 
+     }
+ 
+-    public void bindImage(ExploreItemViewHolder holder) {
+-
+-        if (imageId != 0) {
+-            holder.setIcon(imageId);
+-            holder.setType("");
+-        } else {
+-            holder.setIcon(R.drawable.picker_file);
+-            holder.setType(fileType);
+-        }
+-    }
+-
+     public Long getLastModified() {
+         return file.lastModified();
+     }
+diff --git a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/settings/ActorSettingsCategory.java b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/settings/ActorSettingsCategory.java
+index 315fe0b..89eac02 100644
+--- a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/settings/ActorSettingsCategory.java
++++ b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/settings/ActorSettingsCategory.java
+@@ -43,11 +43,6 @@ public class ActorSettingsCategory {
+         return this;
+     }
+ 
+-    public ActorSettingsCategory addField(ActorSettingsField field) {
+-        fields.add(field);
+-        return this;
+-    }
+-
+     public String getText() {
+         return text;
+     }
+diff --git a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/settings/ActorSettingsField.java b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/settings/ActorSettingsField.java
+index 39d28ca..27f80eb 100644
+--- a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/settings/ActorSettingsField.java
++++ b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/settings/ActorSettingsField.java
+@@ -110,4 +110,9 @@ public class ActorSettingsField {
+     public void setId(int id) {
+         this.id = id;
+     }
++
++    public ActorSettingsCategory addField(ActorSettingsCategory actorSettingsCategory) {
++        actorSettingsCategory.getFields().add(this);
++        return actorSettingsCategory;
++    }
+ }
+diff --git a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/view/emoji/keyboard/emoji/EmojiKeyboard.java b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/view/emoji/keyboard/emoji/EmojiKeyboard.java
+index ccfb642..4198e6e 100644
+--- a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/view/emoji/keyboard/emoji/EmojiKeyboard.java
++++ b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/view/emoji/keyboard/emoji/EmojiKeyboard.java
+@@ -27,8 +27,6 @@ import android.widget.EditText;
+ import android.widget.FrameLayout;
+ import android.widget.LinearLayout;
+ 
+-import im.actor.core.entity.Peer;
+-import im.actor.core.entity.Sticker;
+ import im.actor.sdk.R;
+ import im.actor.sdk.view.emoji.SmileProcessor;
+ import im.actor.sdk.view.emoji.keyboard.BaseKeyboard;
+@@ -41,8 +39,6 @@ import im.actor.sdk.view.MaterialInterpolator;
+ import im.actor.sdk.view.PagerSlidingTabStrip;
+ import im.actor.sdk.view.emoji.smiles.SmilesPack;
+ 
+-import static im.actor.sdk.util.ActorSDKMessenger.messenger;
+-
+ public class EmojiKeyboard extends BaseKeyboard implements OnSmileClickListener,
+         OnBackspaceClickListener {
+ 
+@@ -202,12 +198,6 @@ public class EmojiKeyboard extends BaseKeyboard implements OnSmileClickListener,
+     }
+ 
+ 
+-    public void onStickerClicked(Sticker sticker) {
+-        if (onStickerClickListener != null) {
+-            onStickerClickListener.onStickerClicked(sticker);
+-        }
+-    }
+-
+     public OnStickerClickListener getOnStickerClickListener() {
+         return onStickerClickListener;
+     }
+diff --git a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/view/emoji/stickers/StickersAdapter.java b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/view/emoji/stickers/StickersAdapter.java
+index 3ae96dd..7b038fc 100644
+--- a/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/view/emoji/stickers/StickersAdapter.java
++++ b/actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/view/emoji/stickers/StickersAdapter.java
+@@ -137,7 +137,7 @@ public class StickersAdapter extends RecyclerView.Adapter<StickersAdapter.Sticke
+                     public void onClick(View v) {
+                         if (s != null) {
+ //                        s.setThumb(sv.getThumb());
+-                            keyboard.onStickerClicked(s);
++                            s.onStickerClicked(keyboard);
+                         }
+                     }
+                 });
+diff --git a/actor-sdk/sdk-core/core/core-js/src/main/java/im/actor/core/js/modules/JsBindingModule.java b/actor-sdk/sdk-core/core/core-js/src/main/java/im/actor/core/js/modules/JsBindingModule.java
+index f257742..3ca7202 100644
+--- a/actor-sdk/sdk-core/core/core-js/src/main/java/im/actor/core/js/modules/JsBindingModule.java
++++ b/actor-sdk/sdk-core/core/core-js/src/main/java/im/actor/core/js/modules/JsBindingModule.java
+@@ -11,7 +11,6 @@ import java.util.ArrayList;
+ import java.util.HashMap;
+ import java.util.HashSet;
+ 
+-import im.actor.core.entity.Avatar;
+ import im.actor.core.entity.Contact;
+ import im.actor.core.entity.Dialog;
+ import im.actor.core.entity.Message;
+@@ -42,7 +41,6 @@ import im.actor.core.js.entity.JsTyping;
+ import im.actor.core.js.entity.JsUser;
+ import im.actor.core.modules.AbsModule;
+ import im.actor.core.modules.Modules;
+-import im.actor.core.viewmodel.AppStateVM;
+ import im.actor.core.viewmodel.CallMember;
+ import im.actor.core.viewmodel.CallState;
+ import im.actor.core.viewmodel.CallVM;
+@@ -61,7 +59,6 @@ import im.actor.runtime.mvvm.ModelChangedListener;
+ import im.actor.runtime.mvvm.Value;
+ import im.actor.runtime.mvvm.ValueChangedListener;
+ import im.actor.runtime.mvvm.ValueModel;
+-import im.actor.runtime.webrtc.WebRTCMediaStream;
+ 
+ public class JsBindingModule extends AbsModule implements JsFileLoadedListener {
+ 
+@@ -467,7 +464,7 @@ public class JsBindingModule extends AbsModule implements JsFileLoadedListener {
+             for (JsDisplayListBind<JsDialog, Dialog> b : dialogsList.getActiveBinds()) {
+                 b.startReconverting();
+                 for (Dialog dialog : b.getRawItems()) {
+-                    if (checkAvatar(dialog.getDialogAvatar(), fileId)) {
++                    if (dialog.getDialogAvatar().checkAvatar(fileId, this)) {
+                         b.forceReconvert(dialog.getEngineId());
+                     }
+                 }
+@@ -485,7 +482,7 @@ public class JsBindingModule extends AbsModule implements JsFileLoadedListener {
+                 outer:
+                 for (DialogGroup g : groups) {
+                     for (DialogSmall ds : g.getDialogs()) {
+-                        if (checkAvatar(ds.getAvatar(), fileId)) {
++                        if (ds.getAvatar().checkAvatar(fileId, this)) {
+                             context().getMessagesModule().getDialogGroupsVM().getGroupsValueModel().forceNotify();
+                             break outer;
+                         }
+@@ -502,7 +499,7 @@ public class JsBindingModule extends AbsModule implements JsFileLoadedListener {
+             for (JsDisplayListBind<JsContact, Contact> b : contactsList.getActiveBinds()) {
+                 b.startReconverting();
+                 for (Contact contact : b.getRawItems()) {
+-                    if (checkAvatar(contact.getAvatar(), fileId)) {
++                    if (contact.getAvatar().checkAvatar(fileId, this)) {
+                         b.forceReconvert(contact.getEngineId());
+                     }
+                 }
+@@ -519,7 +516,7 @@ public class JsBindingModule extends AbsModule implements JsFileLoadedListener {
+                 b.startReconverting();
+                 for (Message message : b.getRawItems()) {
+                     UserVM user = context().getUsersModule().getUsers().get(message.getSenderId());
+-                    if (checkAvatar(user.getAvatar().get(), fileId)) {
++                    if (user.getAvatar().get().checkAvatar(fileId, this)) {
+                         b.forceReconvert(message.getEngineId());
+                         continue;
+                     }
+@@ -557,7 +554,7 @@ public class JsBindingModule extends AbsModule implements JsFileLoadedListener {
+         for (JsBindedValue<JsUser> u : users.values()) {
+             int uid = u.get().getUid();
+             UserVM userVM = context().getUsersModule().getUsers().get(uid);
+-            if (checkAvatar(userVM.getAvatar().get(), fileId)) {
++            if (userVM.getAvatar().get().checkAvatar(fileId, this)) {
+                 u.changeValue(JsUser.fromUserVM(userVM, messenger));
+             }
+         }
+@@ -569,7 +566,7 @@ public class JsBindingModule extends AbsModule implements JsFileLoadedListener {
+         for (JsBindedValue<JsGroup> g : groups.values()) {
+             int gid = g.get().getGid();
+             GroupVM groupVM = context().getGroupsModule().getGroupsCollection().get(gid);
+-            if (checkAvatar(groupVM.getAvatar().get(), fileId)) {
++            if (groupVM.getAvatar().get().checkAvatar(fileId, this)) {
+                 g.changeValue(JsGroup.fromGroupVM(groupVM, messenger));
+             }
+         }
+@@ -590,19 +587,4 @@ public class JsBindingModule extends AbsModule implements JsFileLoadedListener {
+         }
+     }
+ 
+-    protected boolean checkAvatar(Avatar avatar, HashSet<Long> fileIds) {
+-        if (avatar == null) {
+-            return false;
+-        }
+-        if (avatar.getSmallImage() != null && fileIds.contains(avatar.getSmallImage().getFileReference().getFileId())) {
+-            return true;
+-        }
+-        if (avatar.getFullImage() != null && fileIds.contains(avatar.getFullImage().getFileReference().getFileId())) {
+-            return true;
+-        }
+-        if (avatar.getLargeImage() != null && fileIds.contains(avatar.getLargeImage().getFileReference().getFileId())) {
+-            return true;
+-        }
+-        return false;
+-    }
+ }
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/Messenger.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/Messenger.java
+index dcf2003..9e96be5 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/Messenger.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/Messenger.java
+@@ -855,7 +855,7 @@ public class Messenger {
+     public void sendPhoto(@NotNull Peer peer, @NotNull String fileName,
+                           int w, int h, @Nullable FastThumb fastThumb,
+                           @NotNull String descriptor) {
+-        modules.getMessagesModule().sendPhoto(peer, fileName, w, h, fastThumb, descriptor);
++        fastThumb.sendPhoto(peer, fileName, w, h, descriptor, modules.getMessagesModule());
+     }
+ 
+     /**
+@@ -1247,7 +1247,7 @@ public class Messenger {
+      */
+     @ObjectiveCName("doCallWithUid:")
+     public Command<Long> doCall(int uid) {
+-        return modules.getCallsModule().makeCall(Peer.user(uid), false);
++        return Peer.user(uid).makeCall(false, modules.getCallsModule());
+     }
+ 
+     /**
+@@ -1258,7 +1258,7 @@ public class Messenger {
+      */
+     @ObjectiveCName("doVideoCallWithUid:")
+     public Command<Long> doVideoCall(int uid) {
+-        return modules.getCallsModule().makeCall(Peer.user(uid), true);
++        return Peer.user(uid).makeCall(true, modules.getCallsModule());
+     }
+ 
+     /**
+@@ -1269,7 +1269,7 @@ public class Messenger {
+      */
+     @ObjectiveCName("doCallWithGid:")
+     public Command<Long> doGroupCall(int gid) {
+-        return modules.getCallsModule().makeCall(Peer.group(gid), false);
++        return Peer.group(gid).makeCall(false, modules.getCallsModule());
+     }
+ 
+     /**
+@@ -2625,7 +2625,7 @@ public class Messenger {
+      */
+     @ObjectiveCName("rawRequestCommandWithService:withMethod:WithParams:")
+     public Command<ResponseRawRequest> rawRequestCommand(String service, String method, ApiRawValue params) {
+-        return modules.getExternalModule().rawRequestCommand(service, method, params);
++        return params.rawRequestCommand(service, method, modules.getExternalModule());
+     }
+ 
+     /**
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiGroup.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiGroup.java
+index 57cbf4d..3746017 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiGroup.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiGroup.java
+@@ -3,10 +3,13 @@ package im.actor.core.api;
+  *  Generated by the Actor API Scheme generator.  DO NOT EDIT!
+  */
+ 
++import im.actor.core.modules.sequence.Updates;
++import im.actor.runtime.actors.messages.Void;
+ import im.actor.runtime.bser.*;
+ import im.actor.runtime.collections.*;
+ import static im.actor.runtime.bser.Utils.*;
+ import im.actor.core.network.parser.*;
++import im.actor.runtime.promise.Promise;
+ import org.jetbrains.annotations.Nullable;
+ import org.jetbrains.annotations.NotNull;
+ import com.google.j2objc.annotations.ObjectiveCName;
+@@ -178,4 +181,10 @@ public class ApiGroup extends BserObject {
+         return res;
+     }
+ 
++    public Promise<Void> applyUpdate(int seq, byte[] state, Update update,
++                                     List<ApiUser> users, Updates updates) {
++        ArrayList<ApiGroup> groups = new ArrayList<>();
++        groups.add(this);
++        return updates.applyUpdate(seq, state, update, users, groups);
++    }
+ }
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiGroupType.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiGroupType.java
+index 3d63446..e34e49b 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiGroupType.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiGroupType.java
+@@ -3,7 +3,17 @@ package im.actor.core.api;
+  *  Generated by the Actor API Scheme generator.  DO NOT EDIT!
+  */
+ 
++import im.actor.core.api.rpc.RequestCreateGroup;
++import im.actor.core.entity.User;
++import im.actor.core.modules.api.ApiSupportConfiguration;
++import im.actor.core.modules.groups.GroupsModule;
++import im.actor.core.util.RandomUtils;
++import im.actor.runtime.function.Function;
++import im.actor.runtime.promise.Promise;
++
+ import java.io.IOException;
++import java.util.ArrayList;
++import java.util.List;
+ 
+ public enum ApiGroupType {
+ 
+@@ -28,4 +38,30 @@ public enum ApiGroupType {
+             default: return ApiGroupType.UNSUPPORTED_VALUE;
+         }
+     }
++
++    public Promise<Integer> createGroup(String title, String avatarDescriptor, int[] uids, GroupsModule groupsModule) {
++        long rid = RandomUtils.nextRid();
++        return Promise.success(uids)
++                .map((Function<int[], List<ApiUserOutPeer>>) ints -> {
++                    ArrayList<ApiUserOutPeer> peers = new ArrayList<>();
++                    for (int u : uids) {
++                        User user = groupsModule.users().getValue(u);
++                        if (user != null) {
++                            peers.add(new ApiUserOutPeer(u, user.getAccessHash()));
++                        }
++                    }
++                    return peers;
++                })
++                .flatMap(apiUserOutPeers ->
++                        groupsModule.api(new RequestCreateGroup(rid, title, apiUserOutPeers,
++                                this, ApiSupportConfiguration.OPTIMIZATIONS)))
++                .chain(r -> groupsModule.updates().applyRelatedData(r.getUsers(), r.getGroup()))
++                .chain(r -> groupsModule.updates().waitForUpdate(r.getSeq()))
++                .map(r -> r.getGroup().getId())
++                .then(integer -> {
++                    if (avatarDescriptor != null) {
++                        groupsModule.changeAvatar(integer, avatarDescriptor);
++                    }
++                });
++    }
+ }
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiMessage.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiMessage.java
+index 4782926..d5fc1ad 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiMessage.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiMessage.java
+@@ -3,10 +3,19 @@ package im.actor.core.api;
+  *  Generated by the Actor API Scheme generator.  DO NOT EDIT!
+  */
+ 
++import im.actor.core.api.base.SeqUpdate;
++import im.actor.core.api.rpc.RequestSendMessage;
++import im.actor.core.api.rpc.ResponseSeqDate;
++import im.actor.core.api.updates.UpdateMessageSent;
++import im.actor.core.entity.Peer;
++import im.actor.core.modules.messaging.actions.SenderActor;
++import im.actor.core.network.RpcCallback;
++import im.actor.core.network.RpcException;
+ import im.actor.runtime.bser.*;
+ import im.actor.runtime.collections.*;
+ import static im.actor.runtime.bser.Utils.*;
+ import im.actor.core.network.parser.*;
++import im.actor.runtime.power.WakeLock;
+ import org.jetbrains.annotations.Nullable;
+ import org.jetbrains.annotations.NotNull;
+ import com.google.j2objc.annotations.ObjectiveCName;
+@@ -42,4 +51,29 @@ public abstract class ApiMessage extends BserObject {
+         return res.toByteArray();
+     }
+ 
++    public void performSendApiContent(final Peer peer, final long rid, final WakeLock wakeLock, SenderActor senderActor) {
++        final ApiOutPeer outPeer = senderActor.buidOutPeer(peer);
++        final ApiPeer apiPeer = senderActor.buildApiPeer(peer);
++        if (outPeer == null || apiPeer == null) {
++            return;
++        }
++        senderActor.request(new RequestSendMessage(outPeer, rid, this, null, null),
++                new RpcCallback<ResponseSeqDate>() {
++                    @Override
++                    public void onResult(ResponseSeqDate response) {
++                        this.self().send(new SenderActor.MessageSent(peer, rid));
++                        this.updates().onUpdateReceived(new SeqUpdate(response.getSeq(),
++                                response.getState(),
++                                UpdateMessageSent.HEADER,
++                                new UpdateMessageSent(apiPeer, rid, response.getDate()).toByteArray()));
++                        wakeLock.releaseLock();
++                    }
++
++                    @Override
++                    public void onError(RpcException e) {
++                        this.self().send(new SenderActor.MessageError(peer, rid));
++                        wakeLock.releaseLock();
++                    }
++                });
++    }
+ }
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiPeer.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiPeer.java
+index dcec876..be30783 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiPeer.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiPeer.java
+@@ -3,10 +3,20 @@ package im.actor.core.api;
+  *  Generated by the Actor API Scheme generator.  DO NOT EDIT!
+  */
+ 
++import im.actor.core.api.updates.UpdateMessage;
++import im.actor.core.entity.EntityConverter;
++import im.actor.core.entity.Message;
++import im.actor.core.entity.MessageState;
++import im.actor.core.entity.Peer;
++import im.actor.core.entity.content.AbsContent;
++import im.actor.core.modules.messaging.MessagesProcessor;
++import im.actor.runtime.actors.messages.Void;
++import im.actor.runtime.annotations.Verified;
+ import im.actor.runtime.bser.*;
+ import im.actor.runtime.collections.*;
+ import static im.actor.runtime.bser.Utils.*;
+ import im.actor.core.network.parser.*;
++import im.actor.runtime.promise.Promise;
+ import org.jetbrains.annotations.Nullable;
+ import org.jetbrains.annotations.NotNull;
+ import com.google.j2objc.annotations.ObjectiveCName;
+@@ -61,4 +71,26 @@ public class ApiPeer extends BserObject {
+         return res;
+     }
+ 
++    @Verified
++    public Promise<Void> onDifferenceMessages(List<UpdateMessage> messages, MessagesProcessor messagesProcessor) {
++
++        Peer peer = EntityConverter.convert(this);
++
++        ArrayList<Message> nMessages = new ArrayList<>();
++        for (UpdateMessage u : messages) {
++
++            AbsContent msgContent = AbsContent.fromMessage(u.getMessage());
++
++            nMessages.add(new Message(
++                    u.getRid(),
++                    u.getDate(),
++                    u.getDate(),
++                    u.getSenderUid(),
++                    messagesProcessor.myUid() == u.getSenderUid() ? MessageState.SENT : MessageState.UNKNOWN,
++                    msgContent));
++        }
++
++
++        return messagesProcessor.context().getMessagesModule().getRouter().onNewMessages(peer, nMessages);
++    }
+ }
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiRawValue.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiRawValue.java
+index aefa962..80963ed 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiRawValue.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiRawValue.java
+@@ -3,6 +3,12 @@ package im.actor.core.api;
+  *  Generated by the Actor API Scheme generator.  DO NOT EDIT!
+  */
+ 
++import im.actor.core.api.rpc.RequestRawRequest;
++import im.actor.core.api.rpc.ResponseRawRequest;
++import im.actor.core.modules.external.ExternalModule;
++import im.actor.core.network.RpcCallback;
++import im.actor.core.network.RpcException;
++import im.actor.core.viewmodel.Command;
+ import im.actor.runtime.bser.*;
+ import im.actor.runtime.collections.*;
+ import static im.actor.runtime.bser.Utils.*;
+@@ -39,4 +45,17 @@ public abstract class ApiRawValue extends BserObject {
+         return res.toByteArray();
+     }
+ 
++    public Command<ResponseRawRequest> rawRequestCommand(final String service, final String method, ExternalModule externalModule) {
++        return callback -> externalModule.request(new RequestRawRequest(service, method, this), new RpcCallback<ResponseRawRequest>() {
++            @Override
++            public void onResult(ResponseRawRequest response) {
++                callback.onResult(response);
++            }
++
++            @Override
++            public void onError(RpcException e) {
++                callback.onError(e);
++            }
++        });
++    }
+ }
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiSearchCondition.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiSearchCondition.java
+index a05082a..b0c0e1a 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiSearchCondition.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiSearchCondition.java
+@@ -3,10 +3,18 @@ package im.actor.core.api;
+  *  Generated by the Actor API Scheme generator.  DO NOT EDIT!
+  */
+ 
++import im.actor.core.api.rpc.RequestMessageSearch;
++import im.actor.core.entity.MessageSearchEntity;
++import im.actor.core.entity.content.AbsContent;
++import im.actor.core.modules.api.ApiSupportConfiguration;
++import im.actor.core.modules.search.SearchModule;
+ import im.actor.runtime.bser.*;
+ import im.actor.runtime.collections.*;
++
++import static im.actor.core.entity.EntityConverter.convert;
+ import static im.actor.runtime.bser.Utils.*;
+ import im.actor.core.network.parser.*;
++import im.actor.runtime.promise.Promise;
+ import org.jetbrains.annotations.Nullable;
+ import org.jetbrains.annotations.NotNull;
+ import com.google.j2objc.annotations.ObjectiveCName;
+@@ -40,4 +48,17 @@ public abstract class ApiSearchCondition extends BserObject {
+         return res.toByteArray();
+     }
+ 
++    public Promise<List<MessageSearchEntity>> findMessages(SearchModule searchModule) {
++        return searchModule.api(new RequestMessageSearch(this, ApiSupportConfiguration.OPTIMIZATIONS))
++                .chain(responseMessageSearchResponse ->
++                        searchModule.updates().applyRelatedData(
++                                responseMessageSearchResponse.getUsers(),
++                                responseMessageSearchResponse.getGroups()))
++                .map(responseMessageSearchResponse1 ->
++                        ManagedList.of(responseMessageSearchResponse1.getSearchResults())
++                                .map(itm -> new MessageSearchEntity(
++                                        convert(itm.getResult().getPeer()), itm.getResult().getRid(),
++                                        itm.getResult().getDate(), itm.getResult().getSenderId(),
++                                        AbsContent.fromMessage(itm.getResult().getContent()))));
++    }
+ }
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiWebRTCSignaling.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiWebRTCSignaling.java
+index 6aa9be5..9ecd53c 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiWebRTCSignaling.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/ApiWebRTCSignaling.java
+@@ -3,6 +3,8 @@ package im.actor.core.api;
+  *  Generated by the Actor API Scheme generator.  DO NOT EDIT!
+  */
+ 
++import im.actor.core.modules.calls.peers.CallBusActor;
++import im.actor.runtime.Log;
+ import im.actor.runtime.bser.*;
+ import im.actor.runtime.collections.*;
+ import static im.actor.runtime.bser.Utils.*;
+@@ -45,4 +47,12 @@ public abstract class ApiWebRTCSignaling extends BserObject {
+         return res.toByteArray();
+     }
+ 
++    public final void sendSignal(long deviceId, CallBusActor callBusActor) {
++        Log.d("CallBusActor", "Message Sent: " + this);
++        try {
++            callBusActor.sendMessage(deviceId, buildContainer());
++        } catch (IOException e) {
++            e.printStackTrace();
++        }
++    }
+ }
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/updates/UpdateMessage.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/updates/UpdateMessage.java
+index 3e1441f..dd6e3bb 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/updates/UpdateMessage.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/api/updates/UpdateMessage.java
+@@ -3,6 +3,9 @@ package im.actor.core.api.updates;
+  *  Generated by the Actor API Scheme generator.  DO NOT EDIT!
+  */
+ 
++import im.actor.core.entity.EntityConverter;
++import im.actor.core.entity.Peer;
++import im.actor.core.modules.sequence.internal.CombinedDifference;
+ import im.actor.runtime.bser.*;
+ import im.actor.runtime.collections.*;
+ import static im.actor.runtime.bser.Utils.*;
+@@ -127,4 +130,15 @@ public class UpdateMessage extends Update {
+     public int getHeaderKey() {
+         return HEADER;
+     }
++
++    public void putMessage(CombinedDifference combinedDifference) {
++        Peer peer = EntityConverter.convert(getPeer());
++        if (combinedDifference.getMessages().containsKey(peer)) {
++            combinedDifference.getMessages().get(peer).add(this);
++        } else {
++            ArrayList<UpdateMessage> msgs = new ArrayList<>();
++            msgs.add(this);
++            combinedDifference.getMessages().put(peer, msgs);
++        }
++    }
+ }
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/Avatar.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/Avatar.java
+index 892e310..1b8e1c9 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/Avatar.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/Avatar.java
+@@ -6,10 +6,12 @@ package im.actor.core.entity;
+ 
+ import com.google.j2objc.annotations.Property;
+ 
++import im.actor.core.js.modules.JsBindingModule;
+ import org.jetbrains.annotations.NotNull;
+ import org.jetbrains.annotations.Nullable;
+ 
+ import java.io.IOException;
++import java.util.HashSet;
+ 
+ import im.actor.core.api.ApiAvatar;
+ import im.actor.runtime.bser.BserValues;
+@@ -131,4 +133,20 @@ public class Avatar extends WrapperEntity<ApiAvatar> {
+     protected ApiAvatar createInstance() {
+         return new ApiAvatar();
+     }
++
++    public boolean checkAvatar(HashSet<Long> fileIds, JsBindingModule jsBindingModule) {
++        if (this == null) {
++            return false;
++        }
++        if (getSmallImage() != null && fileIds.contains(getSmallImage().getFileReference().getFileId())) {
++            return true;
++        }
++        if (getFullImage() != null && fileIds.contains(getFullImage().getFileReference().getFileId())) {
++            return true;
++        }
++        if (getLargeImage() != null && fileIds.contains(getLargeImage().getFileReference().getFileId())) {
++            return true;
++        }
++        return false;
++    }
+ }
+\ No newline at end of file
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/Dialog.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/Dialog.java
+index e2ecc7a..27b2190 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/Dialog.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/Dialog.java
+@@ -4,8 +4,10 @@
+ 
+ package im.actor.core.entity;
+ 
++import com.google.j2objc.annotations.ObjectiveCName;
+ import com.google.j2objc.annotations.Property;
+ 
++import im.actor.core.i18n.I18nEngine;
+ import org.jetbrains.annotations.NotNull;
+ import org.jetbrains.annotations.Nullable;
+ 
+@@ -276,4 +278,33 @@ public class Dialog extends BserObject implements ListEngineItem {
+     public String getEngineSearch() {
+         return dialogTitle;
+     }
++
++    /**
++     * Formatting Dialog List text. Deprecated: you need to manually format Content and append
++     * performer if needed and highlight it
++     *
++     *
++     * @param i18nEngine@return formatted content
++     */
++    @Deprecated
++    @ObjectiveCName("formatDialogText:")
++    public String formatDialogText(I18nEngine i18nEngine) {
++        // Detecting if dialog is empty
++        if (getSenderId() == 0) {
++            return "";
++        } else {
++            String contentText = i18nEngine.formatContentText(getSenderId(),
++                    getMessageType(), getText(), getRelatedUid(),
++                    isChannel());
++            if (getPeer().getPeerType() == PeerType.GROUP && !isChannel()) {
++                if (!i18nEngine.isLargeDialogMessage(getMessageType())) {
++                    return i18nEngine.formatPerformerName(getSenderId()) + ": " + contentText;
++                } else {
++                    return contentText;
++                }
++            } else {
++                return contentText;
++            }
++        }
++    }
+ }
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/Message.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/Message.java
+index 37c511e..407fea0 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/Message.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/Message.java
+@@ -10,11 +10,14 @@ import java.io.IOException;
+ import java.util.ArrayList;
+ import java.util.List;
+ 
++import im.actor.core.modules.messaging.router.RouterInt;
++import im.actor.runtime.actors.messages.Void;
+ import im.actor.runtime.bser.Bser;
+ import im.actor.runtime.bser.BserCreator;
+ import im.actor.runtime.bser.BserObject;
+ import im.actor.runtime.bser.BserValues;
+ import im.actor.runtime.bser.BserWriter;
++import im.actor.runtime.promise.Promise;
+ import im.actor.runtime.storage.ListEngineItem;
+ import im.actor.core.entity.content.AbsContent;
+ 
+@@ -175,4 +178,10 @@ public class Message extends BserObject implements ListEngineItem {
+     public String getEngineSearch() {
+         return null;
+     }
++
++    public Promise<Void> onNewMessage(Peer peer, RouterInt routerInt) {
++        ArrayList<Message> messages = new ArrayList<>();
++        messages.add(this);
++        return routerInt.onNewMessages(peer, messages);
++    }
+ }
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/Peer.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/Peer.java
+index ee160ce..16dda6a 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/Peer.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/Peer.java
+@@ -8,6 +8,9 @@ import com.google.j2objc.annotations.Property;
+ 
+ import java.io.IOException;
+ 
++import im.actor.core.modules.calls.CallManagerActor;
++import im.actor.core.modules.calls.CallsModule;
++import im.actor.core.viewmodel.Command;
+ import im.actor.runtime.bser.Bser;
+ import im.actor.runtime.bser.BserCreator;
+ import im.actor.runtime.bser.BserObject;
+@@ -146,4 +149,8 @@ public class Peer extends BserObject {
+     public String toIdString() {
+         return peerType + "_" + peerId;
+     }
++
++    public Command<Long> makeCall(boolean enableVideoCall, CallsModule callsModule) {
++        return callback -> callsModule.getCallManager().send(new CallManagerActor.DoCall(this, callback, enableVideoCall));
++    }
+ }
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/PhoneBookContact.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/PhoneBookContact.java
+index 7b1e6d2..f6c6c56 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/PhoneBookContact.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/PhoneBookContact.java
+@@ -17,6 +17,7 @@ import im.actor.runtime.bser.BserObject;
+ import im.actor.runtime.bser.BserValues;
+ import im.actor.runtime.bser.BserWriter;
+ import im.actor.runtime.storage.ListEngineItem;
++import im.actor.sdk.controllers.contacts.InviteFragment;
+ 
+ public class PhoneBookContact extends BserObject implements ListEngineItem {
+     @Property("readonly, nonatomic")
+@@ -120,4 +121,37 @@ public class PhoneBookContact extends BserObject implements ListEngineItem {
+     public String getEngineSearch() {
+         return name;
+     }
++
++    public void onItemClicked(InviteFragment inviteFragment) {
++        boolean selected = inviteFragment.isSelected(this);
++        boolean needDialog = getEmails().size() > 0 && getPhones().size() > 0;
++
++        if (needDialog) {
++            String[] items = new String[selected ? 3 : 2];
++            items[0] = Long.toString(getPhones().get(0).getNumber());
++            items[1] = getEmails().get(0).getEmail();
++            if (selected) {
++                items[2] = getString(R.string.dialog_cancel);
++            }
++            AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
++            builder.setItems(items, (dialog, which) -> {
++                if (which == 2) {
++                    inviteFragment.unselect(this);
++                } else {
++                    inviteFragment.select(this, which);
++                }
++                inviteFragment.getAdapter().notifyDataSetChanged();
++
++                dialog.dismiss();
++            }).show();
++
++        } else {
++            if (selected) {
++                inviteFragment.unselect(this);
++            } else {
++                inviteFragment.select(this, -1);
++            }
++            inviteFragment.getAdapter().notifyDataSetChanged();
++        }
++    }
+ }
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/Sex.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/Sex.java
+index 10c82a9..7c45ade 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/Sex.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/Sex.java
+@@ -4,10 +4,15 @@
+ 
+ package im.actor.core.entity;
+ 
++import im.actor.runtime.promise.Promise;
++import im.actor.sdk.controllers.auth.AuthActivity;
++import im.actor.sdk.controllers.auth.BaseAuthFragment;
+ import org.jetbrains.annotations.NotNull;
+ 
+ import im.actor.core.api.ApiSex;
+ 
++import static im.actor.sdk.util.ActorSDKMessenger.messenger;
++
+ public enum Sex {
+     UNKNOWN(1), MALE(2), FEMALE(3);
+ 
+@@ -45,4 +50,10 @@ public enum Sex {
+                 return ApiSex.UNKNOWN;
+         }
+     }
++
++    public void signUp(String name, BaseAuthFragment baseAuthFragment) {
++        AuthActivity activity = (AuthActivity) getActivity();
++        Promise<AuthRes> promise = messenger().doSignup(name, this, activity.getTransactionHash());
++        ((AuthActivity) getActivity()).signUp(promise, name, this);
++    }
+ }
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/Sticker.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/Sticker.java
+index 5d7d0f0..6ed2142 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/Sticker.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/Sticker.java
+@@ -5,6 +5,7 @@
+ package im.actor.core.entity;
+ 
+ 
++import im.actor.sdk.view.emoji.keyboard.emoji.EmojiKeyboard;
+ import org.jetbrains.annotations.NotNull;
+ import org.jetbrains.annotations.Nullable;
+ 
+@@ -126,4 +127,10 @@ public class Sticker extends WrapperEntity<ApiStickerDescriptor> {
+     protected ApiStickerDescriptor createInstance() {
+         return new ApiStickerDescriptor();
+     }
++
++    public void onStickerClicked(EmojiKeyboard emojiKeyboard) {
++        if (emojiKeyboard.getOnStickerClickListener() != null) {
++            emojiKeyboard.getOnStickerClickListener().onStickerClicked(this);
++        }
++    }
+ }
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/User.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/User.java
+index 2e2462f..737aed9 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/User.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/User.java
+@@ -6,6 +6,11 @@ package im.actor.core.entity;
+ 
+ import com.google.j2objc.annotations.Property;
+ 
++import im.actor.core.modules.contacts.ContactsSyncActor;
++import im.actor.core.modules.users.router.UserRouter;
++import im.actor.runtime.actors.messages.Void;
++import im.actor.runtime.annotations.Verified;
++import im.actor.runtime.promise.Promise;
+ import org.jetbrains.annotations.NotNull;
+ import org.jetbrains.annotations.Nullable;
+ 
+@@ -518,4 +523,10 @@ public class User extends WrapperExtEntity<ApiFullUser, ApiUser> implements KeyV
+     protected ApiFullUser createExtInstance() {
+         return new ApiFullUser();
+     }
++
++    @Verified
++    public Promise<Void> onUserDescChanged(UserRouter userRouter) {
++        userRouter.context().getContactsModule().getContactSyncActor().send(new ContactsSyncActor.UserChanged(this));
++        return userRouter.context().getMessagesModule().getRouter().onUserChanged(this);
++    }
+ }
+\ No newline at end of file
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/content/AbsContent.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/content/AbsContent.java
+index a746ffd..89d09c4 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/content/AbsContent.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/content/AbsContent.java
+@@ -44,6 +44,7 @@ import im.actor.runtime.bser.BserWriter;
+ import im.actor.runtime.bser.DataInput;
+ import im.actor.runtime.bser.DataOutput;
+ import im.actor.runtime.json.JSONObject;
++import im.actor.sdk.controllers.conversation.messages.ViewHolderMatcher;
+ 
+ // Disabling Bounds checks for speeding up calculations
+ 
+@@ -201,4 +202,13 @@ public abstract class AbsContent {
+         updatedCounter = ++oldCounter;
+         return this;
+     }
++
++    public int getMatchId(ViewHolderMatcher viewHolderMatcher) {
++        for (int i = 0; i < viewHolderMatcher.getLayouters().size(); i++) {
++            if (viewHolderMatcher.getLayouters().get(i).isMatch(this)) {
++                return i;
++            }
++        }
++        return -1;
++    }
+ }
+\ No newline at end of file
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/content/ContactContent.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/content/ContactContent.java
+index b607f7e..f05ce42 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/content/ContactContent.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/content/ContactContent.java
+@@ -4,6 +4,7 @@
+ 
+ package im.actor.core.entity.content;
+ 
++import im.actor.sdk.controllers.conversation.messages.content.ContactHolder;
+ import org.jetbrains.annotations.NotNull;
+ import org.jetbrains.annotations.Nullable;
+ 
+@@ -100,4 +101,24 @@ public class ContactContent extends AbsContent {
+     public String getRawJson() {
+         return rawJson;
+     }
++
++    public Bitmap convertPhoto(ContactHolder contactHolder) {
++        Bitmap b = null;
++        byte[] decodedByte;
++        try {
++            decodedByte = Base64.decode(getPhoto64(), Base64.NO_WRAP);
++            b = BitmapFactory.decodeByteArray(decodedByte, 0, decodedByte.length);
++        } catch (Exception e) {
++            //oops
++        }
++        if (b == null) {
++            try {
++                decodedByte = Base64.decode(getPhoto64(), Base64.URL_SAFE | Base64.NO_WRAP);
++                b = BitmapFactory.decodeByteArray(decodedByte, 0, decodedByte.length);
++            } catch (Exception e1) {
++                //no good
++            }
++        }
++        return b;
++    }
+ }
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/content/DocumentContent.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/content/DocumentContent.java
+index 22d83e7..1bee7cc 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/content/DocumentContent.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/content/DocumentContent.java
+@@ -12,6 +12,9 @@ import im.actor.core.entity.content.internal.ContentLocalContainer;
+ import im.actor.core.entity.content.internal.ContentRemoteContainer;
+ import im.actor.core.entity.content.internal.LocalDocument;
+ import im.actor.core.entity.content.internal.LocalFastThumb;
++import im.actor.runtime.files.FileSystemReference;
++import im.actor.sdk.controllers.Intents;
++import im.actor.sdk.controllers.conversation.messages.content.PhotoHolder;
+ 
+ public class DocumentContent extends AbsContent {
+ 
+@@ -88,4 +91,11 @@ public class DocumentContent extends AbsContent {
+     public String getMimeType() {
+         return mimeType;
+     }
++
++    public void playVideo(FileSystemReference reference, PhotoHolder photoHolder) {
++        Activity activity = photoHolder.getAdapter().getMessagesFragment().getActivity();
++        if (activity != null) {
++            activity.startActivity(Intents.openDoc(getName(), reference.getDescriptor()));
++        }
++    }
+ }
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/content/FastThumb.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/content/FastThumb.java
+index 8b46d64..6dd0eb6 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/content/FastThumb.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/entity/content/FastThumb.java
+@@ -5,7 +5,13 @@
+ package im.actor.core.entity.content;
+ 
+ import im.actor.core.api.ApiFastThumb;
++import im.actor.core.entity.Peer;
+ import im.actor.core.entity.content.internal.LocalFastThumb;
++import im.actor.core.modules.messaging.MessagesModule;
++import im.actor.core.modules.messaging.actions.SenderActor;
++import im.actor.runtime.Storage;
++import im.actor.runtime.files.FileSystemReference;
++import org.jetbrains.annotations.NotNull;
+ 
+ public class FastThumb {
+ 
+@@ -42,4 +48,12 @@ public class FastThumb {
+     public byte[] getImage() {
+         return image;
+     }
++
++    public void sendPhoto(@NotNull Peer peer, @NotNull String fileName, int w, int h,
++                          @NotNull String descriptor, MessagesModule messagesModule) {
++        FileSystemReference reference = Storage.fileFromDescriptor(descriptor);
++        messagesModule.getSendMessageActor().send(new SenderActor.SendPhoto(peer, this,
++                descriptor,
++                fileName, reference.getSize(), w, h));
++    }
+ }
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/i18n/I18nEngine.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/i18n/I18nEngine.java
+index 1b4831b..1c76142 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/i18n/I18nEngine.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/i18n/I18nEngine.java
+@@ -12,10 +12,8 @@ import java.util.Date;
+ import java.util.List;
+ 
+ import im.actor.core.entity.ContentType;
+-import im.actor.core.entity.Dialog;
+ import im.actor.core.entity.Message;
+ import im.actor.core.entity.Notification;
+-import im.actor.core.entity.PeerType;
+ import im.actor.core.entity.Sex;
+ import im.actor.core.entity.User;
+ import im.actor.core.entity.content.ServiceCallEnded;
+@@ -211,35 +209,6 @@ public class I18nEngine extends IntlEngine {
+     //
+ 
+     /**
+-     * Formatting Dialog List text. Deprecated: you need to manually format Content and append
+-     * performer if needed and highlight it
+-     *
+-     * @param dialog dialog to format
+-     * @return formatted content
+-     */
+-    @Deprecated
+-    @ObjectiveCName("formatDialogText:")
+-    public String formatDialogText(Dialog dialog) {
+-        // Detecting if dialog is empty
+-        if (dialog.getSenderId() == 0) {
+-            return "";
+-        } else {
+-            String contentText = formatContentText(dialog.getSenderId(),
+-                    dialog.getMessageType(), dialog.getText(), dialog.getRelatedUid(),
+-                    dialog.isChannel());
+-            if (dialog.getPeer().getPeerType() == PeerType.GROUP && !dialog.isChannel()) {
+-                if (!isLargeDialogMessage(dialog.getMessageType())) {
+-                    return formatPerformerName(dialog.getSenderId()) + ": " + contentText;
+-                } else {
+-                    return contentText;
+-                }
+-            } else {
+-                return contentText;
+-            }
+-        }
+-    }
+-
+-    /**
+      * If Dialog List message need to be wide in group chat as it is already includes performer
+      * in it's body.
+      *
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/api/ApiModule.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/api/ApiModule.java
+index 0890f8b..8fe82ca 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/api/ApiModule.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/api/ApiModule.java
+@@ -105,15 +105,7 @@ public class ApiModule extends AbsModule implements BusSubscriber {
+      * Changing endpoint
+      */
+     public void changeEndpoint(String endpoint) throws ConnectionEndpointArray.UnknownSchemeException {
+-        changeEndpoints(new Endpoints(new ConnectionEndpointArray().addEndpoint(endpoint).toArray(new ConnectionEndpoint[1]), new TrustedKey[0]));
+-    }
+-
+-    /**
+-     * Changing endpoints
+-     */
+-    public synchronized void changeEndpoints(Endpoints endpoints) {
+-        context().getPreferences().putBytes("custom_endpoints", endpoints.toByteArray());
+-        actorApi.changeEndpoints(endpoints);
++        new Endpoints(new ConnectionEndpointArray().addEndpoint(endpoint).toArray(new ConnectionEndpoint[1]), new TrustedKey[0]).changeEndpoints(this);
+     }
+ 
+     /**
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/calls/CallsModule.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/calls/CallsModule.java
+index 0410d14..c4191d9 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/calls/CallsModule.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/calls/CallsModule.java
+@@ -1,13 +1,8 @@
+ package im.actor.core.modules.calls;
+ 
+-import im.actor.core.entity.Peer;
+ import im.actor.core.viewmodel.CallVM;
+-import im.actor.core.viewmodel.CommandCallback;
+-import im.actor.core.providers.CallsProvider;
+ import im.actor.core.modules.AbsModule;
+ import im.actor.core.modules.ModuleContext;
+-import im.actor.core.viewmodel.Command;
+-import im.actor.runtime.*;
+ import im.actor.runtime.actors.ActorRef;
+ 
+ import static im.actor.runtime.actors.ActorSystem.system;
+@@ -53,10 +48,6 @@ public class CallsModule extends AbsModule {
+         callManager.send(new CallManagerActor.ProbablyEndCall());
+     }
+ 
+-    public Command<Long> makeCall(final Peer peer, boolean enableVideoCall) {
+-        return callback -> callManager.send(new CallManagerActor.DoCall(peer, callback, enableVideoCall));
+-    }
+-
+     public void muteCall(long callId) {
+         callManager.send(new CallManagerActor.AudioDisable(callId));
+     }
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/calls/peers/CallBusActor.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/calls/peers/CallBusActor.java
+index 35d56ad..97fb75b 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/calls/peers/CallBusActor.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/calls/peers/CallBusActor.java
+@@ -4,10 +4,6 @@ import org.jetbrains.annotations.NotNull;
+ import org.jetbrains.annotations.Nullable;
+ 
+ import java.io.IOException;
+-import java.util.ArrayList;
+-import java.util.Collection;
+-import java.util.HashMap;
+-import java.util.HashSet;
+ 
+ import im.actor.core.api.ApiAdvertiseMaster;
+ import im.actor.core.api.ApiAdvertiseSelf;
+@@ -26,7 +22,6 @@ import im.actor.core.modules.ModuleContext;
+ import im.actor.core.modules.eventbus.EventBusActor;
+ import im.actor.runtime.Log;
+ import im.actor.runtime.actors.ActorRef;
+-import im.actor.runtime.webrtc.WebRTCMediaStream;
+ import im.actor.runtime.webrtc.WebRTCMediaTrack;
+ 
+ /*-[
+@@ -86,23 +81,23 @@ public class CallBusActor extends EventBusActor implements PeerCallCallback {
+ 
+     @Override
+     public void onOffer(long deviceId, long sessionId, @NotNull String sdp) {
+-        sendSignal(deviceId, new ApiOffer(sessionId, sdp, CallBusActor.this.selfSettings.toApi()));
++        new ApiOffer(sessionId, sdp, CallBusActor.this.selfSettings.toApi()).sendSignal(deviceId, this);
+     }
+ 
+     @Override
+     public void onAnswer(long deviceId, long sessionId, @NotNull String sdp) {
+-        sendSignal(deviceId, new ApiAnswer(sessionId, sdp));
++        new ApiAnswer(sessionId, sdp).sendSignal(deviceId, this);
+     }
+ 
+     @Override
+     public void onCandidate(long deviceId, long sessionId, int mdpIndex, @NotNull String id, @NotNull String sdp) {
+-        sendSignal(deviceId, new ApiCandidate(sessionId, mdpIndex, id, sdp));
++        new ApiCandidate(sessionId, mdpIndex, id, sdp).sendSignal(deviceId, this);
+     }
+ 
+     @Override
+     public void onNegotiationSuccessful(final long deviceId, final long sessionId) {
+         if (isMasterReady) {
+-            sendSignal(masterDeviceId, new ApiNegotinationSuccessful(deviceId, sessionId));
++            new ApiNegotinationSuccessful(deviceId, sessionId).sendSignal(masterDeviceId, this);
+         } else {
+             stash(STASH);
+         }
+@@ -111,7 +106,7 @@ public class CallBusActor extends EventBusActor implements PeerCallCallback {
+     @Override
+     public void onNegotiationNeeded(long deviceId, long sessionId) {
+         if (isMasterReady) {
+-            sendSignal(masterDeviceId, new ApiOnRenegotiationNeeded(deviceId, sessionId));
++            new ApiOnRenegotiationNeeded(deviceId, sessionId).sendSignal(masterDeviceId, this);
+         } else {
+             stash(STASH);
+         }
+@@ -119,7 +114,7 @@ public class CallBusActor extends EventBusActor implements PeerCallCallback {
+ 
+     @Override
+     public void onMediaStreamsChanged(long deviceId, boolean isAudioEnabled, boolean isVideoEnabled) {
+-        sendSignal(deviceId, new ApiMediaStreamsUpdated(isAudioEnabled, isVideoEnabled));
++        new ApiMediaStreamsUpdated(isAudioEnabled, isVideoEnabled).sendSignal(deviceId, this);
+     }
+ 
+     @Override
+@@ -236,7 +231,7 @@ public class CallBusActor extends EventBusActor implements PeerCallCallback {
+             //
+             // Advertise own settings to master device
+             //
+-            sendSignal(masterDeviceId, new ApiAdvertiseSelf(selfSettings.toApi()));
++            new ApiAdvertiseSelf(selfSettings.toApi()).sendSignal(masterDeviceId, this);
+ 
+             //
+             // Sending Configuration to Peer Call
+@@ -258,15 +253,6 @@ public class CallBusActor extends EventBusActor implements PeerCallCallback {
+         }
+     }
+ 
+-    public final void sendSignal(long deviceId, @NotNull ApiWebRTCSignaling signal) {
+-        Log.d("CallBusActor", "Message Sent: " + signal);
+-        try {
+-            sendMessage(deviceId, signal.buildContainer());
+-        } catch (IOException e) {
+-            e.printStackTrace();
+-        }
+-    }
+-
+     @Override
+     public void postStop() {
+         super.postStop();
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/encryption/EncryptedSessionActor.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/encryption/EncryptedSessionActor.java
+index f7fbd50..d65ab6f 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/encryption/EncryptedSessionActor.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/encryption/EncryptedSessionActor.java
+@@ -124,7 +124,7 @@ public class EncryptedSessionActor extends ModuleActor {
+                 .map(new Function<EncryptedSessionChain, DecryptedPackage>() {
+                     @Override
+                     public DecryptedPackage apply(EncryptedSessionChain encryptedSessionChain) {
+-                        return decrypt(encryptedSessionChain, data);
++                        return encryptedSessionChain.decryptOther(data, this);
+                     }
+                 })
+                 .then(new Consumer<DecryptedPackage>() {
+@@ -210,17 +210,6 @@ public class EncryptedSessionActor extends ModuleActor {
+                 });
+     }
+ 
+-    private DecryptedPackage decrypt(EncryptedSessionChain chain, byte[] data) {
+-        byte[] decrypted;
+-        try {
+-            decrypted = chain.decrypt(data);
+-        } catch (IntegrityException e) {
+-            e.printStackTrace();
+-            throw new RuntimeException(e);
+-        }
+-        return new DecryptedPackage(decrypted);
+-    }
+-
+     //
+     // Actor Messages
+     //
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/encryption/KeyManagerActor.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/encryption/KeyManagerActor.java
+index 9a6501c..e6ebbef 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/encryption/KeyManagerActor.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/encryption/KeyManagerActor.java
+@@ -372,8 +372,7 @@ public class KeyManagerActor extends ModuleActor {
+ 
+                                         PublicKey pkey = new PublicKey(keyId, key.getKeyAlg(), key.getKeyMaterial());
+                                         UserKeysGroup userKeysGroup = finalKeysGroup.addPublicKey(pkey);
+-                                        cacheUserKeys(keysGroup.getT2().removeUserKeyGroup(userKeysGroup.getKeyGroupId())
+-                                                .addUserKeyGroup(userKeysGroup));
++                                        cacheUserKeys(userKeysGroup.addUserKeyGroup(keysGroup.getT2().removeUserKeyGroup(userKeysGroup.getKeyGroupId())));
+ 
+                                         return pkey;
+                                     }
+@@ -444,7 +443,7 @@ public class KeyManagerActor extends ModuleActor {
+         }
+         UserKeysGroup validatedKeysGroup = validateUserKeysGroup(uid, keyGroup);
+         if (validatedKeysGroup != null) {
+-            UserKeys updatedUserKeys = userKeys.addUserKeyGroup(validatedKeysGroup);
++            UserKeys updatedUserKeys = validatedKeysGroup.addUserKeyGroup(userKeys);
+             cacheUserKeys(updatedUserKeys);
+             context().getEncryption().getEncryptedChatManager(uid)
+                     .send(new EncryptedPeerActor.KeyGroupUpdated(userKeys));
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/encryption/entity/UserKeys.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/encryption/entity/UserKeys.java
+index 54af77b..2a3bea3 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/encryption/entity/UserKeys.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/encryption/entity/UserKeys.java
+@@ -30,15 +30,6 @@ public class UserKeys extends BserObject {
+         return userKeysGroups;
+     }
+ 
+-    public UserKeys addUserKeyGroup(UserKeysGroup keysGroup) {
+-        ArrayList<UserKeysGroup> userKeysGroups = new ArrayList<UserKeysGroup>();
+-        for (UserKeysGroup g : this.userKeysGroups) {
+-            userKeysGroups.add(g);
+-        }
+-        userKeysGroups.add(keysGroup);
+-        return new UserKeys(uid, userKeysGroups.toArray(new UserKeysGroup[userKeysGroups.size()]));
+-    }
+-
+     public UserKeys removeUserKeyGroup(int keyGroupId) {
+         ArrayList<UserKeysGroup> userKeysGroups = new ArrayList<UserKeysGroup>();
+         for (UserKeysGroup g : this.userKeysGroups) {
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/encryption/entity/UserKeysGroup.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/encryption/entity/UserKeysGroup.java
+index 43df64a..9b65de7 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/encryption/entity/UserKeysGroup.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/encryption/entity/UserKeysGroup.java
+@@ -90,4 +90,13 @@ public class UserKeysGroup extends BserObject {
+             writer.writeBytes(4, k.toByteArray());
+         }
+     }
++
++    public UserKeys addUserKeyGroup(UserKeys userKeys) {
++        ArrayList<UserKeysGroup> userKeysGroups = new ArrayList<UserKeysGroup>();
++        for (UserKeysGroup g : userKeys.getUserKeysGroups()) {
++            userKeysGroups.add(g);
++        }
++        userKeysGroups.add(this);
++        return new UserKeys(userKeys.getUid(), userKeysGroups.toArray(new UserKeysGroup[userKeysGroups.size()]));
++    }
+ }
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/encryption/session/EncryptedSessionChain.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/encryption/session/EncryptedSessionChain.java
+index 738a050..a3c05a0 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/encryption/session/EncryptedSessionChain.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/encryption/session/EncryptedSessionChain.java
+@@ -4,6 +4,7 @@ import java.util.HashSet;
+ import java.util.Random;
+ 
+ import im.actor.core.entity.encryption.PeerSession;
++import im.actor.core.modules.encryption.EncryptedSessionActor;
+ import im.actor.core.util.RandomUtils;
+ import im.actor.runtime.Crypto;
+ import im.actor.runtime.Log;
+@@ -128,4 +129,15 @@ public class EncryptedSessionChain {
+         receivedCounters.clear();
+         sentCounter = 0;
+     }
++
++    public EncryptedSessionActor.DecryptedPackage decryptOther(byte[] data, EncryptedSessionActor encryptedSessionActor) {
++        byte[] decrypted;
++        try {
++            decrypted = decrypt(data);
++        } catch (IntegrityException e) {
++            e.printStackTrace();
++            throw new RuntimeException(e);
++        }
++        return new EncryptedSessionActor.DecryptedPackage(decrypted);
++    }
+ }
+\ No newline at end of file
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/external/ExternalModule.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/external/ExternalModule.java
+index d44b505..a28eef8 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/external/ExternalModule.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/external/ExternalModule.java
+@@ -9,14 +9,12 @@ import org.jetbrains.annotations.NotNull;
+ import java.util.ArrayList;
+ 
+ import im.actor.core.api.ApiMapValue;
+-import im.actor.core.api.ApiMapValueItem;
+ import im.actor.core.api.ApiRawValue;
+ import im.actor.core.api.rpc.RequestCompleteWebaction;
+ import im.actor.core.api.rpc.RequestInitWebaction;
+ import im.actor.core.api.rpc.RequestRawRequest;
+ import im.actor.core.api.rpc.ResponseCompleteWebaction;
+ import im.actor.core.api.rpc.ResponseInitWebaction;
+-import im.actor.core.api.rpc.ResponseRawRequest;
+ import im.actor.core.entity.WebActionDescriptor;
+ import im.actor.core.modules.AbsModule;
+ import im.actor.core.modules.ModuleContext;
+@@ -25,7 +23,6 @@ import im.actor.core.network.RpcException;
+ import im.actor.core.network.parser.Request;
+ import im.actor.core.network.parser.Response;
+ import im.actor.core.viewmodel.Command;
+-import im.actor.core.viewmodel.CommandCallback;
+ 
+ public class ExternalModule extends AbsModule {
+ 
+@@ -81,20 +78,6 @@ public class ExternalModule extends AbsModule {
+         });
+     }
+ 
+-    public Command<ResponseRawRequest> rawRequestCommand(final String service, final String method, final ApiRawValue params) {
+-        return callback -> request(new RequestRawRequest(service, method, params), new RpcCallback<ResponseRawRequest>() {
+-            @Override
+-            public void onResult(ResponseRawRequest response) {
+-                callback.onResult(response);
+-            }
+-
+-            @Override
+-            public void onError(RpcException e) {
+-                callback.onError(e);
+-            }
+-        });
+-    }
+-
+     public void rawPersistentRequest(String service, String method, ApiRawValue params) {
+         context().getApiModule().performPersistRequest(new RequestRawRequest(service, method, params));
+     }
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/groups/GroupsModule.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/groups/GroupsModule.java
+index 3f4e982..55c1e44 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/groups/GroupsModule.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/groups/GroupsModule.java
+@@ -6,16 +6,13 @@ package im.actor.core.modules.groups;
+ 
+ import java.util.ArrayList;
+ import java.util.HashMap;
+-import java.util.List;
+ 
+-import im.actor.core.api.ApiAdminSettings;
+ import im.actor.core.api.ApiGroupOutPeer;
+ import im.actor.core.api.ApiGroupType;
+ import im.actor.core.api.ApiMember;
+ import im.actor.core.api.ApiOutPeer;
+ import im.actor.core.api.ApiPeerType;
+ import im.actor.core.api.ApiUserOutPeer;
+-import im.actor.core.api.rpc.RequestCreateGroup;
+ import im.actor.core.api.rpc.RequestDeleteGroup;
+ import im.actor.core.api.rpc.RequestDismissUserAdmin;
+ import im.actor.core.api.rpc.RequestEditGroupAbout;
+@@ -47,7 +44,6 @@ import im.actor.core.entity.GroupMembersSlice;
+ import im.actor.core.entity.GroupPermissions;
+ import im.actor.core.entity.Peer;
+ import im.actor.core.entity.PeerType;
+-import im.actor.core.entity.User;
+ import im.actor.core.events.PeerChatOpened;
+ import im.actor.core.events.PeerInfoOpened;
+ import im.actor.core.modules.AbsModule;
+@@ -63,7 +59,6 @@ import im.actor.runtime.actors.ActorRef;
+ import im.actor.runtime.actors.messages.Void;
+ import im.actor.runtime.eventbus.BusSubscriber;
+ import im.actor.runtime.eventbus.Event;
+-import im.actor.runtime.function.Function;
+ import im.actor.runtime.mvvm.MVVMCollection;
+ import im.actor.runtime.promise.Promise;
+ import im.actor.runtime.promise.Promises;
+@@ -130,38 +125,11 @@ public class GroupsModule extends AbsModule implements BusSubscriber {
+     //
+ 
+     public Promise<Integer> createGroup(String title, String avatarDescriptor, int[] uids) {
+-        return createGroup(title, avatarDescriptor, uids, ApiGroupType.GROUP);
++        return ApiGroupType.GROUP.createGroup(title, avatarDescriptor, uids, this);
+     }
+ 
+     public Promise<Integer> createChannel(String title, String avatarDescriptor) {
+-        return createGroup(title, avatarDescriptor, new int[0], ApiGroupType.CHANNEL);
+-    }
+-
+-    private Promise<Integer> createGroup(String title, String avatarDescriptor, int[] uids,
+-                                         ApiGroupType groupType) {
+-        long rid = RandomUtils.nextRid();
+-        return Promise.success(uids)
+-                .map((Function<int[], List<ApiUserOutPeer>>) ints -> {
+-                    ArrayList<ApiUserOutPeer> peers = new ArrayList<>();
+-                    for (int u : uids) {
+-                        User user = users().getValue(u);
+-                        if (user != null) {
+-                            peers.add(new ApiUserOutPeer(u, user.getAccessHash()));
+-                        }
+-                    }
+-                    return peers;
+-                })
+-                .flatMap(apiUserOutPeers ->
+-                        api(new RequestCreateGroup(rid, title, apiUserOutPeers,
+-                                groupType, ApiSupportConfiguration.OPTIMIZATIONS)))
+-                .chain(r -> updates().applyRelatedData(r.getUsers(), r.getGroup()))
+-                .chain(r -> updates().waitForUpdate(r.getSeq()))
+-                .map(r -> r.getGroup().getId())
+-                .then(integer -> {
+-                    if (avatarDescriptor != null) {
+-                        changeAvatar(integer, avatarDescriptor);
+-                    }
+-                });
++        return ApiGroupType.CHANNEL.createGroup(title, avatarDescriptor, new int[0], this);
+     }
+ 
+     public Promise<Void> addMember(final int gid, final int uid) {
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesModule.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesModule.java
+index 7cc463e..272c2e2 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesModule.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesModule.java
+@@ -11,11 +11,8 @@ import java.util.ArrayList;
+ import java.util.HashMap;
+ 
+ import im.actor.core.api.ApiMessage;
+-import im.actor.core.api.ApiOutPeer;
+ import im.actor.core.api.ApiPeer;
+-import im.actor.core.api.ApiPeerType;
+ import im.actor.core.api.ApiTextMessage;
+-import im.actor.core.api.base.SeqUpdate;
+ import im.actor.core.api.rpc.RequestArchiveChat;
+ import im.actor.core.api.rpc.RequestClearChat;
+ import im.actor.core.api.rpc.RequestDeleteChat;
+@@ -24,11 +21,8 @@ import im.actor.core.api.rpc.RequestMessageRemoveReaction;
+ import im.actor.core.api.rpc.RequestMessageSetReaction;
+ import im.actor.core.api.rpc.RequestUnfavouriteDialog;
+ import im.actor.core.api.rpc.RequestUpdateMessage;
+-import im.actor.core.api.rpc.ResponseDialogsOrder;
+ import im.actor.core.api.rpc.ResponseLoadArchived;
+-import im.actor.core.api.rpc.ResponseReactionsResponse;
+ import im.actor.core.api.rpc.ResponseSeq;
+-import im.actor.core.api.rpc.ResponseSeqDate;
+ import im.actor.core.api.updates.UpdateChatClear;
+ import im.actor.core.api.updates.UpdateChatDelete;
+ import im.actor.core.api.updates.UpdateChatGroupsChanged;
+@@ -55,23 +49,15 @@ import im.actor.core.modules.messaging.dialogs.DialogsInt;
+ import im.actor.core.modules.messaging.history.ArchivedDialogsActor;
+ import im.actor.core.modules.messaging.actions.CursorReaderActor;
+ import im.actor.core.modules.messaging.actions.CursorReceiverActor;
+-import im.actor.core.modules.messaging.dialogs.DialogsActor;
+ import im.actor.core.modules.messaging.history.ConversationHistory;
+-import im.actor.core.modules.messaging.history.ConversationHistoryActor;
+ import im.actor.core.modules.messaging.history.DialogsHistoryActor;
+ import im.actor.core.modules.messaging.actions.MessageDeleteActor;
+ import im.actor.core.modules.messaging.actions.SenderActor;
+ import im.actor.core.modules.messaging.router.RouterInt;
+ import im.actor.core.network.RpcCallback;
+-import im.actor.core.network.RpcException;
+-import im.actor.core.network.RpcInternalException;
+-import im.actor.core.viewmodel.Command;
+-import im.actor.core.viewmodel.CommandCallback;
+ import im.actor.core.viewmodel.ConversationVM;
+ import im.actor.core.viewmodel.DialogGroupsVM;
+ import im.actor.runtime.Storage;
+-import im.actor.runtime.actors.Actor;
+-import im.actor.runtime.actors.ActorCreator;
+ import im.actor.runtime.actors.ActorRef;
+ import im.actor.runtime.actors.Props;
+ import im.actor.runtime.actors.messages.Void;
+@@ -81,8 +67,6 @@ import im.actor.runtime.files.FileSystemReference;
+ import im.actor.runtime.function.Function;
+ import im.actor.runtime.mvvm.MVVMCollection;
+ import im.actor.runtime.promise.Promise;
+-import im.actor.runtime.promise.PromiseFunc;
+-import im.actor.runtime.promise.PromiseResolver;
+ import im.actor.runtime.storage.ListEngine;
+ import im.actor.runtime.storage.SyncKeyValue;
+ 
+@@ -230,14 +214,6 @@ public class MessagesModule extends AbsModule implements BusSubscriber {
+         sendMessageActor.send(new SenderActor.SendContact(peer, phones, emails, name, base64photo));
+     }
+ 
+-    public void sendPhoto(@NotNull Peer peer, @NotNull String fileName, int w, int h, @Nullable FastThumb fastThumb,
+-                          @NotNull String descriptor) {
+-        FileSystemReference reference = Storage.fileFromDescriptor(descriptor);
+-        sendMessageActor.send(new SenderActor.SendPhoto(peer, fastThumb,
+-                descriptor,
+-                fileName, reference.getSize(), w, h));
+-    }
+-
+     public void sendAnimation(@NotNull Peer peer, @NotNull String fileName, int w, int h, @Nullable FastThumb fastThumb,
+                               @NotNull String descriptor) {
+         FileSystemReference reference = Storage.fileFromDescriptor(descriptor);
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesProcessor.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesProcessor.java
+index 0a40098..3914cde 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesProcessor.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesProcessor.java
+@@ -4,13 +4,6 @@
+ 
+ package im.actor.core.modules.messaging;
+ 
+-import java.util.ArrayList;
+-import java.util.List;
+-
+-import im.actor.core.api.ApiDialogGroup;
+-import im.actor.core.api.ApiMessage;
+-import im.actor.core.api.ApiMessageReaction;
+-import im.actor.core.api.ApiPeer;
+ import im.actor.core.api.updates.UpdateChatClear;
+ import im.actor.core.api.updates.UpdateChatDelete;
+ import im.actor.core.api.updates.UpdateChatDropCache;
+@@ -23,14 +16,8 @@ import im.actor.core.api.updates.UpdateMessageReadByMe;
+ import im.actor.core.api.updates.UpdateMessageReceived;
+ import im.actor.core.api.updates.UpdateMessageSent;
+ import im.actor.core.api.updates.UpdateReactionsUpdate;
+-import im.actor.core.entity.Message;
+-import im.actor.core.entity.MessageState;
+-import im.actor.core.entity.Peer;
+-import im.actor.core.entity.Reaction;
+-import im.actor.core.entity.content.AbsContent;
+ import im.actor.core.modules.AbsModule;
+ import im.actor.core.modules.ModuleContext;
+-import im.actor.core.modules.messaging.actions.SenderActor;
+ import im.actor.core.modules.sequence.processor.SequenceProcessor;
+ import im.actor.core.network.parser.Update;
+ import im.actor.runtime.actors.messages.Void;
+@@ -56,29 +43,6 @@ public class MessagesProcessor extends AbsModule implements SequenceProcessor {
+     }
+ 
+     @Verified
+-    public Promise<Void> onDifferenceMessages(ApiPeer _peer, List<UpdateMessage> messages) {
+-
+-        Peer peer = convert(_peer);
+-
+-        ArrayList<Message> nMessages = new ArrayList<>();
+-        for (UpdateMessage u : messages) {
+-
+-            AbsContent msgContent = AbsContent.fromMessage(u.getMessage());
+-
+-            nMessages.add(new Message(
+-                    u.getRid(),
+-                    u.getDate(),
+-                    u.getDate(),
+-                    u.getSenderUid(),
+-                    myUid() == u.getSenderUid() ? MessageState.SENT : MessageState.UNKNOWN,
+-                    msgContent));
+-        }
+-
+-
+-        return context().getMessagesModule().getRouter().onNewMessages(peer, nMessages);
+-    }
+-
+-    @Verified
+     public Promise<Void> onDifferenceEnd() {
+         return context().getMessagesModule().getRouter().onDifferenceEnd();
+     }
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/actions/SenderActor.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/actions/SenderActor.java
+index 8deddc1..20e968c 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/actions/SenderActor.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/actions/SenderActor.java
+@@ -17,17 +17,11 @@ import im.actor.core.api.ApiDocumentExVoice;
+ import im.actor.core.api.ApiFastThumb;
+ import im.actor.core.api.ApiJsonMessage;
+ import im.actor.core.api.ApiMessage;
+-import im.actor.core.api.ApiPeer;
+ import im.actor.core.api.ApiDocumentEx;
+ import im.actor.core.api.ApiDocumentExPhoto;
+ import im.actor.core.api.ApiDocumentExVideo;
+ import im.actor.core.api.ApiDocumentMessage;
+-import im.actor.core.api.ApiOutPeer;
+ import im.actor.core.api.ApiTextMessage;
+-import im.actor.core.api.base.SeqUpdate;
+-import im.actor.core.api.rpc.RequestSendMessage;
+-import im.actor.core.api.rpc.ResponseSeqDate;
+-import im.actor.core.api.updates.UpdateMessageSent;
+ import im.actor.core.entity.FileReference;
+ import im.actor.core.entity.Group;
+ import im.actor.core.entity.GroupMember;
+@@ -58,8 +52,6 @@ import im.actor.core.modules.messaging.actions.entity.PendingMessage;
+ import im.actor.core.modules.messaging.actions.entity.PendingMessagesStorage;
+ import im.actor.core.modules.ModuleActor;
+ import im.actor.core.util.RandomUtils;
+-import im.actor.core.network.RpcCallback;
+-import im.actor.core.network.RpcException;
+ import im.actor.runtime.*;
+ import im.actor.runtime.Runtime;
+ import im.actor.runtime.power.WakeLock;
+@@ -463,33 +455,7 @@ public class SenderActor extends ModuleActor {
+             return;
+         }
+ 
+-        performSendApiContent(peer, rid, message, wakeLock);
+-    }
+-
+-    private void performSendApiContent(final Peer peer, final long rid, ApiMessage message, final WakeLock wakeLock) {
+-        final ApiOutPeer outPeer = buidOutPeer(peer);
+-        final ApiPeer apiPeer = buildApiPeer(peer);
+-        if (outPeer == null || apiPeer == null) {
+-            return;
+-        }
+-        request(new RequestSendMessage(outPeer, rid, message, null, null),
+-                new RpcCallback<ResponseSeqDate>() {
+-                    @Override
+-                    public void onResult(ResponseSeqDate response) {
+-                        self().send(new MessageSent(peer, rid));
+-                        updates().onUpdateReceived(new SeqUpdate(response.getSeq(),
+-                                response.getState(),
+-                                UpdateMessageSent.HEADER,
+-                                new UpdateMessageSent(apiPeer, rid, response.getDate()).toByteArray()));
+-                        wakeLock.releaseLock();
+-                    }
+-
+-                    @Override
+-                    public void onError(RpcException e) {
+-                        self().send(new MessageError(peer, rid));
+-                        wakeLock.releaseLock();
+-                    }
+-                });
++        message.performSendApiContent(peer, rid, wakeLock, this);
+     }
+ 
+     private void onSent(Peer peer, long rid) {
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/router/RouterInt.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/router/RouterInt.java
+index 1bc228a..420db61 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/router/RouterInt.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/router/RouterInt.java
+@@ -73,12 +73,6 @@ public class RouterInt extends ActorInterface implements BusSubscriber {
+     // New Messages
+     //
+ 
+-    public Promise<Void> onNewMessage(Peer peer, Message message) {
+-        ArrayList<Message> messages = new ArrayList<>();
+-        messages.add(message);
+-        return onNewMessages(peer, messages);
+-    }
+-
+     public Promise<Void> onNewMessages(Peer peer, List<Message> messages) {
+         return ask(new RouterNewMessages(peer, messages));
+     }
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/search/SearchModule.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/search/SearchModule.java
+index 99658ab..a5c5cb9 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/search/SearchModule.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/search/SearchModule.java
+@@ -16,7 +16,6 @@ import im.actor.core.api.ApiSearchPeerContentType;
+ import im.actor.core.api.ApiSearchPeerType;
+ import im.actor.core.api.ApiSearchPeerTypeCondition;
+ import im.actor.core.api.ApiSearchPieceText;
+-import im.actor.core.api.rpc.RequestMessageSearch;
+ import im.actor.core.api.rpc.RequestPeerSearch;
+ import im.actor.core.entity.Dialog;
+ import im.actor.core.entity.MessageSearchEntity;
+@@ -25,7 +24,6 @@ import im.actor.core.entity.PeerSearchEntity;
+ import im.actor.core.entity.PeerSearchType;
+ import im.actor.core.entity.SearchEntity;
+ import im.actor.core.entity.SearchResult;
+-import im.actor.core.entity.content.AbsContent;
+ import im.actor.core.modules.AbsModule;
+ import im.actor.core.modules.api.ApiSupportConfiguration;
+ import im.actor.core.modules.Modules;
+@@ -72,7 +70,7 @@ public class SearchModule extends AbsModule {
+         ArrayList<ApiSearchCondition> conditions = new ArrayList<>();
+         conditions.add(new ApiSearchPeerCondition(getApiOutPeer(peer)));
+         conditions.add(new ApiSearchPieceText(query));
+-        return findMessages(new ApiSearchAndCondition(conditions));
++        return new ApiSearchAndCondition(conditions).findMessages(this);
+     }
+ 
+     public Promise<List<MessageSearchEntity>> findAllDocs(Peer peer) {
+@@ -91,21 +89,7 @@ public class SearchModule extends AbsModule {
+         ArrayList<ApiSearchCondition> conditions = new ArrayList<>();
+         conditions.add(new ApiSearchPeerCondition(getApiOutPeer(peer)));
+         conditions.add(new ApiSearchPeerContentType(contentType));
+-        return findMessages(new ApiSearchAndCondition(conditions));
+-    }
+-
+-    private Promise<List<MessageSearchEntity>> findMessages(final ApiSearchCondition condition) {
+-        return api(new RequestMessageSearch(condition, ApiSupportConfiguration.OPTIMIZATIONS))
+-                .chain(responseMessageSearchResponse ->
+-                        updates().applyRelatedData(
+-                                responseMessageSearchResponse.getUsers(),
+-                                responseMessageSearchResponse.getGroups()))
+-                .map(responseMessageSearchResponse1 ->
+-                        ManagedList.of(responseMessageSearchResponse1.getSearchResults())
+-                                .map(itm -> new MessageSearchEntity(
+-                                        convert(itm.getResult().getPeer()), itm.getResult().getRid(),
+-                                        itm.getResult().getDate(), itm.getResult().getSenderId(),
+-                                        AbsContent.fromMessage(itm.getResult().getContent()))));
++        return new ApiSearchAndCondition(conditions).findMessages(this);
+     }
+ 
+     public Promise<List<PeerSearchEntity>> findPeers(PeerSearchType type) {
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/sequence/Updates.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/sequence/Updates.java
+index e2157d8..01b1e63 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/sequence/Updates.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/sequence/Updates.java
+@@ -4,8 +4,6 @@
+ 
+ package im.actor.core.modules.sequence;
+ 
+-import org.jetbrains.annotations.NotNull;
+-
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+@@ -27,9 +25,7 @@ import im.actor.runtime.eventbus.BusSubscriber;
+ import im.actor.runtime.eventbus.Event;
+ import im.actor.runtime.promise.Promise;
+ import im.actor.runtime.promise.PromiseFunc;
+-import im.actor.runtime.promise.PromiseResolver;
+ import im.actor.runtime.promise.Promises;
+-import im.actor.runtime.promise.PromisesArray;
+ 
+ import static im.actor.runtime.actors.ActorSystem.system;
+ 
+@@ -73,13 +69,6 @@ public class Updates extends AbsModule implements BusSubscriber {
+     }
+ 
+     public Promise<Void> applyUpdate(int seq, byte[] state, Update update,
+-                                     List<ApiUser> users, ApiGroup group) {
+-        ArrayList<ApiGroup> groups = new ArrayList<>();
+-        groups.add(group);
+-        return applyUpdate(seq, state, update, users, groups);
+-    }
+-
+-    public Promise<Void> applyUpdate(int seq, byte[] state, Update update,
+                                      List<ApiUser> users, List<ApiGroup> groups) {
+         return new Promise<>((PromiseFunc<Void>) resolver -> {
+             updateActor.send(new FatSeqUpdate(seq, state, update.getHeaderKey(), update.toByteArray(),
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/sequence/internal/CombinedDifference.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/sequence/internal/CombinedDifference.java
+index 6a5306c..acc7eea 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/sequence/internal/CombinedDifference.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/sequence/internal/CombinedDifference.java
+@@ -4,10 +4,8 @@ import java.util.ArrayList;
+ import java.util.HashMap;
+ import java.util.List;
+ 
+-import im.actor.core.api.ApiAppCounters;
+ import im.actor.core.api.updates.UpdateMessage;
+ import im.actor.core.entity.Peer;
+-import im.actor.core.entity.EntityConverter;
+ import im.actor.core.network.parser.Update;
+ 
+ public class CombinedDifference {
+@@ -38,17 +36,6 @@ public class CombinedDifference {
+         return otherUpdates;
+     }
+ 
+-    public void putMessage(UpdateMessage message) {
+-        Peer peer = EntityConverter.convert(message.getPeer());
+-        if (messages.containsKey(peer)) {
+-            messages.get(peer).add(message);
+-        } else {
+-            ArrayList<UpdateMessage> msgs = new ArrayList<>();
+-            msgs.add(message);
+-            messages.put(peer, msgs);
+-        }
+-    }
+-
+     public void putReadByMe(Peer peer, long date, int counter) {
+         if (readByMe.containsKey(peer)) {
+             if (readByMe.get(peer).date <= date) {
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/sequence/internal/GetDiffCombiner.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/sequence/internal/GetDiffCombiner.java
+index c132ada..51295db 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/sequence/internal/GetDiffCombiner.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/sequence/internal/GetDiffCombiner.java
+@@ -11,10 +11,6 @@ import im.actor.core.api.updates.UpdateMessage;
+ import im.actor.core.api.updates.UpdateMessageRead;
+ import im.actor.core.api.updates.UpdateMessageReadByMe;
+ import im.actor.core.api.updates.UpdateMessageReceived;
+-import im.actor.core.api.updates.UpdateUserAboutChanged;
+-import im.actor.core.api.updates.UpdateUserLocalNameChanged;
+-import im.actor.core.api.updates.UpdateUserNameChanged;
+-import im.actor.core.api.updates.UpdateUserNickChanged;
+ import im.actor.core.network.parser.Update;
+ 
+ import static im.actor.core.entity.EntityConverter.convert;
+@@ -26,7 +22,7 @@ public class GetDiffCombiner {
+         UpdateChatGroupsChanged chatGroupsChanged = null;
+         for (Update u : updates) {
+             if (u instanceof UpdateMessage) {
+-                res.putMessage((UpdateMessage) u);
++                ((UpdateMessage) u).putMessage(res);
+             } else if (u instanceof UpdateMessageRead) {
+                 UpdateMessageRead read = (UpdateMessageRead) u;
+                 res.putRead(convert(read.getPeer()), read.getStartDate());
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/sequence/processor/UpdateProcessor.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/sequence/processor/UpdateProcessor.java
+index 3c95412..6ba4093 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/sequence/processor/UpdateProcessor.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/sequence/processor/UpdateProcessor.java
+@@ -7,13 +7,10 @@ package im.actor.core.modules.sequence.processor;
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+-import im.actor.core.api.ApiGroup;
+-import im.actor.core.api.ApiUser;
+ import im.actor.core.api.updates.UpdateMessage;
+ import im.actor.core.api.updates.UpdateMessageRead;
+ import im.actor.core.api.updates.UpdateMessageReadByMe;
+ import im.actor.core.api.updates.UpdateMessageReceived;
+-import im.actor.core.entity.Group;
+ import im.actor.core.entity.Peer;
+ import im.actor.core.modules.AbsModule;
+ import im.actor.core.modules.ModuleContext;
+@@ -33,13 +30,9 @@ import im.actor.core.modules.sequence.internal.GetDiffCombiner;
+ import im.actor.core.modules.users.UsersProcessor;
+ import im.actor.core.network.parser.Update;
+ import im.actor.runtime.actors.messages.Void;
+-import im.actor.runtime.function.Function;
+-import im.actor.runtime.function.Predicate;
+ import im.actor.runtime.function.Supplier;
+-import im.actor.runtime.function.Tuple2;
+ import im.actor.runtime.promise.Promise;
+ import im.actor.runtime.promise.Promises;
+-import im.actor.runtime.promise.PromisesArray;
+ 
+ public class UpdateProcessor extends AbsModule {
+ 
+@@ -139,7 +132,7 @@ public class UpdateProcessor extends AbsModule {
+         }
+ 
+         for (Peer peer : combinedDifference.getMessages().keySet()) {
+-            pending.add(() -> messagesProcessor.onDifferenceMessages(buildApiPeer(peer), combinedDifference.getMessages().get(peer)));
++            pending.add(() -> buildApiPeer(peer).onDifferenceMessages(combinedDifference.getMessages().get(peer), messagesProcessor));
+         }
+ 
+         for (Update u : combinedDifference.getOtherUpdates()) {
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/users/router/UserRouter.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/users/router/UserRouter.java
+index b54b808..6970b46 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/users/router/UserRouter.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/users/router/UserRouter.java
+@@ -38,19 +38,12 @@ import im.actor.core.entity.User;
+ import im.actor.core.entity.content.ServiceUserRegistered;
+ import im.actor.core.modules.ModuleActor;
+ import im.actor.core.modules.ModuleContext;
+-import im.actor.core.modules.contacts.ContactsSyncActor;
+-import im.actor.core.modules.contacts.entity.BookImportStorage;
+ import im.actor.core.modules.users.router.entity.RouterApplyUsers;
+ import im.actor.core.modules.users.router.entity.RouterFetchMissingUsers;
+ import im.actor.core.modules.users.router.entity.RouterLoadFullUser;
+ import im.actor.core.modules.users.router.entity.RouterUserUpdate;
+ import im.actor.core.network.parser.Update;
+ import im.actor.core.providers.PhoneBookProvider;
+-import im.actor.core.viewmodel.UserEmail;
+-import im.actor.core.viewmodel.UserPhone;
+-import im.actor.core.viewmodel.UserVM;
+-import im.actor.core.viewmodel.generics.ArrayListUserEmail;
+-import im.actor.core.viewmodel.generics.ArrayListUserPhone;
+ import im.actor.runtime.Log;
+ import im.actor.runtime.actors.messages.Void;
+ import im.actor.runtime.annotations.Verified;
+@@ -97,7 +90,7 @@ public class UserRouter extends ModuleActor {
+ 
+                         // Notify if user doesn't have local name
+                         if (u.getLocalName() == null) {
+-                            return onUserDescChanged(u);
++                            return u.onUserDescChanged(this);
+                         }
+                     }
+                     return Promise.success((Void) null);
+@@ -122,7 +115,7 @@ public class UserRouter extends ModuleActor {
+                         users().addOrUpdateItem(u);
+ 
+                         // Notify about user change
+-                        return onUserDescChanged(u);
++                        return u.onUserDescChanged(this);
+                     }
+ 
+                     return Promise.success((Void) null);
+@@ -152,7 +145,7 @@ public class UserRouter extends ModuleActor {
+                         users().addOrUpdateItem(u);
+ 
+                         // Notify about user change
+-                        return onUserDescChanged(u);
++                        return u.onUserDescChanged(this);
+                     }
+ 
+                     return Promise.success((Void) null);
+@@ -351,16 +344,10 @@ public class UserRouter extends ModuleActor {
+ 
+     @Verified
+     public Promise<Void> onUserRegistered(long rid, int uid, long date) {
+-        context().getMessagesModule().getRouter().onNewMessage(Peer.user(uid), new Message(rid, date, date, uid, MessageState.UNKNOWN, ServiceUserRegistered.create()));
++        new Message(rid, date, date, uid, MessageState.UNKNOWN, ServiceUserRegistered.create()).onNewMessage(Peer.user(uid), context().getMessagesModule().getRouter());
+         return Promise.success((Void) null);
+     }
+ 
+-    @Verified
+-    private Promise<Void> onUserDescChanged(User u) {
+-        context().getContactsModule().getContactSyncActor().send(new ContactsSyncActor.UserChanged(u));
+-        return context().getMessagesModule().getRouter().onUserChanged(u);
+-    }
+-
+ 
+     //
+     // Users changed
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/network/Endpoints.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/network/Endpoints.java
+index 9d2b086..4e38393 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/network/Endpoints.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/network/Endpoints.java
+@@ -9,6 +9,7 @@ import java.util.ArrayList;
+ import java.util.Arrays;
+ import java.util.List;
+ 
++import im.actor.core.modules.api.ApiModule;
+ import im.actor.runtime.bser.Bser;
+ import im.actor.runtime.bser.BserObject;
+ import im.actor.runtime.bser.BserValues;
+@@ -100,4 +101,13 @@ public class Endpoints extends BserObject {
+         writer.writeRepeatedObj(1, new ArrayList<>(Arrays.asList(endpoints)));
+         writer.writeRepeatedObj(2, new ArrayList<>(Arrays.asList(trustedKeys)));
+     }
++
++    /**
++     * Changing endpoints
++     * @param apiModule
++     */
++    public synchronized void changeEndpoints(ApiModule apiModule) {
++        apiModule.context().getPreferences().putBytes("custom_endpoints", toByteArray());
++        apiModule.getActorApi().changeEndpoints(this);
++    }
+ }
+diff --git a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/viewmodel/GroupVM.java b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/viewmodel/GroupVM.java
+index dbffde9..5e00781 100644
+--- a/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/viewmodel/GroupVM.java
++++ b/actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/viewmodel/GroupVM.java
+@@ -7,6 +7,12 @@ package im.actor.core.viewmodel;
+ import com.google.j2objc.annotations.ObjectiveCName;
+ import com.google.j2objc.annotations.Property;
+ 
++import im.actor.runtime.actors.messages.Void;
++import im.actor.sdk.ActorSDKLauncher;
++import im.actor.sdk.controllers.Intents;
++import im.actor.sdk.controllers.activity.BaseActivity;
++import im.actor.sdk.controllers.group.view.MembersAdapter;
++import im.actor.sdk.util.AlertListBuilder;
+ import org.jetbrains.annotations.NotNull;
+ 
+ import java.util.ArrayList;
+@@ -27,6 +33,8 @@ import im.actor.runtime.mvvm.ModelChangedListener;
+ import im.actor.runtime.mvvm.ValueModel;
+ import im.actor.runtime.mvvm.ValueModelCreator;
+ 
++import static im.actor.sdk.util.ActorSDKMessenger.messenger;
++
+ /**
+  * Group View Model
+  */
+@@ -645,4 +653,90 @@ public class GroupVM extends BaseValueModel<Group> {
+             }
+         });
+     }
++
++    public void onMemberClick(UserVM userVM, boolean isAdministrator, boolean isInvitedByMe, BaseActivity activity, MembersAdapter membersAdapter) {
++        AlertListBuilder alertListBuilder = new AlertListBuilder();
++        final ArrayList<UserPhone> phones = userVM.getPhones().get();
++        alertListBuilder.addItem(activity.getString(R.string.group_context_message).replace("{0}", userVM.getName().get()), () -> activity.startActivity(Intents.openPrivateDialog(userVM.getId(), true, activity)));
++        if (phones.size() != 0) {
++            alertListBuilder.addItem(activity.getString(R.string.group_context_call).replace("{0}", userVM.getName().get()), () -> {
++                if (phones.size() == 1) {
++                    activity.startActivity(Intents.call(phones.get(0).getPhone()));
++                } else {
++                    CharSequence[] sequences = new CharSequence[phones.size()];
++                    for (int i = 0; i < sequences.length; i++) {
++                        try {
++                            Phonenumber.PhoneNumber number = PhoneNumberUtil.getInstance().parse("+" + phones.get(i).getPhone(), "us");
++                            sequences[i] = phones.get(i).getTitle() + ": " + PhoneNumberUtil.getInstance().format(number, PhoneNumberUtil.PhoneNumberFormat.INTERNATIONAL);
++                        } catch (NumberParseException e) {
++                            e.printStackTrace();
++                            sequences[i] = phones.get(i).getTitle() + ": +" + phones.get(i).getPhone();
++                        }
++                    }
++                    new AlertDialog.Builder(activity)
++                            .setItems(sequences, (dialog1, which1) -> {
++                                activity.startActivity(Intents.call(phones.get(which1).getPhone()));
++                            })
++                            .show()
++                            .setCanceledOnTouchOutside(true);
++                }
++            });
++        }
++        alertListBuilder.addItem(activity.getString(R.string.group_context_view).replace("{0}", userVM.getName().get()), () -> ActorSDKLauncher.startProfileActivity(activity, userVM.getId()));
++        if (getIsCanKickAnyone().get() || (getIsCanKickInvited().get() && isInvitedByMe)) {
++            alertListBuilder.addItem(activity.getString(R.string.group_context_remove).replace("{0}", userVM.getName().get()), () -> {
++                new AlertDialog.Builder(activity)
++                        .setMessage(activity.getString(R.string.alert_group_remove_text).replace("{0}", userVM.getName().get()))
++                        .setPositiveButton(R.string.alert_group_remove_yes, (dialog2, which1) -> {
++                            activity.execute(messenger().kickMember(getId(), userVM.getId()),
++                                    R.string.progress_common, new CommandCallback<Void>() {
++                                        @Override
++                                        public void onResult(Void res1) {
++
++                                        }
++
++                                        @Override
++                                        public void onError(Exception e) {
++                                            Toast.makeText(activity, R.string.toast_unable_kick, Toast.LENGTH_SHORT).show();
++                                        }
++                                    });
++                        })
++                        .setNegativeButton(R.string.dialog_cancel, null)
++                        .show()
++                        .setCanceledOnTouchOutside(true);
++            });
++        }
++        if (getIsCanEditAdmins().get() && !userVM.isBot()) {
++            alertListBuilder.addItem(!isAdministrator ? activity.getResources().getString(R.string.group_make_admin) : activity.getResources().getString(R.string.group_revoke_admin), () -> {
++                if (!isAdministrator) {
++                    messenger().makeAdmin(getId(), userVM.getId()).start(new CommandCallback<Void>() {
++                        @Override
++                        public void onResult(Void res) {
++
++                        }
++
++                        @Override
++                        public void onError(Exception e) {
++
++                        }
++                    });
++                } else {
++                    messenger().revokeAdmin(getId(), userVM.getId()).start(new CommandCallback<Void>() {
++                        @Override
++                        public void onResult(Void res) {
++
++                        }
++
++                        @Override
++                        public void onError(Exception e) {
++
++                        }
++                    });
++                }
++            });
++        }
++        alertListBuilder.build(activity)
++                .show()
++                .setCanceledOnTouchOutside(true);
++    }
+ }
+\ No newline at end of file
+diff --git a/actor-sdk/sdk-core/runtime/runtime-clc/src/main/java/im/actor/runtime/clc/ClcListStorage.java b/actor-sdk/sdk-core/runtime/runtime-clc/src/main/java/im/actor/runtime/clc/ClcListStorage.java
+index c926f2c..e81fa5c 100644
+--- a/actor-sdk/sdk-core/runtime/runtime-clc/src/main/java/im/actor/runtime/clc/ClcListStorage.java
++++ b/actor-sdk/sdk-core/runtime/runtime-clc/src/main/java/im/actor/runtime/clc/ClcListStorage.java
+@@ -4,10 +4,7 @@ import java.sql.Connection;
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+-import im.actor.runtime.Log;
+-import im.actor.runtime.generic.mvvm.DisplayList;
+ import im.actor.runtime.storage.ListEngineRecord;
+-import im.actor.runtime.storage.ListStorage;
+ import im.actor.runtime.storage.ListStorageDisplayEx;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+@@ -179,7 +176,7 @@ public class ClcListStorage implements ListStorageDisplayEx {
+                     }, null, null, "\"SORT_KEY\" DESC", String.valueOf(limit));
+         }
+ 
+-        return loadSlice(cursor);
++        return cursor.loadSlice(this);
+     }
+ 
+     @Override
+@@ -200,7 +197,7 @@ public class ClcListStorage implements ListStorageDisplayEx {
+                     }, null, null, "\"SORT_KEY\" ASC", String.valueOf(limit));
+         }
+ 
+-        return loadSlice(cursor);
++        return cursor.loadSlice(this);
+     }
+ 
+     @Override
+@@ -223,7 +220,7 @@ public class ClcListStorage implements ListStorageDisplayEx {
+                             String.valueOf(sortingKey)
+                     }, null, null, "\"SORT_KEY\" DESC", String.valueOf(limit));
+         }
+-        return loadSlice(cursor);
++        return cursor.loadSlice(this);
+     }
+ 
+     @Override
+@@ -235,7 +232,7 @@ public class ClcListStorage implements ListStorageDisplayEx {
+             cursor = database.query("\"" + tableName + "\"",
+                     new String[]{"\"LIST_ID\"", "\"ID\"", "\"SORT_KEY\"", "\"QUERY\"", "\"BYTES\""},
+                     null, null, null, null, "\"SORT_KEY\" DESC", String.valueOf(limit));
+-            return loadSlice(cursor);
++            return cursor.loadSlice(this);
+         } else {
+ 
+             ListEngineRecord centerItem = loadItemBySortKey(centerSortKey);
+@@ -270,7 +267,7 @@ public class ClcListStorage implements ListStorageDisplayEx {
+                             String.valueOf(sortingKey)
+                     }, null, null, "\"SORT_KEY\" ASC", String.valueOf(limit));
+         }
+-        return loadSlice(cursor);
++        return cursor.loadSlice(this);
+     }
+ 
+     @Override
+@@ -291,25 +288,6 @@ public class ClcListStorage implements ListStorageDisplayEx {
+         return 0;
+     }
+ 
+-    private ArrayList<ListEngineRecord> loadSlice(Cursor cursor) {
+-        ArrayList<ListEngineRecord> res = new ArrayList<ListEngineRecord>();
+-        if (cursor != null) {
+-            try {
+-                if (cursor.moveToNext()) {
+-                    do {
+-                        res.add(new ListEngineRecord(cursor.getLong("ID"), cursor.getLong("SORT_KEY"),
+-                                cursor.getString("QUERY"),
+-                                cursor.getBlob("BYTES")));
+-                    } while (cursor.moveToNext());
+-                }
+-            } finally {
+-                cursor.close();
+-            }
+-        }
+-
+-        return res;
+-    }
+-
+     //Just for unit test
+     public int countAll(){
+         checkTable();
+diff --git a/actor-sdk/sdk-core/runtime/runtime-clc/src/main/java/im/actor/runtime/clc/Cursor.java b/actor-sdk/sdk-core/runtime/runtime-clc/src/main/java/im/actor/runtime/clc/Cursor.java
+index b9895c7..1045a34 100644
+--- a/actor-sdk/sdk-core/runtime/runtime-clc/src/main/java/im/actor/runtime/clc/Cursor.java
++++ b/actor-sdk/sdk-core/runtime/runtime-clc/src/main/java/im/actor/runtime/clc/Cursor.java
+@@ -1,10 +1,12 @@
+ package im.actor.runtime.clc;
+ 
++import im.actor.runtime.storage.ListEngineRecord;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ 
+ import java.sql.ResultSet;
+ import java.sql.SQLException;
++import java.util.ArrayList;
+ 
+ /**
+  * Created by mohammad on 11/18/15.
+@@ -118,4 +120,23 @@ public class Cursor {
+         }
+         return null;
+     }
++
++    public ArrayList<ListEngineRecord> loadSlice(ClcListStorage clcListStorage) {
++        ArrayList<ListEngineRecord> res = new ArrayList<ListEngineRecord>();
++        if (this != null) {
++            try {
++                if (moveToNext()) {
++                    do {
++                        res.add(new ListEngineRecord(getLong("ID"), getLong("SORT_KEY"),
++                                getString("QUERY"),
++                                getBlob("BYTES")));
++                    } while (moveToNext());
++                }
++            } finally {
++                close();
++            }
++        }
++
++        return res;
++    }
+ }

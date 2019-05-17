@@ -1,0 +1,26 @@
+2019-05-17 19:35:50,804 [INFO] Project /home/mikhail/Documents/Development/MoveMethodGenerator/../MoveMethodDataset/actor-platform/actor-platform is opened
+2019-05-17 19:36:36,846 [INFO] Total number of java files: 2232
+2019-05-17 19:36:36,846 [INFO] Total number of source java files: 2214
+2019-05-17 19:36:36,846 [INFO] Total number of classes: 1721
+2019-05-17 19:36:36,846 [INFO] Total number of methods: 12604
+2019-05-17 19:36:36,847 [INFO] StaticMethodsFilter filtered: 1408
+2019-05-17 19:36:36,847 [INFO] ConstructorsFilter filtered: 1946
+2019-05-17 19:36:36,847 [INFO] AbstractMethodsFilter filtered: 87
+2019-05-17 19:36:36,847 [INFO] GettersFilter filtered: 2726
+2019-05-17 19:36:36,847 [INFO] SettersFilter filtered: 187
+2019-05-17 19:36:36,847 [INFO] EmptyMethodsFilter filtered: 286
+2019-05-17 19:36:36,847 [INFO] ExceptionsThrowersFilter filtered: 18
+2019-05-17 19:36:36,847 [INFO] SingleMethodFilter filtered: 140
+2019-05-17 19:36:36,847 [INFO] SimpleDelegationsFilter filtered: 1233
+2019-05-17 19:36:36,847 [INFO] PrivateMethodsCallersFilter filtered: 977
+2019-05-17 19:36:36,847 [INFO] PrivateFieldAccessorsFilter filtered: 1934
+2019-05-17 19:36:36,847 [INFO] OverridingMethodsFilter filtered: 1157
+2019-05-17 19:36:36,847 [INFO] OverriddenMethodsFilter filtered: 8
+2019-05-17 19:36:36,847 [INFO] MethodCallWithSuperFilter filtered: 39
+2019-05-17 19:36:36,847 [INFO] PrivateClassUserFilter filtered: 5
+2019-05-17 19:36:36,847 [INFO] GenericTypeUserFilter filtered: 0
+2019-05-17 19:36:36,847 [INFO] NoTargetsMethodsFilter filtered: 375
+2019-05-17 19:36:36,847 [INFO] Number of methods after filtration: 78
+2019-05-17 19:38:04,876 [INFO] Project /home/mikhail/Documents/Development/MoveMethodGenerator/../MoveMethodDataset/actor-platform/actor-platform is opened
+2019-05-17 19:38:37,022 [INFO] 87 potential moves found
+2019-05-17 19:38:37,022 [INFO] 27 moves performed

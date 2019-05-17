@@ -1,0 +1,79 @@
+id,name,file,offset,containing_class_id,target_ids
+0,im.actor.core.js.modules.JsBindingModule.checkAvatar,actor-sdk/sdk-core/core/core-js/src/main/java/im/actor/core/js/modules/JsBindingModule.java,24827,10,57
+1,im.actor.core.js.JsMessenger.getSmallAvatarUrl,actor-sdk/sdk-core/core/core-js/src/main/java/im/actor/core/js/JsMessenger.java,10747,61,57
+2,im.actor.core.i18n.I18nEngine.formatDialogText,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/i18n/I18nEngine.java,6951,45,16
+3,im.actor.core.i18n.I18nEngine.isLargeDialogMessage,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/i18n/I18nEngine.java,8038,45,70
+4,im.actor.core.modules.api.ApiModule.changeEndpoints,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/api/ApiModule.java,3823,36,2
+5,im.actor.core.modules.calls.peers.CallBusActor.sendSignal,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/calls/peers/CallBusActor.java,8844,39,49
+6,im.actor.core.modules.calls.CallsModule.makeCall,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/calls/CallsModule.java,1601,59,62
+7,im.actor.core.modules.users.router.UserRouter.onUserDescChanged,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/users/router/UserRouter.java,12801,52,6
+8,im.actor.core.modules.groups.GroupsModule.createGroup,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/groups/GroupsModule.java,5050,19,4
+9,im.actor.core.modules.groups.GroupsModule.saveAdminSettings,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/groups/GroupsModule.java,13036,19,44
+10,im.actor.core.modules.search.SearchModule.findMessages,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/search/SearchModule.java,3429,15,27
+11,im.actor.core.modules.external.ExternalModule.rawRequestCommand,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/external/ExternalModule.java,2939,8,32
+12,im.actor.core.modules.external.ExternalModule.rawPersistentRequest,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/external/ExternalModule.java,3478,8,32
+13,im.actor.core.modules.sequence.internal.CombinedDifference.putMessage,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/sequence/internal/CombinedDifference.java,1112,65,71
+14,im.actor.core.modules.sequence.internal.CombinedDifference.put,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/sequence/internal/CombinedDifference.java,2284,65,62
+15,im.actor.core.modules.sequence.Updates.applyUpdate,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/sequence/Updates.java,2514,29,38
+16,im.actor.core.modules.sequence.Updates.applyRelatedData,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/sequence/Updates.java,3587,29,38
+17,im.actor.core.modules.settings.SettingsModule.getChatKey,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/settings/SettingsModule.java,14509,7,62
+18,im.actor.core.modules.conductor.DisplayLists.buildChatList,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/conductor/DisplayLists.java,2772,74,62
+19,im.actor.core.modules.conductor.DisplayLists.buildChatDocsList,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/conductor/DisplayLists.java,3347,74,62
+20,im.actor.core.modules.messaging.router.RouterInt.onNewMessage,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/router/RouterInt.java,2939,42,62 13
+21,im.actor.core.modules.messaging.router.RouterInt.onUserChanged,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/router/RouterInt.java,4402,42,6
+22,im.actor.core.modules.messaging.router.RouterInt.onGroupChanged,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/router/RouterInt.java,4575,42,17
+23,im.actor.core.modules.messaging.router.RouterActor.onChatDropCache,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/router/RouterActor.java,19873,12,62
+24,im.actor.core.modules.messaging.router.RouterActor.conversation,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/router/RouterActor.java,26362,12,62
+25,im.actor.core.modules.messaging.router.RouterActor.isValidPeer,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/router/RouterActor.java,27886,12,62
+26,im.actor.core.modules.messaging.actions.SenderActor.performSendApiContent,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/actions/SenderActor.java,20439,1,51 62
+27,im.actor.core.modules.messaging.dialogs.DialogsActor.updateSearch,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/dialogs/DialogsActor.java,11493,53,16
+28,im.actor.core.modules.messaging.MessagesModule.sendMessage,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesModule.java,8590,67,62
+29,im.actor.core.modules.messaging.MessagesModule.sendPhoto,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesModule.java,9249,67,62 35
+30,im.actor.core.modules.messaging.MessagesModule.sendAnimation,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesModule.java,9665,67,62 35
+31,im.actor.core.modules.messaging.MessagesModule.sendVideo,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesModule.java,10093,67,62 35
+32,im.actor.core.modules.messaging.MessagesModule.sendAudio,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesModule.java,10480,67,62
+33,im.actor.core.modules.messaging.MessagesModule.sendDocument,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesModule.java,11360,67,62 35
+34,im.actor.core.modules.messaging.MessagesModule.updateMessage,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesModule.java,11754,67,62
+35,im.actor.core.modules.messaging.MessagesModule.saveDraft,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesModule.java,14169,67,62
+36,im.actor.core.modules.messaging.MessagesModule.loadDraft,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesModule.java,14322,67,62
+37,im.actor.core.modules.messaging.MessagesModule.addReaction,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesModule.java,14577,67,62
+38,im.actor.core.modules.messaging.MessagesModule.removeReaction,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesModule.java,15326,67,62
+39,im.actor.core.modules.messaging.MessagesModule.favoriteChat,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesModule.java,16117,67,62
+40,im.actor.core.modules.messaging.MessagesModule.unfavoriteChat,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesModule.java,16620,67,62
+41,im.actor.core.modules.messaging.MessagesModule.archiveChat,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesModule.java,17127,67,62
+42,im.actor.core.modules.messaging.MessagesModule.deleteChat,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesModule.java,17378,67,62
+43,im.actor.core.modules.messaging.MessagesModule.clearChat,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesModule.java,17914,67,62
+44,im.actor.core.modules.messaging.MessagesModule.loadMoreHistory,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesModule.java,19157,67,62
+45,im.actor.core.modules.messaging.MessagesProcessor.onDifferenceMessages,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/messaging/MessagesProcessor.java,1960,20,9
+46,im.actor.core.modules.encryption.entity.UserKeys.addUserKeyGroup,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/encryption/entity/UserKeys.java,729,30,43
+47,im.actor.core.modules.encryption.entity.UserKeysGroup.addPublicKey,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/encryption/entity/UserKeysGroup.java,1342,43,47
+48,im.actor.core.modules.encryption.EncryptedSessionActor.decrypt,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/encryption/EncryptedSessionActor.java,8301,55,28
+49,im.actor.core.modules.notifications.NotificationsActor.isNotificationsEnabled,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/notifications/NotificationsActor.java,13846,41,62
+50,im.actor.core.modules.AbsModule.buildApiPeer,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/AbsModule.java,4835,68,62
+51,im.actor.core.modules.AbsModule.getApiOutPeer,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/AbsModule.java,5192,68,62
+52,im.actor.core.modules.ModuleActor.buidOutPeer,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/ModuleActor.java,2093,23,62
+53,im.actor.core.modules.ModuleActor.buildApiPeer,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/modules/ModuleActor.java,2798,23,62
+54,im.actor.core.Messenger.loadLastMessageDate,actor-sdk/sdk-core/core/core-shared/src/main/java/im/actor/core/Messenger.java,34111,18,62
+55,im.actor.core.AndroidMessenger.sendDocument,actor-sdk/sdk-core/core/core-android/src/main/java/im/actor/core/AndroidMessenger.java,7884,40,62
+56,im.actor.core.AndroidMessenger.sendAnimation,actor-sdk/sdk-core/core/core-android/src/main/java/im/actor/core/AndroidMessenger.java,8814,40,62
+57,im.actor.core.AndroidMessenger.sendPhoto,actor-sdk/sdk-core/core/core-android/src/main/java/im/actor/core/AndroidMessenger.java,9587,40,62
+58,im.actor.core.AndroidMessenger.sendVoice,actor-sdk/sdk-core/core/core-android/src/main/java/im/actor/core/AndroidMessenger.java,10847,40,62
+59,im.actor.core.AndroidMessenger.sendVideo,actor-sdk/sdk-core/core/core-android/src/main/java/im/actor/core/AndroidMessenger.java,11175,40,62
+60,im.actor.runtime.clc.ClcListStorage.loadSlice,actor-sdk/sdk-core/runtime/runtime-clc/src/main/java/im/actor/runtime/clc/ClcListStorage.java,10815,31,5
+61,im.actor.sdk.view.emoji.keyboard.emoji.EmojiKeyboard.onStickerClicked,actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/view/emoji/keyboard/emoji/EmojiKeyboard.java,7926,33,63
+62,im.actor.sdk.view.avatar.CoverAvatarView.tryToSetFast,actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/view/avatar/CoverAvatarView.java,5438,60,57
+63,im.actor.sdk.controllers.auth.BaseAuthFragment.signUp,actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/auth/BaseAuthFragment.java,2724,14,11
+64,im.actor.sdk.controllers.group.view.MembersAdapter.onMemberClick,actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/group/view/MembersAdapter.java,7091,37,21 54 0
+65,im.actor.sdk.controllers.dialogs.view.DialogView.getAvatarImage,actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/dialogs/view/DialogView.java,20452,26,57
+66,im.actor.sdk.controllers.pickers.file.items.ExplorerItem.bindImage,actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/pickers/file/items/ExplorerItem.java,2705,64,25
+67,im.actor.sdk.controllers.pickers.file.BasePickerActivity.selectItem,actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/pickers/file/BasePickerActivity.java,4123,46,64
+68,im.actor.sdk.controllers.contacts.InviteFragment.onItemClicked,actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/contacts/InviteFragment.java,2854,34,72
+69,im.actor.sdk.controllers.contacts.InviteFragment.select,actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/contacts/InviteFragment.java,4014,34,72
+70,im.actor.sdk.controllers.contacts.InviteFragment.unselect,actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/contacts/InviteFragment.java,4116,34,72
+71,im.actor.sdk.controllers.contacts.InviteFragment.isSelected,actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/contacts/InviteFragment.java,4206,34,72
+72,im.actor.sdk.controllers.settings.ActorSettingsCategory.addField,actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/settings/ActorSettingsCategory.java,1057,48,73
+73,im.actor.sdk.controllers.shortcuts.ShortcutActivity.send,actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/shortcuts/ShortcutActivity.java,5247,58,62
+74,im.actor.sdk.controllers.conversation.messages.content.PhotoHolder.playVideo,actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/conversation/messages/content/PhotoHolder.java,16564,50,3
+75,im.actor.sdk.controllers.conversation.messages.content.ContactHolder.convertPhoto,actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/conversation/messages/content/ContactHolder.java,5100,22,66
+76,im.actor.sdk.controllers.conversation.messages.ViewHolderMatcher.getMatchId,actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/conversation/messages/ViewHolderMatcher.java,775,56,69
+77,im.actor.sdk.controllers.conversation.messages.ViewHolderMatcher.onCreateViewHolder,actor-sdk/sdk-core-android/android-sdk/src/main/java/im/actor/sdk/controllers/conversation/messages/ViewHolderMatcher.java,1005,56,24 62

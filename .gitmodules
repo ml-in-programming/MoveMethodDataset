@@ -35,3 +35,6 @@
 [submodule "atlas/atlas"]
 	path = atlas/atlas
 	url = https://github.com/alibaba/atlas.git
+[submodule "actor-platform/actor-platform"]
+	path = actor-platform/actor-platform
+	url = https://github.com/actorapp/actor-platform.git
