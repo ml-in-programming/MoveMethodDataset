@@ -38,3 +38,6 @@
 [submodule "actor-platform/actor-platform"]
 	path = actor-platform/actor-platform
 	url = https://github.com/actorapp/actor-platform.git
+[submodule "crate/crate"]
+	path = crate/crate
+	url = https://github.com/crate/crate.git

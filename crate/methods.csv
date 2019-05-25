@@ -1,0 +1,145 @@
+id,name,file,offset,containing_class_id,target_ids
+0,org.elasticsearch.env.NodeEnvironment.isShardLocked,es/es-server/src/main/java/org/elasticsearch/env/NodeEnvironment.java,22902,59,139
+1,org.elasticsearch.env.NodeEnvironment.deleteIndexDirectorySafe,es/es-server/src/main/java/org/elasticsearch/env/NodeEnvironment.java,23152,59,22 123
+2,org.elasticsearch.node.Node.writePortsFile,es/es-server/src/main/java/org/elasticsearch/node/Node.java,47895,54,94
+3,org.elasticsearch.index.query.QueryShardContext.getSearchAnalyzer,es/es-server/src/main/java/org/elasticsearch/index/query/QueryShardContext.java,3428,60,20
+4,org.elasticsearch.index.query.QueryShardContext.getSearchQuoteAnalyzer,es/es-server/src/main/java/org/elasticsearch/index/query/QueryShardContext.java,3852,60,20
+5,org.elasticsearch.index.seqno.GlobalCheckpointSyncAction.maybeSyncTranslog,es/es-server/src/main/java/org/elasticsearch/index/seqno/GlobalCheckpointSyncAction.java,5250,29,27
+6,org.elasticsearch.index.shard.IndexShard.prepareDelete,es/es-server/src/main/java/org/elasticsearch/index/shard/IndexShard.java,45029,27,41
+7,org.elasticsearch.index.shard.IndexShard.startRecovery,es/es-server/src/main/java/org/elasticsearch/index/shard/IndexShard.java,99856,27,51 90 14 17
+8,org.elasticsearch.index.store.Store.createVerifyingOutput,es/es-server/src/main/java/org/elasticsearch/index/store/Store.java,23405,26,92
+9,org.elasticsearch.index.store.Store.openVerifyingInput,es/es-server/src/main/java/org/elasticsearch/index/store/Store.java,24474,26,92
+10,org.elasticsearch.index.engine.Segment.readSegmentSort,es/es-server/src/main/java/org/elasticsearch/index/engine/Segment.java,6254,30,78
+11,org.elasticsearch.index.engine.Segment.writeSegmentSort,es/es-server/src/main/java/org/elasticsearch/index/engine/Segment.java,8427,30,33
+12,org.elasticsearch.index.mapper.MapperService.assertMappingVersion,es/es-server/src/main/java/org/elasticsearch/index/mapper/MapperService.java,11293,80,118
+13,org.elasticsearch.index.mapper.MapperService.assertSerialization,es/es-server/src/main/java/org/elasticsearch/index/mapper/MapperService.java,26536,80,85
+14,org.elasticsearch.index.mapper.RootObjectMapper.findTemplateBuilder,es/es-server/src/main/java/org/elasticsearch/index/mapper/RootObjectMapper.java,10031,39,49
+15,org.elasticsearch.index.search.MatchQuery.hasPositions,es/es-server/src/main/java/org/elasticsearch/index/search/MatchQuery.java,7088,89,20
+16,org.elasticsearch.index.analysis.AnalysisRegistry.build,es/es-server/src/main/java/org/elasticsearch/index/analysis/AnalysisRegistry.java,7213,120,123
+17,org.elasticsearch.index.analysis.AnalysisRegistry.processAnalyzerFactory,es/es-server/src/main/java/org/elasticsearch/index/analysis/AnalysisRegistry.java,28206,120,123
+18,org.elasticsearch.action.admin.cluster.snapshots.get.TransportGetSnapshotsAction.buildSimpleSnapshotInfos,es/es-server/src/main/java/org/elasticsearch/action/admin/cluster/snapshots/get/TransportGetSnapshotsAction.java,7592,133,146
+19,org.elasticsearch.action.admin.cluster.configuration.AddVotingConfigExclusionsRequest.resolveVotingConfigExclusions,es/es-server/src/main/java/org/elasticsearch/action/admin/cluster/configuration/AddVotingConfigExclusionsRequest.java,3386,102,82
+20,org.elasticsearch.action.admin.indices.create.CreateIndexRequest.mapping,es/es-server/src/main/java/org/elasticsearch/action/admin/indices/create/CreateIndexRequest.java,7329,48,149
+21,org.elasticsearch.action.admin.indices.create.CreateIndexRequest.aliases,es/es-server/src/main/java/org/elasticsearch/action/admin/indices/create/CreateIndexRequest.java,10882,48,149
+22,org.elasticsearch.action.admin.indices.create.CreateIndexRequest.alias,es/es-server/src/main/java/org/elasticsearch/action/admin/indices/create/CreateIndexRequest.java,11636,48,101
+23,org.elasticsearch.action.admin.indices.create.CreateIndexRequest.source,es/es-server/src/main/java/org/elasticsearch/action/admin/indices/create/CreateIndexRequest.java,12775,48,149
+24,org.elasticsearch.action.admin.indices.shrink.ResizeRequest.setWaitForActiveShards,es/es-server/src/main/java/org/elasticsearch/action/admin/indices/shrink/ResizeRequest.java,5435,132,6
+25,org.elasticsearch.action.admin.indices.upgrade.post.TransportUpgradeAction.indicesWithMissingPrimaries,es/es-server/src/main/java/org/elasticsearch/action/admin/indices/upgrade/post/TransportUpgradeAction.java,8414,121,82
+26,org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateRequest.mapping,es/es-server/src/main/java/org/elasticsearch/action/admin/indices/template/put/PutIndexTemplateRequest.java,7763,116,149
+27,org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateRequest.aliases,es/es-server/src/main/java/org/elasticsearch/action/admin/indices/template/put/PutIndexTemplateRequest.java,14597,116,149
+28,org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateRequest.alias,es/es-server/src/main/java/org/elasticsearch/action/admin/indices/template/put/PutIndexTemplateRequest.java,15356,116,101
+29,org.elasticsearch.action.support.ActiveShardCount.enoughShardsActive,es/es-server/src/main/java/org/elasticsearch/action/support/ActiveShardCount.java,5323,6,82
+30,org.elasticsearch.common.io.stream.StreamOutput.writeBytesReference,es/es-server/src/main/java/org/elasticsearch/common/io/stream/StreamOutput.java,7211,33,149
+31,org.elasticsearch.common.io.stream.StreamOutput.writeOptionalBytesReference,es/es-server/src/main/java/org/elasticsearch/common/io/stream/StreamOutput.java,7534,33,149
+32,org.elasticsearch.common.io.stream.StreamOutput.writeOptionalText,es/es-server/src/main/java/org/elasticsearch/common/io/stream/StreamOutput.java,12434,33,66
+33,org.elasticsearch.common.io.stream.StreamOutput.writeGeoPoint,es/es-server/src/main/java/org/elasticsearch/common/io/stream/StreamOutput.java,36445,33,145
+34,org.elasticsearch.common.inject.internal.Errors.merge,es/es-server/src/main/java/org/elasticsearch/common/inject/internal/Errors.java,14884,142,37
+35,org.elasticsearch.common.inject.internal.ProviderMethodsModule.getKey,es/es-server/src/main/java/org/elasticsearch/common/inject/internal/ProviderMethodsModule.java,4824,67,142
+36,org.elasticsearch.common.compress.CompressedXContent.writeTo,es/es-server/src/main/java/org/elasticsearch/common/compress/CompressedXContent.java,5954,75,33
+37,org.elasticsearch.common.settings.Settings.getAsVersion,es/es-server/src/main/java/org/elasticsearch/common/settings/Settings.java,20585,52,8
+38,org.elasticsearch.common.blobstore.fs.FsBlobStore.buildPath,es/es-server/src/main/java/org/elasticsearch/common/blobstore/fs/FsBlobStore.java,2831,148,74
+39,org.elasticsearch.cluster.node.DiscoveryNodes.nodeExists,es/es-server/src/main/java/org/elasticsearch/cluster/node/DiscoveryNodes.java,6837,144,108
+40,org.elasticsearch.cluster.node.DiscoveryNodes.findByAddress,es/es-server/src/main/java/org/elasticsearch/cluster/node/DiscoveryNodes.java,7995,144,55
+41,org.elasticsearch.cluster.node.DiscoveryNodes.newNode,es/es-server/src/main/java/org/elasticsearch/cluster/node/DiscoveryNodes.java,14807,144,108
+42,org.elasticsearch.cluster.block.ClusterBlocks.hasGlobalBlockWithStatus,es/es-server/src/main/java/org/elasticsearch/cluster/block/ClusterBlocks.java,5033,134,107
+43,org.elasticsearch.cluster.block.ClusterBlocks.hasIndexBlock,es/es-server/src/main/java/org/elasticsearch/cluster/block/ClusterBlocks.java,5366,134,40
+44,org.elasticsearch.cluster.routing.allocation.command.AbstractAllocateAllocationCommand.explainOrThrowRejectedCommand,es/es-server/src/main/java/org/elasticsearch/cluster/routing/allocation/command/AbstractAllocateAllocationCommand.java,5494,34,18
+45,org.elasticsearch.cluster.routing.allocation.command.AbstractAllocateAllocationCommand.explainOrThrowRejectedCommand,es/es-server/src/main/java/org/elasticsearch/cluster/routing/allocation/command/AbstractAllocateAllocationCommand.java,5968,34,18
+46,org.elasticsearch.cluster.routing.allocation.command.AbstractAllocateAllocationCommand.initializeUnassignedShard,es/es-server/src/main/java/org/elasticsearch/cluster/routing/allocation/command/AbstractAllocateAllocationCommand.java,7005,34,128 115 23 25 45 18
+47,org.elasticsearch.cluster.routing.allocation.decider.DiskThresholdDecider.averageUsage,es/es-server/src/main/java/org/elasticsearch/cluster/routing/allocation/decider/DiskThresholdDecider.java,20717,76,128
+48,org.elasticsearch.cluster.routing.allocation.decider.DiskThresholdDecider.freeDiskPercentageAfterShardAssigned,es/es-server/src/main/java/org/elasticsearch/cluster/routing/allocation/decider/DiskThresholdDecider.java,21667,76,110
+49,org.elasticsearch.cluster.routing.allocation.decider.FilterAllocationDecider.shouldIndexFilter,es/es-server/src/main/java/org/elasticsearch/cluster/routing/allocation/decider/FilterAllocationDecider.java,9056,64,128 118 18
+50,org.elasticsearch.cluster.routing.allocation.decider.SameShardAllocationDecider.decideSameNode,es/es-server/src/main/java/org/elasticsearch/cluster/routing/allocation/decider/SameShardAllocationDecider.java,6140,16,128 25 18
+51,org.elasticsearch.cluster.routing.allocation.decider.ThrottlingAllocationDecider.initializingShard,es/es-server/src/main/java/org/elasticsearch/cluster/routing/allocation/decider/ThrottlingAllocationDecider.java,10747,31,25
+52,org.elasticsearch.cluster.routing.allocation.decider.NodeVersionAllocationDecider.isVersionCompatibleRelocatePrimary,es/es-server/src/main/java/org/elasticsearch/cluster/routing/allocation/decider/NodeVersionAllocationDecider.java,3455,119,128 115 18
+53,org.elasticsearch.cluster.routing.allocation.decider.NodeVersionAllocationDecider.isVersionCompatibleAllocatingReplica,es/es-server/src/main/java/org/elasticsearch/cluster/routing/allocation/decider/NodeVersionAllocationDecider.java,4368,119,128 115 18
+54,org.elasticsearch.cluster.routing.allocation.decider.NodeVersionAllocationDecider.isVersionCompatible,es/es-server/src/main/java/org/elasticsearch/cluster/routing/allocation/decider/NodeVersionAllocationDecider.java,5574,119,128 18
+55,org.elasticsearch.cluster.routing.allocation.AllocationService.buildResult,es/es-server/src/main/java/org/elasticsearch/cluster/routing/allocation/AllocationService.java,5915,112,82 18
+56,org.elasticsearch.cluster.routing.allocation.AllocationService.removeDelayMarkers,es/es-server/src/main/java/org/elasticsearch/cluster/routing/allocation/AllocationService.java,14385,112,18
+57,org.elasticsearch.cluster.routing.allocation.AllocationService.resetFailedAllocationCounter,es/es-server/src/main/java/org/elasticsearch/cluster/routing/allocation/AllocationService.java,15747,112,18
+58,org.elasticsearch.cluster.routing.allocation.AllocationService.hasDeadNodes,es/es-server/src/main/java/org/elasticsearch/cluster/routing/allocation/AllocationService.java,20922,112,18
+59,org.elasticsearch.cluster.routing.allocation.AllocationService.getMutableRoutingNodes,es/es-server/src/main/java/org/elasticsearch/cluster/routing/allocation/AllocationService.java,24486,112,82
+60,org.elasticsearch.cluster.routing.allocation.RoutingAllocation.decision,es/es-server/src/main/java/org/elasticsearch/cluster/routing/allocation/RoutingAllocation.java,8960,18,98
+61,org.elasticsearch.cluster.routing.allocation.RoutingExplanations.add,es/es-server/src/main/java/org/elasticsearch/cluster/routing/allocation/RoutingExplanations.java,1658,99,62
+62,org.elasticsearch.cluster.routing.RoutingNodes.activePrimary,es/es-server/src/main/java/org/elasticsearch/cluster/routing/RoutingNodes.java,13674,115,139
+63,org.elasticsearch.cluster.routing.RoutingNodes.activeReplicaWithHighestVersion,es/es-server/src/main/java/org/elasticsearch/cluster/routing/RoutingNodes.java,14115,115,139
+64,org.elasticsearch.cluster.routing.RoutingNodes.allReplicasActive,es/es-server/src/main/java/org/elasticsearch/cluster/routing/RoutingNodes.java,15311,115,139 32
+65,org.elasticsearch.cluster.routing.RoutingNodes.assertInstanceNotInList,es/es-server/src/main/java/org/elasticsearch/cluster/routing/RoutingNodes.java,35351,115,25
+66,org.elasticsearch.cluster.routing.RoutingTable.hasIndex,es/es-server/src/main/java/org/elasticsearch/cluster/routing/RoutingTable.java,3087,7,22
+67,org.elasticsearch.cluster.routing.RoutingTable.shardRoutingTable,es/es-server/src/main/java/org/elasticsearch/cluster/routing/RoutingTable.java,4471,7,139
+68,org.elasticsearch.cluster.routing.RoutingTable.shardRoutingTableOrNull,es/es-server/src/main/java/org/elasticsearch/cluster/routing/RoutingTable.java,5271,7,139
+69,org.elasticsearch.cluster.routing.RoutingTable.getByAllocationId,es/es-server/src/main/java/org/elasticsearch/cluster/routing/RoutingTable.java,5538,7,139
+70,org.elasticsearch.cluster.routing.RoutingTable.shardsWithState,es/es-server/src/main/java/org/elasticsearch/cluster/routing/RoutingTable.java,6124,7,111
+71,org.elasticsearch.cluster.routing.ShardRouting.writeToThin,es/es-server/src/main/java/org/elasticsearch/cluster/routing/ShardRouting.java,9721,25,33
+72,org.elasticsearch.cluster.routing.ShardRouting.updateUnassigned,es/es-server/src/main/java/org/elasticsearch/cluster/routing/ShardRouting.java,10757,25,23 45
+73,org.elasticsearch.cluster.routing.ShardRouting.moveToUnassigned,es/es-server/src/main/java/org/elasticsearch/cluster/routing/ShardRouting.java,11278,25,23
+74,org.elasticsearch.cluster.routing.UnassignedInfo.getRemainingDelay,es/es-server/src/main/java/org/elasticsearch/cluster/routing/UnassignedInfo.java,14107,23,52
+75,org.elasticsearch.cluster.routing.OperationRouting.shards,es/es-server/src/main/java/org/elasticsearch/cluster/routing/OperationRouting.java,7273,95,82
+76,org.elasticsearch.cluster.routing.IndexRoutingTable.validate,es/es-server/src/main/java/org/elasticsearch/cluster/routing/IndexRoutingTable.java,4131,147,32
+77,org.elasticsearch.cluster.routing.IndexRoutingTable.shardsWithState,es/es-server/src/main/java/org/elasticsearch/cluster/routing/IndexRoutingTable.java,11058,147,111
+78,org.elasticsearch.cluster.routing.IndexShardRoutingTable.shardsWithState,es/es-server/src/main/java/org/elasticsearch/cluster/routing/IndexShardRoutingTable.java,20859,56,111
+79,org.elasticsearch.cluster.service.MasterService.patchVersions,es/es-server/src/main/java/org/elasticsearch/cluster/service/MasterService.java,14720,35,82
+80,org.elasticsearch.cluster.metadata.MetaData.hasIndexMetaData,es/es-server/src/main/java/org/elasticsearch/cluster/metadata/MetaData.java,22899,32,118
+81,org.elasticsearch.cluster.metadata.MetaData.getIndexSafe,es/es-server/src/main/java/org/elasticsearch/cluster/metadata/MetaData.java,23147,32,22
+82,org.elasticsearch.cluster.metadata.IndexGraveyard.containsIndex,es/es-server/src/main/java/org/elasticsearch/cluster/metadata/IndexGraveyard.java,4823,21,22
+83,org.elasticsearch.cluster.metadata.RepositoryMetaData.writeTo,es/es-server/src/main/java/org/elasticsearch/cluster/metadata/RepositoryMetaData.java,2216,65,33
+84,org.elasticsearch.cluster.metadata.IndexNameExpressionResolver.concreteSingleIndex,es/es-server/src/main/java/org/elasticsearch/cluster/metadata/IndexNameExpressionResolver.java,12771,58,82
+85,org.elasticsearch.cluster.metadata.IndexNameExpressionResolver.resolveSearchRouting,es/es-server/src/main/java/org/elasticsearch/cluster/metadata/IndexNameExpressionResolver.java,20010,58,82
+86,org.elasticsearch.cluster.metadata.IndexNameExpressionResolver.resolveSearchRoutingAllIndices,es/es-server/src/main/java/org/elasticsearch/cluster/metadata/IndexNameExpressionResolver.java,24692,58,32
+87,org.elasticsearch.cluster.metadata.IndexNameExpressionResolver.isPatternMatchingAllIndices,es/es-server/src/main/java/org/elasticsearch/cluster/metadata/IndexNameExpressionResolver.java,26281,58,32
+88,org.elasticsearch.cluster.metadata.IndexNameExpressionResolver.matchesIndex,es/es-server/src/main/java/org/elasticsearch/cluster/metadata/IndexNameExpressionResolver.java,49302,58,82
+89,org.elasticsearch.cluster.metadata.MetaDataIndexUpgradeService.isUpgraded,es/es-server/src/main/java/org/elasticsearch/cluster/metadata/MetaDataIndexUpgradeService.java,4636,109,118
+90,org.elasticsearch.cluster.metadata.MetaDataIndexUpgradeService.markAsUpgraded,es/es-server/src/main/java/org/elasticsearch/cluster/metadata/MetaDataIndexUpgradeService.java,8847,109,118
+91,org.elasticsearch.cluster.metadata.MetaDataUpdateSettingsService.getTotalNewShards,es/es-server/src/main/java/org/elasticsearch/cluster/metadata/MetaDataUpdateSettingsService.java,13340,36,22 82
+92,org.elasticsearch.cluster.coordination.Join.targetMatches,es/es-server/src/main/java/org/elasticsearch/cluster/coordination/Join.java,3009,143,108
+93,org.elasticsearch.cluster.ClusterInfo.getShardSize,es/es-server/src/main/java/org/elasticsearch/cluster/ClusterInfo.java,8097,2,25
+94,org.elasticsearch.cluster.SnapshotsInProgress.snapshot,es/es-server/src/main/java/org/elasticsearch/cluster/SnapshotsInProgress.java,13714,138,1
+95,org.elasticsearch.gateway.GatewayMetaState.getPersistedState,es/es-server/src/main/java/org/elasticsearch/gateway/GatewayMetaState.java,5218,88,52 68
+96,org.elasticsearch.gateway.MetaStateService.writeIndexAndUpdateManifest,es/es-server/src/main/java/org/elasticsearch/gateway/MetaStateService.java,12964,84,118
+97,org.elasticsearch.gateway.PriorityComparator.priority,es/es-server/src/main/java/org/elasticsearch/gateway/PriorityComparator.java,2515,0,52
+98,org.elasticsearch.gateway.ReplicaShardAllocator.canBeAllocatedToAtLeastOneNode,es/es-server/src/main/java/org/elasticsearch/gateway/ReplicaShardAllocator.java,14718,50,25 18
+99,org.elasticsearch.gateway.ReplicaShardAllocator.findStore,es/es-server/src/main/java/org/elasticsearch/gateway/ReplicaShardAllocator.java,17781,50,25 18
+100,org.elasticsearch.gateway.BaseGatewayShardAllocator.buildDecisionsForAllNodes,es/es-server/src/main/java/org/elasticsearch/gateway/BaseGatewayShardAllocator.java,4548,141,25 18
+101,org.elasticsearch.indices.flush.SyncedFlushService.reportSuccessWithExistingSyncId,es/es-server/src/main/java/org/elasticsearch/indices/flush/SyncedFlushService.java,14935,10,139
+102,org.elasticsearch.indices.flush.SyncedFlushService.getShardRoutingTable,es/es-server/src/main/java/org/elasticsearch/indices/flush/SyncedFlushService.java,15633,10,139 82
+103,org.elasticsearch.indices.flush.SyncedFlushService.countDownAndSendResponseIfDone,es/es-server/src/main/java/org/elasticsearch/indices/flush/SyncedFlushService.java,23169,10,139 43
+104,org.elasticsearch.indices.breaker.HierarchyCircuitBreakerService.validateTotalCircuitBreakerLimit,es/es-server/src/main/java/org/elasticsearch/indices/breaker/HierarchyCircuitBreakerService.java,10915,86,93
+105,org.elasticsearch.indices.analysis.HunspellService.resolveHunspellDirectory,es/es-server/src/main/java/org/elasticsearch/indices/analysis/HunspellService.java,5417,137,117
+106,org.elasticsearch.indices.recovery.RecoveriesCollection.getRecoverySafe,es/es-server/src/main/java/org/elasticsearch/indices/recovery/RecoveriesCollection.java,6957,5,139
+107,org.elasticsearch.snapshots.RestoreService.validateSnapshotRestorable,es/es-server/src/main/java/org/elasticsearch/snapshots/RestoreService.java,45737,70,140
+108,org.elasticsearch.snapshots.RestoreService.failed,es/es-server/src/main/java/org/elasticsearch/snapshots/RestoreService.java,46732,70,140
+109,org.elasticsearch.snapshots.SnapshotsService.indicesWithMissingShards,es/es-server/src/main/java/org/elasticsearch/snapshots/SnapshotsService.java,49874,96,32
+110,org.elasticsearch.transport.TcpTransport.buildHeader,es/es-server/src/main/java/org/elasticsearch/transport/TcpTransport.java,45276,71,8
+111,org.elasticsearch.transport.TcpTransport.validateRequest,es/es-server/src/main/java/org/elasticsearch/transport/TcpTransport.java,62438,71,78
+112,org.elasticsearch.transport.TransportService.submitRequest,es/es-server/src/main/java/org/elasticsearch/transport/TransportService.java,20264,103,108 79 83
+113,org.elasticsearch.transport.TransportService.sendRequest,es/es-server/src/main/java/org/elasticsearch/transport/TransportService.java,21105,103,108 83
+114,org.elasticsearch.transport.TransportService.sendRequest,es/es-server/src/main/java/org/elasticsearch/transport/TransportService.java,21770,103,108 79 83
+115,org.elasticsearch.transport.TransportService.sendChildRequest,es/es-server/src/main/java/org/elasticsearch/transport/TransportService.java,23667,103,108 38 79 83
+116,org.elasticsearch.transport.TransportService.sendChildRequest,es/es-server/src/main/java/org/elasticsearch/transport/TransportService.java,24942,103,38 79 83
+117,org.elasticsearch.transport.TransportService.isLocalNode,es/es-server/src/main/java/org/elasticsearch/transport/TransportService.java,55166,103,108
+118,org.elasticsearch.repositories.RepositoriesService.ensureRepositoryNotInUse,es/es-server/src/main/java/org/elasticsearch/repositories/RepositoriesService.java,20424,17,82
+119,org.elasticsearch.repositories.azure.AzureStorageService.createClient,es/es-repository-azure/src/main/java/org/elasticsearch/repositories/azure/AzureStorageService.java,5259,114,124
+120,org.elasticsearch.repositories.azure.AzureStorageService.buildOperationContext,es/es-repository-azure/src/main/java/org/elasticsearch/repositories/azure/AzureStorageService.java,5571,114,124
+121,io.crate.analyze.relations.select.SelectAnalysis.add,sql/src/main/java/io/crate/analyze/relations/select/SelectAnalysis.java,3218,100,42 9
+122,io.crate.analyze.relations.RelationAnalyzer.analyzeHaving,sql/src/main/java/io/crate/analyze/relations/RelationAnalyzer.java,21370,53,12 125
+123,io.crate.analyze.expressions.ExpressionAnalyzer.generateQuerySymbol,sql/src/main/java/io/crate/analyze/expressions/ExpressionAnalyzer.java,9610,12,125
+124,io.crate.analyze.expressions.ExpressionAnalyzer.convertToAnalyzedFrameBound,sql/src/main/java/io/crate/analyze/expressions/ExpressionAnalyzer.java,13588,12,125
+125,io.crate.analyze.InsertFromValuesAnalyzedStatement.addGeneratedColumn,sql/src/main/java/io/crate/analyze/InsertFromValuesAnalyzedStatement.java,6039,46,24
+126,io.crate.planner.node.dml.DeleteById.createExecutor,sql/src/main/java/io/crate/planner/node/dml/DeleteById.java,3130,106,47 126
+127,io.crate.planner.node.management.KillPlan.execute,sql/src/main/java/io/crate/planner/node/management/KillPlan.java,2076,61,11 136
+128,io.crate.planner.node.management.ExplainPlan.getRemoteCollectOperation,sql/src/main/java/io/crate/planner/node/management/ExplainPlan.java,7467,130,47
+129,io.crate.planner.operators.HashJoin.createEvalProjectionForDistributionJoinSymbol,sql/src/main/java/io/crate/planner/operators/HashJoin.java,12320,73,42
+130,io.crate.planner.operators.FetchOrEval.planWithEvalProjection,sql/src/main/java/io/crate/planner/operators/FetchOrEval.java,20634,81,126 127
+131,io.crate.planner.operators.NestedLoopJoin.configureExecution,sql/src/main/java/io/crate/planner/operators/NestedLoopJoin.java,10053,57,126
+132,io.crate.metadata.doc.DocTableInfo.getDynamic,sql/src/main/java/io/crate/metadata/doc/DocTableInfo.java,12652,69,9
+133,io.crate.metadata.doc.DocIndexMetaData.granularity,sql/src/main/java/io/crate/metadata/doc/DocIndexMetaData.java,10045,87,9
+134,io.crate.metadata.Schemas.getTableInfo,sql/src/main/java/io/crate/metadata/Schemas.java,8808,135,13 3
+135,io.crate.execution.ddl.tables.TableCreator.settings,sql/src/main/java/io/crate/execution/ddl/tables/TableCreator.java,4150,131,97
+136,io.crate.execution.dsl.projection.WriterProjection.normalize,sql/src/main/java/io/crate/execution/dsl/projection/WriterProjection.java,8524,72,122
+137,io.crate.execution.engine.collect.RemoteCollectorFactory.getLocalCollectorProvider,sql/src/main/java/io/crate/execution/engine/collect/RemoteCollectorFactory.java,5571,77,105 91 63
+138,io.crate.execution.engine.JobLauncher.getHandlerBucketReceivers,sql/src/main/java/io/crate/execution/engine/JobLauncher.java,14913,28,4
+139,io.crate.expression.udf.UserDefinedFunctionService.putFunction,sql/src/main/java/io/crate/expression/udf/UserDefinedFunctionService.java,6583,129,44 104
+140,io.crate.expression.udf.UserDefinedFunctionService.removeFunction,sql/src/main/java/io/crate/expression/udf/UserDefinedFunctionService.java,7693,129,44
+141,io.crate.expression.scalar.geo.DistanceFunction.validateType,sql/src/main/java/io/crate/expression/scalar/geo/DistanceFunction.java,5919,15,42
+142,org.elasticsearch.action.admin.indices.create.TransportCreatePartitionsAction.validateAndFilterExistingIndices,sql/src/main/java/org/elasticsearch/action/admin/indices/create/TransportCreatePartitionsAction.java,16319,19,113
+143,org.elasticsearch.action.admin.indices.create.TransportCreatePartitionsAction.findTemplates,sql/src/main/java/org/elasticsearch/action/admin/indices/create/TransportCreatePartitionsAction.java,19096,19,113

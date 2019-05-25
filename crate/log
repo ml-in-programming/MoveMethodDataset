@@ -1,0 +1,26 @@
+2019-05-25 22:53:28,744 [INFO] Project /home/ivan/hse/diploma/MoveMethodGenerator/../projects/crate is opened
+2019-05-25 22:55:27,134 [INFO] Total number of java files: 4305
+2019-05-25 22:55:27,134 [INFO] Total number of source java files: 4304
+2019-05-25 22:55:27,134 [INFO] Total number of classes: 2315
+2019-05-25 22:55:27,134 [INFO] Total number of methods: 17684
+2019-05-25 22:55:27,135 [INFO] StaticMethodsFilter filtered: 2701
+2019-05-25 22:55:27,135 [INFO] ConstructorsFilter filtered: 2532
+2019-05-25 22:55:27,135 [INFO] AbstractMethodsFilter filtered: 223
+2019-05-25 22:55:27,135 [INFO] GettersFilter filtered: 2706
+2019-05-25 22:55:27,135 [INFO] SettersFilter filtered: 187
+2019-05-25 22:55:27,136 [INFO] EmptyMethodsFilter filtered: 438
+2019-05-25 22:55:27,136 [INFO] ExceptionsThrowersFilter filtered: 92
+2019-05-25 22:55:27,136 [INFO] SingleMethodFilter filtered: 279
+2019-05-25 22:55:27,136 [INFO] SimpleDelegationsFilter filtered: 2481
+2019-05-25 22:55:27,136 [INFO] PrivateMethodsCallersFilter filtered: 1686
+2019-05-25 22:55:27,136 [INFO] PrivateFieldAccessorsFilter filtered: 2253
+2019-05-25 22:55:27,136 [INFO] OverridingMethodsFilter filtered: 1405
+2019-05-25 22:55:27,136 [INFO] OverriddenMethodsFilter filtered: 38
+2019-05-25 22:55:27,136 [INFO] MethodCallWithSuperFilter filtered: 5
+2019-05-25 22:55:27,136 [INFO] PrivateClassUserFilter filtered: 6
+2019-05-25 22:55:27,136 [INFO] GenericTypeUserFilter filtered: 0
+2019-05-25 22:55:27,136 [INFO] NoTargetsMethodsFilter filtered: 508
+2019-05-25 22:55:27,136 [INFO] Number of methods after filtration: 144
+2019-05-25 23:01:47,848 [INFO] Project /home/ivan/hse/diploma/MoveMethodGenerator/../projects/crate is opened
+2019-05-25 23:03:25,563 [INFO] 191 potential moves found
+2019-05-25 23:03:25,563 [INFO] 50 moves performed
