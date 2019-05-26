@@ -44,3 +44,6 @@
 [submodule "hbase/hbase"]
 	path = hbase/hbase
 	url = https://github.com/apache/hbase.git
+[submodule "jstorm/jstorm"]
+	path = jstorm/jstorm
+	url = https://github.com/alibaba/jstorm.git

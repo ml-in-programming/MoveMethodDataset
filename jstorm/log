@@ -1,0 +1,26 @@
+2019-05-26 23:15:15,418 [INFO] Project /home/mikhail/Documents/Development/MoveMethodGenerator/../MoveMethodDataset/jstorm/jstorm is opened
+2019-05-26 23:15:49,400 [INFO] Total number of java files: 1619
+2019-05-26 23:15:49,400 [INFO] Total number of source java files: 1619
+2019-05-26 23:15:49,400 [INFO] Total number of classes: 1050
+2019-05-26 23:15:49,400 [INFO] Total number of methods: 10277
+2019-05-26 23:15:49,401 [INFO] StaticMethodsFilter filtered: 1894
+2019-05-26 23:15:49,401 [INFO] ConstructorsFilter filtered: 853
+2019-05-26 23:15:49,401 [INFO] AbstractMethodsFilter filtered: 77
+2019-05-26 23:15:49,401 [INFO] GettersFilter filtered: 995
+2019-05-26 23:15:49,401 [INFO] SettersFilter filtered: 561
+2019-05-26 23:15:49,401 [INFO] EmptyMethodsFilter filtered: 244
+2019-05-26 23:15:49,401 [INFO] ExceptionsThrowersFilter filtered: 24
+2019-05-26 23:15:49,401 [INFO] SingleMethodFilter filtered: 118
+2019-05-26 23:15:49,401 [INFO] SimpleDelegationsFilter filtered: 1349
+2019-05-26 23:15:49,401 [INFO] PrivateMethodsCallersFilter filtered: 621
+2019-05-26 23:15:49,401 [INFO] PrivateFieldAccessorsFilter filtered: 1972
+2019-05-26 23:15:49,401 [INFO] OverridingMethodsFilter filtered: 687
+2019-05-26 23:15:49,401 [INFO] OverriddenMethodsFilter filtered: 6
+2019-05-26 23:15:49,401 [INFO] MethodCallWithSuperFilter filtered: 0
+2019-05-26 23:15:49,401 [INFO] PrivateClassUserFilter filtered: 2
+2019-05-26 23:15:49,401 [INFO] GenericTypeUserFilter filtered: 0
+2019-05-26 23:15:49,401 [INFO] NoTargetsMethodsFilter filtered: 791
+2019-05-26 23:15:49,401 [INFO] Number of methods after filtration: 83
+2019-05-26 23:31:51,548 [INFO] Project /home/mikhail/Documents/Development/MoveMethodGenerator/../MoveMethodDataset/jstorm/jstorm is opened
+2019-05-26 23:32:42,759 [INFO] 87 potential moves found
+2019-05-26 23:32:42,759 [INFO] 35 moves performed

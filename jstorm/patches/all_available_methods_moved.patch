@@ -1,0 +1,2566 @@
+diff --git a/example/sequence-split-merge/src/main/java/com/alipay/dw/jstorm/example/sequence/bean/Pair.java b/example/sequence-split-merge/src/main/java/com/alipay/dw/jstorm/example/sequence/bean/Pair.java
+index 2a8b344..ca9dd81 100644
+--- a/example/sequence-split-merge/src/main/java/com/alipay/dw/jstorm/example/sequence/bean/Pair.java
++++ b/example/sequence-split-merge/src/main/java/com/alipay/dw/jstorm/example/sequence/bean/Pair.java
+@@ -18,6 +18,8 @@
+ package com.alipay.dw.jstorm.example.sequence.bean;
+ 
+ import java.io.Serializable;
++
++import com.alipay.dw.jstorm.example.userdefined.kryo.PairSerializer;
+ import org.apache.commons.lang.builder.ToStringBuilder;
+ import org.apache.commons.lang.builder.ToStringStyle;
+ 
+@@ -48,5 +50,10 @@ public class Pair implements Serializable {
+     public String toString() {
+         return ToStringBuilder.reflectionToString(this, ToStringStyle.SHORT_PREFIX_STYLE);
+     }
+-    
++
++    @Override
++    public void write(Kryo kryo, Output output, PairSerializer pairSerializer) {
++        output.writeLong(getValue());
++        output.writeString(getKey());
++    }
+ }
+diff --git a/example/sequence-split-merge/src/main/java/com/alipay/dw/jstorm/example/sequence/bean/TradeCustomer.java b/example/sequence-split-merge/src/main/java/com/alipay/dw/jstorm/example/sequence/bean/TradeCustomer.java
+index fd75786..7a5c495 100644
+--- a/example/sequence-split-merge/src/main/java/com/alipay/dw/jstorm/example/sequence/bean/TradeCustomer.java
++++ b/example/sequence-split-merge/src/main/java/com/alipay/dw/jstorm/example/sequence/bean/TradeCustomer.java
+@@ -18,6 +18,8 @@
+ package com.alipay.dw.jstorm.example.sequence.bean;
+ 
+ import java.io.Serializable;
++
++import com.alipay.dw.jstorm.example.userdefined.kryo.TradeCustomerSerializer;
+ import org.apache.commons.lang.builder.ToStringBuilder;
+ import org.apache.commons.lang.builder.ToStringStyle;
+ 
+@@ -71,5 +73,13 @@ public class TradeCustomer implements Serializable {
+     public String toString() {
+         return ToStringBuilder.reflectionToString(this, ToStringStyle.SHORT_PREFIX_STYLE);
+     }
+-    
++
++    @Override
++    public void write(Kryo kryo, Output output, TradeCustomerSerializer tradeCustomerSerializer) {
++
++        kryo.writeObject(output, getCustomer());
++        kryo.writeObject(output, getTrade());
++        output.writeLong(getTimestamp());
++        output.writeString(getBuffer());
++    }
+ }
+diff --git a/example/sequence-split-merge/src/main/java/com/alipay/dw/jstorm/example/userdefined/kryo/PairSerializer.java b/example/sequence-split-merge/src/main/java/com/alipay/dw/jstorm/example/userdefined/kryo/PairSerializer.java
+index 2db3a3c..4865ccd 100644
+--- a/example/sequence-split-merge/src/main/java/com/alipay/dw/jstorm/example/userdefined/kryo/PairSerializer.java
++++ b/example/sequence-split-merge/src/main/java/com/alipay/dw/jstorm/example/userdefined/kryo/PairSerializer.java
+@@ -42,10 +42,5 @@ public class PairSerializer extends Serializer<Pair> {
+         inner.setValue(value);
+         return inner;
+     }
+-    
+-    @Override
+-    public void write(Kryo kryo, Output output, Pair inner) {
+-        output.writeLong(inner.getValue());
+-        output.writeString(inner.getKey());
+-    }
++
+ }
+diff --git a/example/sequence-split-merge/src/main/java/com/alipay/dw/jstorm/example/userdefined/kryo/TradeCustomerSerializer.java b/example/sequence-split-merge/src/main/java/com/alipay/dw/jstorm/example/userdefined/kryo/TradeCustomerSerializer.java
+index 92026df..405403b 100644
+--- a/example/sequence-split-merge/src/main/java/com/alipay/dw/jstorm/example/userdefined/kryo/TradeCustomerSerializer.java
++++ b/example/sequence-split-merge/src/main/java/com/alipay/dw/jstorm/example/userdefined/kryo/TradeCustomerSerializer.java
+@@ -47,14 +47,5 @@ public class TradeCustomerSerializer extends Serializer<TradeCustomer> {
+         TradeCustomer inner = new TradeCustomer(timeStamp, trade, custormer, buffer);
+         return inner;
+     }
+-    
+-    @Override
+-    public void write(Kryo kryo, Output output, TradeCustomer inner) {
+-        
+-        kryo.writeObject(output, inner.getCustomer());
+-        kryo.writeObject(output, inner.getTrade());
+-        output.writeLong(inner.getTimestamp());
+-        output.writeString(inner.getBuffer());
+-    }
+-    
++
+ }
+diff --git a/jstorm-core/src/main/java/backtype/storm/generated/ClusterSummary.java b/jstorm-core/src/main/java/backtype/storm/generated/ClusterSummary.java
+index 9e1f5b2..2596888 100644
+--- a/jstorm-core/src/main/java/backtype/storm/generated/ClusterSummary.java
++++ b/jstorm-core/src/main/java/backtype/storm/generated/ClusterSummary.java
+@@ -29,26 +29,15 @@ import org.apache.thrift.scheme.StandardScheme;
+ 
+ import org.apache.thrift.scheme.TupleScheme;
+ import org.apache.thrift.protocol.TTupleProtocol;
+-import org.apache.thrift.protocol.TProtocolException;
+-import org.apache.thrift.EncodingUtils;
+-import org.apache.thrift.TException;
+-import org.apache.thrift.async.AsyncMethodCallback;
+-import org.apache.thrift.server.AbstractNonblockingServer.*;
++
+ import java.util.List;
+ import java.util.ArrayList;
+ import java.util.Map;
+ import java.util.HashMap;
+ import java.util.EnumMap;
+-import java.util.Set;
+-import java.util.HashSet;
+ import java.util.EnumSet;
+ import java.util.Collections;
+-import java.util.BitSet;
+-import java.nio.ByteBuffer;
+-import java.util.Arrays;
+ import javax.annotation.Generated;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+ 
+ @SuppressWarnings({"cast", "rawtypes", "serial", "unchecked"})
+ @Generated(value = "Autogenerated by Thrift Compiler (0.9.2)", date = "2017-2-22")
+@@ -228,14 +217,7 @@ public class ClusterSummary implements org.apache.thrift.TBase<ClusterSummary, C
+     return (this.supervisors == null) ? null : this.supervisors.iterator();
+   }
+ 
+-  public void add_to_supervisors(SupervisorSummary elem) {
+-    if (this.supervisors == null) {
+-      this.supervisors = new ArrayList<SupervisorSummary>();
+-    }
+-    this.supervisors.add(elem);
+-  }
+-
+-  public List<SupervisorSummary> get_supervisors() {
++    public List<SupervisorSummary> get_supervisors() {
+     return this.supervisors;
+   }
+ 
+diff --git a/jstorm-core/src/main/java/backtype/storm/generated/ComponentCommon.java b/jstorm-core/src/main/java/backtype/storm/generated/ComponentCommon.java
+index 02ae003..4fbd3a6 100644
+--- a/jstorm-core/src/main/java/backtype/storm/generated/ComponentCommon.java
++++ b/jstorm-core/src/main/java/backtype/storm/generated/ComponentCommon.java
+@@ -29,26 +29,17 @@ import org.apache.thrift.scheme.StandardScheme;
+ 
+ import org.apache.thrift.scheme.TupleScheme;
+ import org.apache.thrift.protocol.TTupleProtocol;
+-import org.apache.thrift.protocol.TProtocolException;
+ import org.apache.thrift.EncodingUtils;
+-import org.apache.thrift.TException;
+-import org.apache.thrift.async.AsyncMethodCallback;
+-import org.apache.thrift.server.AbstractNonblockingServer.*;
++
+ import java.util.List;
+ import java.util.ArrayList;
+ import java.util.Map;
+ import java.util.HashMap;
+ import java.util.EnumMap;
+-import java.util.Set;
+-import java.util.HashSet;
+ import java.util.EnumSet;
+ import java.util.Collections;
+ import java.util.BitSet;
+-import java.nio.ByteBuffer;
+-import java.util.Arrays;
+ import javax.annotation.Generated;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+ 
+ @SuppressWarnings({"cast", "rawtypes", "serial", "unchecked"})
+ @Generated(value = "Autogenerated by Thrift Compiler (0.9.2)", date = "2017-2-22")
+@@ -231,14 +222,7 @@ public class ComponentCommon implements org.apache.thrift.TBase<ComponentCommon,
+     return (this.inputs == null) ? 0 : this.inputs.size();
+   }
+ 
+-  public void put_to_inputs(GlobalStreamId key, Grouping val) {
+-    if (this.inputs == null) {
+-      this.inputs = new HashMap<GlobalStreamId,Grouping>();
+-    }
+-    this.inputs.put(key, val);
+-  }
+-
+-  public Map<GlobalStreamId,Grouping> get_inputs() {
++    public Map<GlobalStreamId,Grouping> get_inputs() {
+     return this.inputs;
+   }
+ 
+diff --git a/jstorm-core/src/main/java/backtype/storm/generated/ComponentSummary.java b/jstorm-core/src/main/java/backtype/storm/generated/ComponentSummary.java
+index c3437d4..55657d9 100644
+--- a/jstorm-core/src/main/java/backtype/storm/generated/ComponentSummary.java
++++ b/jstorm-core/src/main/java/backtype/storm/generated/ComponentSummary.java
+@@ -73,7 +73,14 @@ public class ComponentSummary implements org.apache.thrift.TBase<ComponentSummar
+   private List<Integer> taskIds; // required
+   private List<ErrorInfo> errors; // optional
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void add_to_components(TopologyInfo topologyInfo) {
++        if (topologyInfo.get_components() == null) {
++        topologyInfo.set_components(new ArrayList<ComponentSummary>());
++      }
++      topologyInfo.get_components().add(this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+     NAME((short)1, "name"),
+     PARALLEL((short)2, "parallel"),
+diff --git a/jstorm-core/src/main/java/backtype/storm/generated/ErrorInfo.java b/jstorm-core/src/main/java/backtype/storm/generated/ErrorInfo.java
+index 5bf50da..848e035 100644
+--- a/jstorm-core/src/main/java/backtype/storm/generated/ErrorInfo.java
++++ b/jstorm-core/src/main/java/backtype/storm/generated/ErrorInfo.java
+@@ -71,7 +71,14 @@ public class ErrorInfo implements org.apache.thrift.TBase<ErrorInfo, ErrorInfo._
+   private String errorLevel; // required
+   private int errorCode; // required
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void add_to_errors(TaskSummary taskSummary) {
++        if (taskSummary.get_errors() == null) {
++        taskSummary.set_errors(new ArrayList<ErrorInfo>());
++      }
++      taskSummary.get_errors().add(this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+     ERROR((short)1, "error"),
+     ERROR_TIME_SECS((short)2, "errorTimeSecs"),
+diff --git a/jstorm-core/src/main/java/backtype/storm/generated/GlobalStreamId.java b/jstorm-core/src/main/java/backtype/storm/generated/GlobalStreamId.java
+index 8806eaa..a107fc0 100644
+--- a/jstorm-core/src/main/java/backtype/storm/generated/GlobalStreamId.java
++++ b/jstorm-core/src/main/java/backtype/storm/generated/GlobalStreamId.java
+@@ -67,7 +67,14 @@ public class GlobalStreamId implements org.apache.thrift.TBase<GlobalStreamId, G
+   private String componentId; // required
+   private String streamId; // required
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void put_to_inputs(Grouping val, ComponentCommon componentCommon) {
++        if (componentCommon.get_inputs() == null) {
++        componentCommon.set_inputs(new HashMap<GlobalStreamId, Grouping>());
++      }
++      componentCommon.get_inputs().put(this, val);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+     COMPONENT_ID((short)1, "componentId"),
+     STREAM_ID((short)2, "streamId");
+diff --git a/jstorm-core/src/main/java/backtype/storm/generated/JavaObject.java b/jstorm-core/src/main/java/backtype/storm/generated/JavaObject.java
+index 89cb011..f8efaa0 100644
+--- a/jstorm-core/src/main/java/backtype/storm/generated/JavaObject.java
++++ b/jstorm-core/src/main/java/backtype/storm/generated/JavaObject.java
+@@ -29,26 +29,15 @@ import org.apache.thrift.scheme.StandardScheme;
+ 
+ import org.apache.thrift.scheme.TupleScheme;
+ import org.apache.thrift.protocol.TTupleProtocol;
+-import org.apache.thrift.protocol.TProtocolException;
+-import org.apache.thrift.EncodingUtils;
+-import org.apache.thrift.TException;
+-import org.apache.thrift.async.AsyncMethodCallback;
+-import org.apache.thrift.server.AbstractNonblockingServer.*;
++
+ import java.util.List;
+ import java.util.ArrayList;
+ import java.util.Map;
+ import java.util.HashMap;
+ import java.util.EnumMap;
+-import java.util.Set;
+-import java.util.HashSet;
+ import java.util.EnumSet;
+ import java.util.Collections;
+-import java.util.BitSet;
+-import java.nio.ByteBuffer;
+-import java.util.Arrays;
+ import javax.annotation.Generated;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+ 
+ @SuppressWarnings({"cast", "rawtypes", "serial", "unchecked"})
+ @Generated(value = "Autogenerated by Thrift Compiler (0.9.2)", date = "2017-2-22")
+@@ -210,14 +199,7 @@ public class JavaObject implements org.apache.thrift.TBase<JavaObject, JavaObjec
+     return (this.args_list == null) ? null : this.args_list.iterator();
+   }
+ 
+-  public void add_to_args_list(JavaObjectArg elem) {
+-    if (this.args_list == null) {
+-      this.args_list = new ArrayList<JavaObjectArg>();
+-    }
+-    this.args_list.add(elem);
+-  }
+-
+-  public List<JavaObjectArg> get_args_list() {
++    public List<JavaObjectArg> get_args_list() {
+     return this.args_list;
+   }
+ 
+diff --git a/jstorm-core/src/main/java/backtype/storm/generated/JavaObjectArg.java b/jstorm-core/src/main/java/backtype/storm/generated/JavaObjectArg.java
+index e69bd34..8aaffa4 100644
+--- a/jstorm-core/src/main/java/backtype/storm/generated/JavaObjectArg.java
++++ b/jstorm-core/src/main/java/backtype/storm/generated/JavaObjectArg.java
+@@ -60,7 +60,14 @@ public class JavaObjectArg extends org.apache.thrift.TUnion<JavaObjectArg, JavaO
+   private static final org.apache.thrift.protocol.TField BINARY_ARG_FIELD_DESC = new org.apache.thrift.protocol.TField("binary_arg", org.apache.thrift.protocol.TType.STRING, (short)5);
+   private static final org.apache.thrift.protocol.TField DOUBLE_ARG_FIELD_DESC = new org.apache.thrift.protocol.TField("double_arg", org.apache.thrift.protocol.TType.DOUBLE, (short)6);
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void add_to_args_list(JavaObject javaObject) {
++        if (javaObject.get_args_list() == null) {
++        javaObject.set_args_list(new ArrayList<JavaObjectArg>());
++      }
++      javaObject.get_args_list().add(this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+     INT_ARG((short)1, "int_arg"),
+     LONG_ARG((short)2, "long_arg"),
+diff --git a/jstorm-core/src/main/java/backtype/storm/generated/LocalStateData.java b/jstorm-core/src/main/java/backtype/storm/generated/LocalStateData.java
+index dba715e..d9c27e7 100644
+--- a/jstorm-core/src/main/java/backtype/storm/generated/LocalStateData.java
++++ b/jstorm-core/src/main/java/backtype/storm/generated/LocalStateData.java
+@@ -29,26 +29,15 @@ import org.apache.thrift.scheme.StandardScheme;
+ 
+ import org.apache.thrift.scheme.TupleScheme;
+ import org.apache.thrift.protocol.TTupleProtocol;
+-import org.apache.thrift.protocol.TProtocolException;
+-import org.apache.thrift.EncodingUtils;
+-import org.apache.thrift.TException;
+-import org.apache.thrift.async.AsyncMethodCallback;
+-import org.apache.thrift.server.AbstractNonblockingServer.*;
++
+ import java.util.List;
+ import java.util.ArrayList;
+ import java.util.Map;
+ import java.util.HashMap;
+ import java.util.EnumMap;
+-import java.util.Set;
+-import java.util.HashSet;
+ import java.util.EnumSet;
+ import java.util.Collections;
+-import java.util.BitSet;
+-import java.nio.ByteBuffer;
+-import java.util.Arrays;
+ import javax.annotation.Generated;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+ 
+ @SuppressWarnings({"cast", "rawtypes", "serial", "unchecked"})
+ @Generated(value = "Autogenerated by Thrift Compiler (0.9.2)", date = "2017-2-22")
+@@ -179,14 +168,7 @@ public class LocalStateData implements org.apache.thrift.TBase<LocalStateData, L
+     return (this.serialized_parts == null) ? 0 : this.serialized_parts.size();
+   }
+ 
+-  public void put_to_serialized_parts(String key, ThriftSerializedObject val) {
+-    if (this.serialized_parts == null) {
+-      this.serialized_parts = new HashMap<String,ThriftSerializedObject>();
+-    }
+-    this.serialized_parts.put(key, val);
+-  }
+-
+-  public Map<String,ThriftSerializedObject> get_serialized_parts() {
++    public Map<String,ThriftSerializedObject> get_serialized_parts() {
+     return this.serialized_parts;
+   }
+ 
+diff --git a/jstorm-core/src/main/java/backtype/storm/generated/MetricInfo.java b/jstorm-core/src/main/java/backtype/storm/generated/MetricInfo.java
+index 71d15cd..56c435b 100644
+--- a/jstorm-core/src/main/java/backtype/storm/generated/MetricInfo.java
++++ b/jstorm-core/src/main/java/backtype/storm/generated/MetricInfo.java
+@@ -23,6 +23,7 @@
+  */
+ package backtype.storm.generated;
+ 
++import com.alibaba.jstorm.metric.TopologyMetricContext;
+ import org.apache.thrift.scheme.IScheme;
+ import org.apache.thrift.scheme.SchemeFactory;
+ import org.apache.thrift.scheme.StandardScheme;
+@@ -65,7 +66,12 @@ public class MetricInfo implements org.apache.thrift.TBase<MetricInfo, MetricInf
+ 
+   private Map<String,Map<Integer,MetricSnapshot>> metrics; // optional
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void addToMemCache(String workerSlot, TopologyMetricContext topologyMetricContext) {
++        topologyMetricContext.getMemCache().put(workerSlot, this);
++        TopologyMetricContext.LOG.info("update mem cache, worker:{}, total uploaded:{}", workerSlot, topologyMetricContext.getMemCache().size());
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+     METRICS((short)1, "metrics");
+ 
+diff --git a/jstorm-core/src/main/java/backtype/storm/generated/NimbusStat.java b/jstorm-core/src/main/java/backtype/storm/generated/NimbusStat.java
+index c09a1f4..546aa52 100644
+--- a/jstorm-core/src/main/java/backtype/storm/generated/NimbusStat.java
++++ b/jstorm-core/src/main/java/backtype/storm/generated/NimbusStat.java
+@@ -67,7 +67,14 @@ public class NimbusStat implements org.apache.thrift.TBase<NimbusStat, NimbusSta
+   private String host; // required
+   private String uptimeSecs; // required
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void add_to_nimbusSlaves(NimbusSummary nimbusSummary) {
++        if (nimbusSummary.get_nimbusSlaves() == null) {
++        nimbusSummary.set_nimbusSlaves(new ArrayList<NimbusStat>());
++      }
++      nimbusSummary.get_nimbusSlaves().add(this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+     HOST((short)1, "host"),
+     UPTIME_SECS((short)2, "uptimeSecs");
+diff --git a/jstorm-core/src/main/java/backtype/storm/generated/NimbusSummary.java b/jstorm-core/src/main/java/backtype/storm/generated/NimbusSummary.java
+index 911cdd7..0827f35 100644
+--- a/jstorm-core/src/main/java/backtype/storm/generated/NimbusSummary.java
++++ b/jstorm-core/src/main/java/backtype/storm/generated/NimbusSummary.java
+@@ -29,26 +29,16 @@ import org.apache.thrift.scheme.StandardScheme;
+ 
+ import org.apache.thrift.scheme.TupleScheme;
+ import org.apache.thrift.protocol.TTupleProtocol;
+-import org.apache.thrift.protocol.TProtocolException;
+ import org.apache.thrift.EncodingUtils;
+-import org.apache.thrift.TException;
+-import org.apache.thrift.async.AsyncMethodCallback;
+-import org.apache.thrift.server.AbstractNonblockingServer.*;
++
+ import java.util.List;
+ import java.util.ArrayList;
+ import java.util.Map;
+ import java.util.HashMap;
+ import java.util.EnumMap;
+-import java.util.Set;
+-import java.util.HashSet;
+ import java.util.EnumSet;
+ import java.util.Collections;
+-import java.util.BitSet;
+-import java.nio.ByteBuffer;
+-import java.util.Arrays;
+ import javax.annotation.Generated;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+ 
+ @SuppressWarnings({"cast", "rawtypes", "serial", "unchecked"})
+ @Generated(value = "Autogenerated by Thrift Compiler (0.9.2)", date = "2017-2-22")
+@@ -281,14 +271,7 @@ public class NimbusSummary implements org.apache.thrift.TBase<NimbusSummary, Nim
+     return (this.nimbusSlaves == null) ? null : this.nimbusSlaves.iterator();
+   }
+ 
+-  public void add_to_nimbusSlaves(NimbusStat elem) {
+-    if (this.nimbusSlaves == null) {
+-      this.nimbusSlaves = new ArrayList<NimbusStat>();
+-    }
+-    this.nimbusSlaves.add(elem);
+-  }
+-
+-  public List<NimbusStat> get_nimbusSlaves() {
++    public List<NimbusStat> get_nimbusSlaves() {
+     return this.nimbusSlaves;
+   }
+ 
+diff --git a/jstorm-core/src/main/java/backtype/storm/generated/SettableBlobMeta.java b/jstorm-core/src/main/java/backtype/storm/generated/SettableBlobMeta.java
+index b542df9..9989b81 100644
+--- a/jstorm-core/src/main/java/backtype/storm/generated/SettableBlobMeta.java
++++ b/jstorm-core/src/main/java/backtype/storm/generated/SettableBlobMeta.java
+@@ -23,6 +23,8 @@
+  */
+ package backtype.storm.generated;
+ 
++import com.alibaba.jstorm.blobstore.AtomicOutputStream;
++import com.alibaba.jstorm.blobstore.BlobStore;
+ import org.apache.thrift.scheme.IScheme;
+ import org.apache.thrift.scheme.SchemeFactory;
+ import org.apache.thrift.scheme.StandardScheme;
+@@ -34,6 +36,8 @@ import org.apache.thrift.EncodingUtils;
+ import org.apache.thrift.TException;
+ import org.apache.thrift.async.AsyncMethodCallback;
+ import org.apache.thrift.server.AbstractNonblockingServer.*;
++
++import java.io.IOException;
+ import java.util.List;
+ import java.util.ArrayList;
+ import java.util.Map;
+@@ -65,7 +69,30 @@ public class SettableBlobMeta implements org.apache.thrift.TBase<SettableBlobMet
+ 
+   private int replication_factor; // optional
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    /**
++     * Wrapper called to create the blob which contains
++     * the byte data
++     * @param key Key for the blob.
++     * @param data Byte data that needs to be uploaded.
++     * @param blobStore
++     * @throws KeyAlreadyExistsException
++     * @throws IOException
++     */
++    public void createBlob(String key, byte[] data, BlobStore blobStore) throws KeyAlreadyExistsException, IOException {
++        AtomicOutputStream out = null;
++        try {
++            out = blobStore.createBlob(key, this);
++            out.write(data);
++            out.close();
++            out = null;
++        } finally {
++            if (out != null) {
++                out.cancel();
++            }
++        }
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+     REPLICATION_FACTOR((short)1, "replication_factor");
+ 
+diff --git a/jstorm-core/src/main/java/backtype/storm/generated/SpoutSpec.java b/jstorm-core/src/main/java/backtype/storm/generated/SpoutSpec.java
+index af4b209..d8e0615 100644
+--- a/jstorm-core/src/main/java/backtype/storm/generated/SpoutSpec.java
++++ b/jstorm-core/src/main/java/backtype/storm/generated/SpoutSpec.java
+@@ -67,7 +67,14 @@ public class SpoutSpec implements org.apache.thrift.TBase<SpoutSpec, SpoutSpec._
+   private ComponentObject spout_object; // required
+   private ComponentCommon common; // required
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void put_to_spouts(String key, StormTopology stormTopology) {
++        if (stormTopology.get_spouts() == null) {
++        stormTopology.set_spouts(new HashMap<String, SpoutSpec>());
++      }
++      stormTopology.get_spouts().put(key, this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+     SPOUT_OBJECT((short)1, "spout_object"),
+     COMMON((short)2, "common");
+diff --git a/jstorm-core/src/main/java/backtype/storm/generated/StormTopology.java b/jstorm-core/src/main/java/backtype/storm/generated/StormTopology.java
+index b4ca89b..8febce1 100644
+--- a/jstorm-core/src/main/java/backtype/storm/generated/StormTopology.java
++++ b/jstorm-core/src/main/java/backtype/storm/generated/StormTopology.java
+@@ -29,26 +29,15 @@ import org.apache.thrift.scheme.StandardScheme;
+ 
+ import org.apache.thrift.scheme.TupleScheme;
+ import org.apache.thrift.protocol.TTupleProtocol;
+-import org.apache.thrift.protocol.TProtocolException;
+-import org.apache.thrift.EncodingUtils;
+-import org.apache.thrift.TException;
+-import org.apache.thrift.async.AsyncMethodCallback;
+-import org.apache.thrift.server.AbstractNonblockingServer.*;
++
+ import java.util.List;
+ import java.util.ArrayList;
+ import java.util.Map;
+ import java.util.HashMap;
+ import java.util.EnumMap;
+-import java.util.Set;
+-import java.util.HashSet;
+ import java.util.EnumSet;
+ import java.util.Collections;
+-import java.util.BitSet;
+-import java.nio.ByteBuffer;
+-import java.util.Arrays;
+ import javax.annotation.Generated;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+ 
+ @SuppressWarnings({"cast", "rawtypes", "serial", "unchecked"})
+ @Generated(value = "Autogenerated by Thrift Compiler (0.9.2)", date = "2017-2-22")
+@@ -233,14 +222,7 @@ public class StormTopology implements org.apache.thrift.TBase<StormTopology, Sto
+     return (this.spouts == null) ? 0 : this.spouts.size();
+   }
+ 
+-  public void put_to_spouts(String key, SpoutSpec val) {
+-    if (this.spouts == null) {
+-      this.spouts = new HashMap<String,SpoutSpec>();
+-    }
+-    this.spouts.put(key, val);
+-  }
+-
+-  public Map<String,SpoutSpec> get_spouts() {
++    public Map<String,SpoutSpec> get_spouts() {
+     return this.spouts;
+   }
+ 
+diff --git a/jstorm-core/src/main/java/backtype/storm/generated/SupervisorSummary.java b/jstorm-core/src/main/java/backtype/storm/generated/SupervisorSummary.java
+index 4a5c021..891caa5 100644
+--- a/jstorm-core/src/main/java/backtype/storm/generated/SupervisorSummary.java
++++ b/jstorm-core/src/main/java/backtype/storm/generated/SupervisorSummary.java
+@@ -81,7 +81,14 @@ public class SupervisorSummary implements org.apache.thrift.TBase<SupervisorSumm
+   private int port; // optional
+   private String errorMessage; // optional
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void add_to_supervisors(ClusterSummary clusterSummary) {
++        if (clusterSummary.get_supervisors() == null) {
++        clusterSummary.set_supervisors(new ArrayList<SupervisorSummary>());
++      }
++      clusterSummary.get_supervisors().add(this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+     HOST((short)1, "host"),
+     SUPERVISOR_ID((short)2, "supervisorId"),
+diff --git a/jstorm-core/src/main/java/backtype/storm/generated/TaskComponent.java b/jstorm-core/src/main/java/backtype/storm/generated/TaskComponent.java
+index 7cdcfe2..06948bc 100644
+--- a/jstorm-core/src/main/java/backtype/storm/generated/TaskComponent.java
++++ b/jstorm-core/src/main/java/backtype/storm/generated/TaskComponent.java
+@@ -67,7 +67,14 @@ public class TaskComponent implements org.apache.thrift.TBase<TaskComponent, Tas
+   private int taskId; // required
+   private String component; // required
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void add_to_tasks(WorkerSummary workerSummary) {
++        if (workerSummary.get_tasks() == null) {
++        workerSummary.set_tasks(new ArrayList<TaskComponent>());
++      }
++      workerSummary.get_tasks().add(this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+     TASK_ID((short)1, "taskId"),
+     COMPONENT((short)2, "component");
+diff --git a/jstorm-core/src/main/java/backtype/storm/generated/TaskHeartbeat.java b/jstorm-core/src/main/java/backtype/storm/generated/TaskHeartbeat.java
+index 3e33258..fc2e989 100644
+--- a/jstorm-core/src/main/java/backtype/storm/generated/TaskHeartbeat.java
++++ b/jstorm-core/src/main/java/backtype/storm/generated/TaskHeartbeat.java
+@@ -23,6 +23,8 @@
+  */
+ package backtype.storm.generated;
+ 
++import com.alibaba.jstorm.task.TkHbCacheTime;
++import com.alibaba.jstorm.utils.TimeUtils;
+ import org.apache.thrift.scheme.IScheme;
+ import org.apache.thrift.scheme.SchemeFactory;
+ import org.apache.thrift.scheme.StandardScheme;
+@@ -67,7 +69,15 @@ public class TaskHeartbeat implements org.apache.thrift.TBase<TaskHeartbeat, Tas
+   private int time; // required
+   private int uptime; // required
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void update(TkHbCacheTime tkHbCacheTime) {
++        if (this != null) {
++            tkHbCacheTime.setNimbusTime(TimeUtils.current_time_secs());
++            tkHbCacheTime.setTaskReportedTime(get_time());
++            tkHbCacheTime.setTaskAssignedTime(get_time() - get_uptime());
++        }
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+     TIME((short)1, "time"),
+     UPTIME((short)2, "uptime");
+diff --git a/jstorm-core/src/main/java/backtype/storm/generated/TaskSummary.java b/jstorm-core/src/main/java/backtype/storm/generated/TaskSummary.java
+index c58e3e1..5547603 100644
+--- a/jstorm-core/src/main/java/backtype/storm/generated/TaskSummary.java
++++ b/jstorm-core/src/main/java/backtype/storm/generated/TaskSummary.java
+@@ -29,26 +29,17 @@ import org.apache.thrift.scheme.StandardScheme;
+ 
+ import org.apache.thrift.scheme.TupleScheme;
+ import org.apache.thrift.protocol.TTupleProtocol;
+-import org.apache.thrift.protocol.TProtocolException;
+ import org.apache.thrift.EncodingUtils;
+-import org.apache.thrift.TException;
+-import org.apache.thrift.async.AsyncMethodCallback;
+-import org.apache.thrift.server.AbstractNonblockingServer.*;
++
+ import java.util.List;
+ import java.util.ArrayList;
+ import java.util.Map;
+ import java.util.HashMap;
+ import java.util.EnumMap;
+-import java.util.Set;
+-import java.util.HashSet;
+ import java.util.EnumSet;
+ import java.util.Collections;
+ import java.util.BitSet;
+-import java.nio.ByteBuffer;
+-import java.util.Arrays;
+ import javax.annotation.Generated;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+ 
+ @SuppressWarnings({"cast", "rawtypes", "serial", "unchecked"})
+ @Generated(value = "Autogenerated by Thrift Compiler (0.9.2)", date = "2017-2-22")
+@@ -355,14 +346,7 @@ public class TaskSummary implements org.apache.thrift.TBase<TaskSummary, TaskSum
+     return (this.errors == null) ? null : this.errors.iterator();
+   }
+ 
+-  public void add_to_errors(ErrorInfo elem) {
+-    if (this.errors == null) {
+-      this.errors = new ArrayList<ErrorInfo>();
+-    }
+-    this.errors.add(elem);
+-  }
+-
+-  public List<ErrorInfo> get_errors() {
++    public List<ErrorInfo> get_errors() {
+     return this.errors;
+   }
+ 
+diff --git a/jstorm-core/src/main/java/backtype/storm/generated/ThriftSerializedObject.java b/jstorm-core/src/main/java/backtype/storm/generated/ThriftSerializedObject.java
+index 3215d31..1a84a82 100644
+--- a/jstorm-core/src/main/java/backtype/storm/generated/ThriftSerializedObject.java
++++ b/jstorm-core/src/main/java/backtype/storm/generated/ThriftSerializedObject.java
+@@ -67,7 +67,14 @@ public class ThriftSerializedObject implements org.apache.thrift.TBase<ThriftSer
+   private String name; // required
+   private ByteBuffer bits; // required
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void put_to_serialized_parts(String key, LocalStateData localStateData) {
++        if (localStateData.get_serialized_parts() == null) {
++        localStateData.set_serialized_parts(new HashMap<String, ThriftSerializedObject>());
++      }
++      localStateData.get_serialized_parts().put(key, this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+     NAME((short)1, "name"),
+     BITS((short)2, "bits");
+diff --git a/jstorm-core/src/main/java/backtype/storm/generated/TopologyInfo.java b/jstorm-core/src/main/java/backtype/storm/generated/TopologyInfo.java
+index e272e3f..eec9265 100644
+--- a/jstorm-core/src/main/java/backtype/storm/generated/TopologyInfo.java
++++ b/jstorm-core/src/main/java/backtype/storm/generated/TopologyInfo.java
+@@ -29,26 +29,15 @@ import org.apache.thrift.scheme.StandardScheme;
+ 
+ import org.apache.thrift.scheme.TupleScheme;
+ import org.apache.thrift.protocol.TTupleProtocol;
+-import org.apache.thrift.protocol.TProtocolException;
+-import org.apache.thrift.EncodingUtils;
+-import org.apache.thrift.TException;
+-import org.apache.thrift.async.AsyncMethodCallback;
+-import org.apache.thrift.server.AbstractNonblockingServer.*;
++
+ import java.util.List;
+ import java.util.ArrayList;
+ import java.util.Map;
+ import java.util.HashMap;
+ import java.util.EnumMap;
+-import java.util.Set;
+-import java.util.HashSet;
+ import java.util.EnumSet;
+ import java.util.Collections;
+-import java.util.BitSet;
+-import java.nio.ByteBuffer;
+-import java.util.Arrays;
+ import javax.annotation.Generated;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+ 
+ @SuppressWarnings({"cast", "rawtypes", "serial", "unchecked"})
+ @Generated(value = "Autogenerated by Thrift Compiler (0.9.2)", date = "2017-2-22")
+@@ -241,14 +230,7 @@ public class TopologyInfo implements org.apache.thrift.TBase<TopologyInfo, Topol
+     return (this.components == null) ? null : this.components.iterator();
+   }
+ 
+-  public void add_to_components(ComponentSummary elem) {
+-    if (this.components == null) {
+-      this.components = new ArrayList<ComponentSummary>();
+-    }
+-    this.components.add(elem);
+-  }
+-
+-  public List<ComponentSummary> get_components() {
++    public List<ComponentSummary> get_components() {
+     return this.components;
+   }
+ 
+diff --git a/jstorm-core/src/main/java/backtype/storm/generated/WorkerSummary.java b/jstorm-core/src/main/java/backtype/storm/generated/WorkerSummary.java
+index 69c1f3d..d098a56 100644
+--- a/jstorm-core/src/main/java/backtype/storm/generated/WorkerSummary.java
++++ b/jstorm-core/src/main/java/backtype/storm/generated/WorkerSummary.java
+@@ -29,26 +29,16 @@ import org.apache.thrift.scheme.StandardScheme;
+ 
+ import org.apache.thrift.scheme.TupleScheme;
+ import org.apache.thrift.protocol.TTupleProtocol;
+-import org.apache.thrift.protocol.TProtocolException;
+ import org.apache.thrift.EncodingUtils;
+-import org.apache.thrift.TException;
+-import org.apache.thrift.async.AsyncMethodCallback;
+-import org.apache.thrift.server.AbstractNonblockingServer.*;
++
+ import java.util.List;
+ import java.util.ArrayList;
+ import java.util.Map;
+ import java.util.HashMap;
+ import java.util.EnumMap;
+-import java.util.Set;
+-import java.util.HashSet;
+ import java.util.EnumSet;
+ import java.util.Collections;
+-import java.util.BitSet;
+-import java.nio.ByteBuffer;
+-import java.util.Arrays;
+ import javax.annotation.Generated;
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
+ 
+ @SuppressWarnings({"cast", "rawtypes", "serial", "unchecked"})
+ @Generated(value = "Autogenerated by Thrift Compiler (0.9.2)", date = "2017-2-22")
+@@ -284,14 +274,7 @@ public class WorkerSummary implements org.apache.thrift.TBase<WorkerSummary, Wor
+     return (this.tasks == null) ? null : this.tasks.iterator();
+   }
+ 
+-  public void add_to_tasks(TaskComponent elem) {
+-    if (this.tasks == null) {
+-      this.tasks = new ArrayList<TaskComponent>();
+-    }
+-    this.tasks.add(elem);
+-  }
+-
+-  public List<TaskComponent> get_tasks() {
++    public List<TaskComponent> get_tasks() {
+     return this.tasks;
+   }
+ 
+diff --git a/jstorm-core/src/main/java/backtype/storm/multilang/BoltMsg.java b/jstorm-core/src/main/java/backtype/storm/multilang/BoltMsg.java
+index a6cae01..a067ae7 100644
+--- a/jstorm-core/src/main/java/backtype/storm/multilang/BoltMsg.java
++++ b/jstorm-core/src/main/java/backtype/storm/multilang/BoltMsg.java
+@@ -17,6 +17,9 @@
+  */
+ package backtype.storm.multilang;
+ 
++import backtype.storm.utils.ShellProcess;
++
++import java.io.IOException;
+ import java.util.List;
+ 
+ /**
+@@ -73,4 +76,10 @@ public class BoltMsg {
+     public void setTuple(List<Object> tuple) {
+         this.tuple = tuple;
+     }
++
++    public void writeBoltMsg(ShellProcess shellProcess) throws IOException {
++        shellProcess.serializer.writeBoltMsg(this);
++        // Log any info sent on the error stream
++        shellProcess.logErrorStream();
++    }
+ }
+diff --git a/jstorm-core/src/main/java/backtype/storm/nimbus/NimbusInfo.java b/jstorm-core/src/main/java/backtype/storm/nimbus/NimbusInfo.java
+index af2fc30..dbcf932 100644
+--- a/jstorm-core/src/main/java/backtype/storm/nimbus/NimbusInfo.java
++++ b/jstorm-core/src/main/java/backtype/storm/nimbus/NimbusInfo.java
+@@ -17,12 +17,14 @@
+ package backtype.storm.nimbus;
+ 
+ import backtype.storm.Config;
++import com.alibaba.jstorm.blobstore.KeySequenceNumber;
+ import com.alibaba.jstorm.client.ConfigExtension;
+ import com.alibaba.jstorm.utils.NetWorkUtils;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ 
+ import java.io.Serializable;
++import java.util.List;
+ import java.util.Map;
+ 
+ public class NimbusInfo implements Serializable {
+@@ -109,4 +111,15 @@ public class NimbusInfo implements Serializable {
+     public String toString() {
+         return "NimbusInfo{" + "host='" + host + '\'' + ", port=" + port + ", isLeader=" + isLeader + '}';
+     }
++
++    public boolean checkIfStateContainsCurrentNimbusHost(List<String> stateInfoList, KeySequenceNumber keySequenceNumber) {
++        boolean containsNimbusHost = false;
++        for(String stateInfo:stateInfoList) {
++            if(stateInfo.contains(getHost())) {
++                containsNimbusHost = true;
++                break;
++            }
++        }
++        return containsNimbusHost;
++    }
+ }
+diff --git a/jstorm-core/src/main/java/backtype/storm/scheduler/Cluster.java b/jstorm-core/src/main/java/backtype/storm/scheduler/Cluster.java
+index 2aa20f1..f201e8c 100644
+--- a/jstorm-core/src/main/java/backtype/storm/scheduler/Cluster.java
++++ b/jstorm-core/src/main/java/backtype/storm/scheduler/Cluster.java
+@@ -95,20 +95,6 @@ public class Cluster {
+     }
+ 
+     /**
+-     * Gets all the topologies which needs scheduling.
+-     */
+-    public List<TopologyDetails> needsSchedulingTopologies(Topologies topologies) {
+-        List<TopologyDetails> ret = new ArrayList<>();
+-        for (TopologyDetails topology : topologies.getTopologies()) {
+-            if (needsScheduling(topology)) {
+-                ret.add(topology);
+-            }
+-        }
+-
+-        return ret;
+-    }
+-
+-    /**
+      * Does the topology need scheduling?
+      *
+      * A topology needs scheduling if one of the following conditions holds:
+diff --git a/jstorm-core/src/main/java/backtype/storm/scheduler/Topologies.java b/jstorm-core/src/main/java/backtype/storm/scheduler/Topologies.java
+index 123f738..7068119 100644
+--- a/jstorm-core/src/main/java/backtype/storm/scheduler/Topologies.java
++++ b/jstorm-core/src/main/java/backtype/storm/scheduler/Topologies.java
+@@ -17,9 +17,7 @@
+  */
+ package backtype.storm.scheduler;
+ 
+-import java.util.Collection;
+-import java.util.HashMap;
+-import java.util.Map;
++import java.util.*;
+ 
+ public class Topologies {
+     Map<String, TopologyDetails> topologies;
+@@ -55,4 +53,19 @@ public class Topologies {
+     public Collection<TopologyDetails> getTopologies() {
+         return this.topologies.values();
+     }
++
++    /**
++     * Gets all the topologies which needs scheduling.
++     * @param cluster
++     */
++    public List<TopologyDetails> needsSchedulingTopologies(Cluster cluster) {
++        List<TopologyDetails> ret = new ArrayList<>();
++        for (TopologyDetails topology : getTopologies()) {
++            if (cluster.needsScheduling(topology)) {
++                ret.add(topology);
++            }
++        }
++
++        return ret;
++    }
+ }
+diff --git a/jstorm-core/src/main/java/backtype/storm/scheduler/WorkerSlot.java b/jstorm-core/src/main/java/backtype/storm/scheduler/WorkerSlot.java
+index 17bb941..fc1d69b 100644
+--- a/jstorm-core/src/main/java/backtype/storm/scheduler/WorkerSlot.java
++++ b/jstorm-core/src/main/java/backtype/storm/scheduler/WorkerSlot.java
+@@ -17,6 +17,8 @@
+  */
+ package backtype.storm.scheduler;
+ 
++import backtype.storm.scheduler.multitenant.Node;
++
+ import java.io.Serializable;
+ 
+ public class WorkerSlot implements Comparable<WorkerSlot>, Serializable {
+@@ -100,4 +102,10 @@ public class WorkerSlot implements Comparable<WorkerSlot>, Serializable {
+             }
+         }
+     }
++
++    public void validateSlot(Node node) {
++        if (!node.getId().equals(getNodeId())) {
++            throw new IllegalArgumentException("Trying to add a slot to the wrong node " + this + " is not a part of " + node.getId());
++        }
++    }
+ }
+diff --git a/jstorm-core/src/main/java/backtype/storm/scheduler/multitenant/Node.java b/jstorm-core/src/main/java/backtype/storm/scheduler/multitenant/Node.java
+index 24e2e7b..5ed7ead 100644
+--- a/jstorm-core/src/main/java/backtype/storm/scheduler/multitenant/Node.java
++++ b/jstorm-core/src/main/java/backtype/storm/scheduler/multitenant/Node.java
+@@ -99,17 +99,11 @@ public class Node {
+         return total;
+     }
+ 
+-    private void validateSlot(WorkerSlot ws) {
+-        if (!_nodeId.equals(ws.getNodeId())) {
+-            throw new IllegalArgumentException("Trying to add a slot to the wrong node " + ws + " is not a part of " + _nodeId);
+-        }
+-    }
+-
+     private void addOrphanedSlot(WorkerSlot ws) {
+         if (_isAlive) {
+             throw new IllegalArgumentException("Orphaned Slots " + "only are allowed on dead nodes.");
+         }
+-        validateSlot(ws);
++        ws.validateSlot(this);
+         if (_freeSlots.contains(ws)) {
+             return;
+         }
+@@ -122,7 +116,7 @@ public class Node {
+     }
+ 
+     boolean assignInternal(WorkerSlot ws, String topId, boolean dontThrow) {
+-        validateSlot(ws);
++        ws.validateSlot(this);
+         if (!_freeSlots.remove(ws)) {
+             for (Entry<String, Set<WorkerSlot>> topologySetEntry : _topIdToUsedSlots.entrySet()) {
+                 if (topologySetEntry.getValue().contains(ws)) {
+diff --git a/jstorm-core/src/main/java/backtype/storm/security/auth/ReqContext.java b/jstorm-core/src/main/java/backtype/storm/security/auth/ReqContext.java
+index 47f317c..1cb228d 100644
+--- a/jstorm-core/src/main/java/backtype/storm/security/auth/ReqContext.java
++++ b/jstorm-core/src/main/java/backtype/storm/security/auth/ReqContext.java
+@@ -21,6 +21,8 @@ import java.util.Map;
+ import java.util.Set;
+ import java.util.concurrent.atomic.AtomicInteger;
+ import java.net.InetAddress;
++
++import backtype.storm.security.auth.authorizer.DRPCSimpleACLAuthorizer;
+ import com.google.common.annotations.VisibleForTesting;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+@@ -138,4 +140,13 @@ public class ReqContext {
+         return _reqID;
+     }
+ 
++    public String getUserFromContext(DRPCSimpleACLAuthorizer drpcSimpleACLAuthorizer) {
++        if (this != null) {
++            Principal princ = principal();
++            if (princ != null) {
++                return princ.getName();
++            }
++        }
++        return null;
++    }
+ }
+diff --git a/jstorm-core/src/main/java/backtype/storm/security/auth/authorizer/DRPCSimpleACLAuthorizer.java b/jstorm-core/src/main/java/backtype/storm/security/auth/authorizer/DRPCSimpleACLAuthorizer.java
+index 8430c4e..1e74abb 100644
+--- a/jstorm-core/src/main/java/backtype/storm/security/auth/authorizer/DRPCSimpleACLAuthorizer.java
++++ b/jstorm-core/src/main/java/backtype/storm/security/auth/authorizer/DRPCSimpleACLAuthorizer.java
+@@ -18,7 +18,6 @@
+ package backtype.storm.security.auth.authorizer;
+ 
+ import java.lang.reflect.Field;
+-import java.security.Principal;
+ import java.util.Collection;
+ import java.util.HashMap;
+ import java.util.HashSet;
+@@ -27,7 +26,6 @@ import java.util.Set;
+ 
+ import backtype.storm.Config;
+ import backtype.storm.security.auth.ReqContext;
+-import backtype.storm.security.auth.authorizer.DRPCAuthorizerBase;
+ import backtype.storm.security.auth.AuthUtils;
+ import backtype.storm.security.auth.IPrincipalToLocal;
+ import backtype.storm.utils.Utils;
+@@ -93,16 +91,6 @@ public class DRPCSimpleACLAuthorizer extends DRPCAuthorizerBase {
+         _ptol = AuthUtils.GetPrincipalToLocalPlugin(conf);
+     }
+ 
+-    private String getUserFromContext(ReqContext context) {
+-        if (context != null) {
+-            Principal princ = context.principal();
+-            if (princ != null) {
+-                return princ.getName();
+-            }
+-        }
+-        return null;
+-    }
+-
+     private String getLocalUserFromContext(ReqContext context) {
+         if (context != null) {
+             return _ptol.toLocal(context.principal());
+@@ -127,7 +115,7 @@ public class DRPCSimpleACLAuthorizer extends DRPCAuthorizerBase {
+                     LOG.warn("Caught Exception while accessing ACL", ex);
+                     return false;
+                 }
+-                String principal = getUserFromContext(context);
++                String principal = context.getUserFromContext(this);
+                 String user = getLocalUserFromContext(context);
+                 if (value == null) {
+                     LOG.warn("Configuration for function '" + function + "' is " + "invalid: it should have both an invocation user "
+diff --git a/jstorm-core/src/main/java/backtype/storm/task/ShellBolt.java b/jstorm-core/src/main/java/backtype/storm/task/ShellBolt.java
+index f3eb5d2..dca7ed6 100644
+--- a/jstorm-core/src/main/java/backtype/storm/task/ShellBolt.java
++++ b/jstorm-core/src/main/java/backtype/storm/task/ShellBolt.java
+@@ -349,13 +349,13 @@ public class ShellBolt implements IBolt {
+                         LOG.debug("BOLT - sending heartbeat request to subprocess");
+ 
+                         String genId = Long.toString(_rand.nextLong());
+-                        _process.writeBoltMsg(createHeartbeatBoltMessage(genId));
++                        createHeartbeatBoltMessage(genId).writeBoltMsg(_process);
+                         sendHeartbeatFlag.compareAndSet(true, false);
+                     }
+ 
+                     Object write = _pendingWrites.poll(1, SECONDS);
+                     if (write instanceof BoltMsg) {
+-                        _process.writeBoltMsg((BoltMsg) write);
++                        ((BoltMsg) write).writeBoltMsg(_process);
+                     } else if (write instanceof List<?>) {
+                         _process.writeTaskIds((List<Integer>) write);
+                     } else if (write != null) {
+diff --git a/jstorm-core/src/main/java/backtype/storm/task/TopologyContext.java b/jstorm-core/src/main/java/backtype/storm/task/TopologyContext.java
+index e3bb6a3..2af689c 100644
+--- a/jstorm-core/src/main/java/backtype/storm/task/TopologyContext.java
++++ b/jstorm-core/src/main/java/backtype/storm/task/TopologyContext.java
+@@ -39,6 +39,8 @@ import java.util.HashSet;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.Set;
++
++import com.alibaba.jstorm.transactional.state.SnapshotStateMaster;
+ import org.apache.commons.lang.NotImplementedException;
+ import org.json.simple.JSONValue;
+ 
+@@ -405,4 +407,12 @@ public class TopologyContext extends WorkerTopologyContext implements IMetricsCo
+             method.invoke(taskHook, object);
+         }
+     }
++
++    public Map<String, Set<Integer>> componentToComponentTasks(Set<String> components, SnapshotStateMaster snapshotStateMaster) {
++        Map<String, Set<Integer>> ret = new HashMap<>();
++        for (String component : components) {
++            ret.put(component, new HashSet<Integer>(getComponentTasks(component)));
++        }
++        return ret;
++    }
+ }
+diff --git a/jstorm-core/src/main/java/backtype/storm/topology/TopologyBuilder.java b/jstorm-core/src/main/java/backtype/storm/topology/TopologyBuilder.java
+index 7fec08c..9de572b 100644
+--- a/jstorm-core/src/main/java/backtype/storm/topology/TopologyBuilder.java
++++ b/jstorm-core/src/main/java/backtype/storm/topology/TopologyBuilder.java
+@@ -417,9 +417,8 @@ public class TopologyBuilder {
+             }
+ 
+             for (String comp : comps) {
+-                common.put_to_inputs(
+-                        new GlobalStreamId(comp, Common.WATERMARK_STREAM_ID),
+-                        Grouping.all(new NullStruct()));
++                new GlobalStreamId(comp, Common.WATERMARK_STREAM_ID).put_to_inputs(
++                        Grouping.all(new NullStruct()), common);
+             }
+         }
+     }
+@@ -452,7 +451,7 @@ public class TopologyBuilder {
+             }
+         }
+         for (GlobalStreamId streamId : checkPointInputs) {
+-            component.put_to_inputs(streamId, Grouping.all(new NullStruct()));
++            streamId.put_to_inputs(Grouping.all(new NullStruct()), component);
+         }
+     }
+     private ComponentCommon getComponentCommon(String id, IComponent component) {
+@@ -594,7 +593,7 @@ public class TopologyBuilder {
+         }
+ 
+         protected BoltDeclarer grouping(String componentId, String streamId, Grouping grouping) {
+-            _commons.get(_boltId).put_to_inputs(new GlobalStreamId(componentId, streamId), grouping);
++            new GlobalStreamId(componentId, streamId).put_to_inputs(grouping, _commons.get(_boltId));
+             return this;
+         }
+ 
+diff --git a/jstorm-core/src/main/java/backtype/storm/tuple/Fields.java b/jstorm-core/src/main/java/backtype/storm/tuple/Fields.java
+index 89bf371..71bc478 100644
+--- a/jstorm-core/src/main/java/backtype/storm/tuple/Fields.java
++++ b/jstorm-core/src/main/java/backtype/storm/tuple/Fields.java
+@@ -17,6 +17,11 @@
+  */
+ package backtype.storm.tuple;
+ 
++import storm.trident.Stream;
++import storm.trident.fluent.ChainedAggregatorDeclarer;
++import storm.trident.fluent.GroupedStream;
++import storm.trident.operation.Aggregator;
++
+ import java.util.ArrayList;
+ import java.util.Arrays;
+ import java.util.HashMap;
+@@ -99,4 +104,8 @@ public class Fields implements Iterable<String>, Serializable {
+     public String toString() {
+         return _fields.toString();
+     }
++
++    public Stream aggregate(Aggregator agg, Fields functionFields, GroupedStream groupedStream) {
++        return new ChainedAggregatorDeclarer(groupedStream, groupedStream).aggregate(this, agg, functionFields).chainEnd();
++    }
+ }
+diff --git a/jstorm-core/src/main/java/backtype/storm/utils/ShellProcess.java b/jstorm-core/src/main/java/backtype/storm/utils/ShellProcess.java
+index 5d28c32..ba5c3c5 100644
+--- a/jstorm-core/src/main/java/backtype/storm/utils/ShellProcess.java
++++ b/jstorm-core/src/main/java/backtype/storm/utils/ShellProcess.java
+@@ -29,7 +29,6 @@ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ 
+ import backtype.storm.Config;
+-import backtype.storm.multilang.BoltMsg;
+ import backtype.storm.multilang.ISerializer;
+ import backtype.storm.multilang.NoOutputException;
+ import backtype.storm.multilang.ShellMsg;
+@@ -124,12 +123,6 @@ public class ShellProcess implements Serializable {
+         }
+     }
+ 
+-    public void writeBoltMsg(BoltMsg msg) throws IOException {
+-        serializer.writeBoltMsg(msg);
+-        // Log any info sent on the error stream
+-        logErrorStream();
+-    }
+-
+     public void writeSpoutMsg(SpoutMsg msg) throws IOException {
+         serializer.writeSpoutMsg(msg);
+         // Log any info sent on the error stream
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/batch/impl/BatchSpoutTrigger.java b/jstorm-core/src/main/java/com/alibaba/jstorm/batch/impl/BatchSpoutTrigger.java
+index c183fcc..cab67a3 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/batch/impl/BatchSpoutTrigger.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/batch/impl/BatchSpoutTrigger.java
+@@ -149,18 +149,8 @@ public class BatchSpoutTrigger implements IRichSpout {
+         }
+     }
+ 
+-    protected boolean isCommitStatus(BatchStatus batchStatus) {
+-        if (batchStatus == BatchStatus.COMMIT) {
+-            return true;
+-        } else if (batchStatus == BatchStatus.REVERT_COMMIT) {
+-            return true;
+-        } else {
+-            return false;
+-        }
+-    }
+-
+     protected boolean isCommitWait(BatchSpoutMsgId msgId) {
+-        if (!isCommitStatus(msgId.getBatchStatus())) {
++        if (!msgId.getBatchStatus().isCommitStatus(this)) {
+             return false;
+         }
+ 
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/batch/util/BatchStatus.java b/jstorm-core/src/main/java/com/alibaba/jstorm/batch/util/BatchStatus.java
+index 188fd59..70ea38c 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/batch/util/BatchStatus.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/batch/util/BatchStatus.java
+@@ -17,6 +17,8 @@
+  */
+ package com.alibaba.jstorm.batch.util;
+ 
++import com.alibaba.jstorm.batch.impl.BatchSpoutTrigger;
++
+ public enum BatchStatus {
+     COMPUTING, PREPARE_COMMIT, COMMIT, REVERT_COMMIT, POST_COMMIT, ERROR;
+ 
+@@ -39,4 +41,14 @@ public enum BatchStatus {
+             return ERROR;
+         }
+     }
++
++    public boolean isCommitStatus(BatchSpoutTrigger batchSpoutTrigger) {
++        if (this == COMMIT) {
++            return true;
++        } else if (this == REVERT_COMMIT) {
++            return true;
++        } else {
++            return false;
++        }
++    }
+ }
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/blobstore/BlobStore.java b/jstorm-core/src/main/java/com/alibaba/jstorm/blobstore/BlobStore.java
+index 9ac2259..27c4f60 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/blobstore/BlobStore.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/blobstore/BlobStore.java
+@@ -157,29 +157,6 @@ public abstract class BlobStore implements Shutdownable {
+      * Wrapper called to create the blob which contains
+      * the byte data
+      * @param key Key for the blob.
+-     * @param data Byte data that needs to be uploaded.
+-     * @param meta Metadata which contains the acls information
+-     * @throws KeyAlreadyExistsException
+-     * @throws IOException
+-     */
+-    public void createBlob(String key, byte [] data, SettableBlobMeta meta) throws KeyAlreadyExistsException, IOException {
+-        AtomicOutputStream out = null;
+-        try {
+-            out = createBlob(key, meta);
+-            out.write(data);
+-            out.close();
+-            out = null;
+-        } finally {
+-            if (out != null) {
+-                out.cancel();
+-            }
+-        }
+-    }
+-
+-    /**
+-     * Wrapper called to create the blob which contains
+-     * the byte data
+-     * @param key Key for the blob.
+      * @param in InputStream from which the data is read to be
+      * written as a part of the blob.
+      * @param meta Metadata which contains the acls information
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/blobstore/KeySequenceNumber.java b/jstorm-core/src/main/java/com/alibaba/jstorm/blobstore/KeySequenceNumber.java
+index 94b292c..0045f1d 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/blobstore/KeySequenceNumber.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/blobstore/KeySequenceNumber.java
+@@ -164,7 +164,7 @@ public class KeySequenceNumber {
+             // especially when nimbus crashes and comes up after and before update
+             // respectively.
+             int currentSeqNumber = getMaxSequenceNumber(zkClient);
+-            if (!checkIfStateContainsCurrentNimbusHost(stateInfoList, nimbusInfo) && !nimbusInfo.isLeader()) {
++            if (!nimbusInfo.checkIfStateContainsCurrentNimbusHost(stateInfoList, this) && !nimbusInfo.isLeader()) {
+                 if (sequenceNumbers.last() < currentSeqNumber) {
+                     return currentSeqNumber;
+                 } else {
+@@ -175,7 +175,7 @@ public class KeySequenceNumber {
+             // It covers scenarios expalined in scenario 3 when nimbus-1 holding the latest
+             // update goes down before it is downloaded by nimbus-2. Nimbus-2 gets elected as a leader
+             // after which nimbus-1 comes back up and a read or update is performed.
+-            if (!checkIfStateContainsCurrentNimbusHost(stateInfoList, nimbusInfo) && nimbusInfo.isLeader()) {
++            if (!nimbusInfo.checkIfStateContainsCurrentNimbusHost(stateInfoList, this) && nimbusInfo.isLeader()) {
+                 incrementMaxSequenceNumber(zkClient, currentSeqNumber);
+                 return currentSeqNumber + 1;
+             }
+@@ -205,17 +205,6 @@ public class KeySequenceNumber {
+         return sequenceNumbers.last();
+     }
+ 
+-    private boolean checkIfStateContainsCurrentNimbusHost(List<String> stateInfoList, NimbusInfo nimbusInfo) {
+-        boolean containsNimbusHost = false;
+-        for(String stateInfo:stateInfoList) {
+-            if(stateInfo.contains(nimbusInfo.getHost())) {
+-                containsNimbusHost = true;
+-                break;
+-            }
+-        }
+-        return containsNimbusHost;
+-    }
+-
+     private void incrementMaxSequenceNumber(CuratorFramework zkClient, int count) throws Exception {
+         zkClient.setData().forPath(BLOBSTORE_MAX_KEY_SEQUENCE_SUBTREE + "/" + key,
+                 ByteBuffer.allocate(INT_CAPACITY).putInt(count + 1).array());
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/cluster/Common.java b/jstorm-core/src/main/java/com/alibaba/jstorm/cluster/Common.java
+index 22c56bb..b2068d4 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/cluster/Common.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/cluster/Common.java
+@@ -389,7 +389,7 @@ public class Common {
+             common.put_to_streams(TopologyMaster.USER_DEFINED_STREAM, Thrift.directOutputFields(fields));
+ 
+             GlobalStreamId stream = new GlobalStreamId(TOPOLOGY_MASTER_COMPONENT_ID, TOPOLOGY_MASTER_CONTROL_STREAM_ID);
+-            common.put_to_inputs(stream, Thrift.mkDirectGrouping());
++            stream.put_to_inputs(Thrift.mkDirectGrouping(), common);
+             bolt.set_common(common);
+         }
+ 
+@@ -410,7 +410,7 @@ public class Common {
+             common.put_to_streams(TopologyMaster.USER_DEFINED_STREAM, Thrift.directOutputFields(fields));
+ 
+             GlobalStreamId stream = new GlobalStreamId(TOPOLOGY_MASTER_COMPONENT_ID, TOPOLOGY_MASTER_CONTROL_STREAM_ID);
+-            common.put_to_inputs(stream, Thrift.mkDirectGrouping());
++            stream.put_to_inputs(Thrift.mkDirectGrouping(), common);
+             spout.set_common(common);
+         }
+ 
+@@ -511,10 +511,10 @@ public class Common {
+             common.put_to_streams(ACKER_INIT_STREAM_ID, Thrift.outputFields(initList));
+ 
+             GlobalStreamId ack_ack = new GlobalStreamId(ACKER_COMPONENT_ID, ACKER_ACK_STREAM_ID);
+-            common.put_to_inputs(ack_ack, Thrift.mkDirectGrouping());
++            ack_ack.put_to_inputs(Thrift.mkDirectGrouping(), common);
+ 
+             GlobalStreamId ack_fail = new GlobalStreamId(ACKER_COMPONENT_ID, ACKER_FAIL_STREAM_ID);
+-            common.put_to_inputs(ack_fail, Thrift.mkDirectGrouping());
++            ack_fail.put_to_inputs(Thrift.mkDirectGrouping(), common);
+         }
+ 
+         ret.put_to_bolts(ACKER_COMPONENT_ID, acker_bolt);
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/container/Hierarchy.java b/jstorm-core/src/main/java/com/alibaba/jstorm/container/Hierarchy.java
+index b8716d1..0cf1c4b 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/container/Hierarchy.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/container/Hierarchy.java
+@@ -98,12 +98,4 @@ public class Hierarchy {
+         return name;
+     }
+ 
+-    public boolean subSystemMounted(SubSystemType subsystem) {
+-        for (SubSystemType type : this.subSystems) {
+-            if (type == subsystem)
+-                return true;
+-        }
+-        return false;
+-    }
+-
+ }
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/container/SubSystemType.java b/jstorm-core/src/main/java/com/alibaba/jstorm/container/SubSystemType.java
+index 784198a..040ac8f 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/container/SubSystemType.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/container/SubSystemType.java
+@@ -44,4 +44,12 @@ public enum SubSystemType {
+             return net_prio;
+         return null;
+     }
++
++    public boolean subSystemMounted(Hierarchy hierarchy) {
++        for (SubSystemType type : hierarchy.getSubSystems()) {
++            if (type == this)
++                return true;
++        }
++        return false;
++    }
+ }
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/container/cgroup/Device.java b/jstorm-core/src/main/java/com/alibaba/jstorm/container/cgroup/Device.java
+index fff2c67..6de8cea 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/container/cgroup/Device.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/container/cgroup/Device.java
+@@ -17,6 +17,8 @@
+  */
+ package com.alibaba.jstorm.container.cgroup;
+ 
++import com.alibaba.jstorm.container.cgroup.core.BlkioCore;
++
+ public class Device {
+ 
+     public final int major;
+@@ -65,4 +67,9 @@ public class Device {
+         return true;
+     }
+ 
++    public String makeContext(Object data, BlkioCore blkioCore) {
++        StringBuilder sb = new StringBuilder();
++        sb.append(toString()).append(" ").append(data);
++        return sb.toString();
++    }
+ }
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/container/cgroup/core/BlkioCore.java b/jstorm-core/src/main/java/com/alibaba/jstorm/container/cgroup/core/BlkioCore.java
+index c2b5a13..fd58d13 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/container/cgroup/core/BlkioCore.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/container/cgroup/core/BlkioCore.java
+@@ -71,7 +71,7 @@ public class BlkioCore implements CgroupCore {
+     }
+ 
+     public void setBlkioWeightDevice(Device device, int weight) throws IOException {
+-        CgroupUtils.writeFileByLine(Constants.getDir(this.dir, BLKIO_WEIGHT_DEVICE), makeContext(device, weight));
++        CgroupUtils.writeFileByLine(Constants.getDir(this.dir, BLKIO_WEIGHT_DEVICE), device.makeContext(weight, this));
+     }
+ 
+     public Map<Device, Integer> getBlkioWeightDevice() throws IOException {
+@@ -87,7 +87,7 @@ public class BlkioCore implements CgroupCore {
+     }
+ 
+     public void setReadBps(Device device, long bps) throws IOException {
+-        CgroupUtils.writeFileByLine(Constants.getDir(this.dir, BLKIO_THROTTLE_READ_BPS_DEVICE), makeContext(device, bps));
++        CgroupUtils.writeFileByLine(Constants.getDir(this.dir, BLKIO_THROTTLE_READ_BPS_DEVICE), device.makeContext(bps, this));
+     }
+ 
+     public Map<Device, Long> getReadBps() throws IOException {
+@@ -103,7 +103,7 @@ public class BlkioCore implements CgroupCore {
+     }
+ 
+     public void setWriteBps(Device device, long bps) throws IOException {
+-        CgroupUtils.writeFileByLine(Constants.getDir(this.dir, BLKIO_THROTTLE_WRITE_BPS_DEVICE), makeContext(device, bps));
++        CgroupUtils.writeFileByLine(Constants.getDir(this.dir, BLKIO_THROTTLE_WRITE_BPS_DEVICE), device.makeContext(bps, this));
+     }
+ 
+     public Map<Device, Long> getWriteBps() throws IOException {
+@@ -119,7 +119,7 @@ public class BlkioCore implements CgroupCore {
+     }
+ 
+     public void setReadIOps(Device device, long iops) throws IOException {
+-        CgroupUtils.writeFileByLine(Constants.getDir(this.dir, BLKIO_THROTTLE_READ_IOPS_DEVICE), makeContext(device, iops));
++        CgroupUtils.writeFileByLine(Constants.getDir(this.dir, BLKIO_THROTTLE_READ_IOPS_DEVICE), device.makeContext(iops, this));
+     }
+ 
+     public Map<Device, Long> getReadIOps() throws IOException {
+@@ -135,7 +135,7 @@ public class BlkioCore implements CgroupCore {
+     }
+ 
+     public void setWriteIOps(Device device, long iops) throws IOException {
+-        CgroupUtils.writeFileByLine(Constants.getDir(this.dir, BLKIO_THROTTLE_WRITE_IOPS_DEVICE), makeContext(device, iops));
++        CgroupUtils.writeFileByLine(Constants.getDir(this.dir, BLKIO_THROTTLE_WRITE_IOPS_DEVICE), device.makeContext(iops, this));
+     }
+ 
+     public Map<Device, Long> getWriteIOps() throws IOException {
+@@ -206,12 +206,6 @@ public class BlkioCore implements CgroupCore {
+         CgroupUtils.writeFileByLine(Constants.getDir(this.dir, BLKIO_RESET_STATS), "1");
+     }
+ 
+-    private String makeContext(Device device, Object data) {
+-        StringBuilder sb = new StringBuilder();
+-        sb.append(device.toString()).append(" ").append(data);
+-        return sb.toString();
+-    }
+-
+     private Map<Device, Map<RecordType, Long>> analyseRecord(List<String> strs) {
+         Map<Device, Map<RecordType, Long>> result = new HashMap<>();
+         for (String str : strs) {
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/nimbus/NimbusData.java b/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/nimbus/NimbusData.java
+index 74ac569..ff8d36a 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/nimbus/NimbusData.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/nimbus/NimbusData.java
+@@ -18,6 +18,8 @@
+ package com.alibaba.jstorm.daemon.nimbus;
+ 
+ import backtype.storm.Config;
++import backtype.storm.generated.AlreadyAliveException;
++import backtype.storm.generated.NotAliveException;
+ import backtype.storm.generated.TopologyTaskHbInfo;
+ import backtype.storm.nimbus.ITopologyActionNotifierPlugin;
+ import backtype.storm.nimbus.NimbusInfo;
+@@ -441,4 +443,22 @@ public class NimbusData {
+     public ConcurrentHashMap<String, Semaphore> getTopologyIdtoSem() {
+         return topologyIdtoSem;
+     }
++
++    /**
++     * check whether the topology is bActive?
++     *
++     * @throws Exception
++     * @param topologyName
++     * @param bActive
++     * @param serviceHandler
++     */
++    public void checkTopologyActive(String topologyName, boolean bActive, ServiceHandler serviceHandler) throws Exception {
++        if (serviceHandler.isTopologyActive(getStormClusterState(), topologyName) != bActive) {
++            if (bActive) {
++                throw new NotAliveException(topologyName + " is not alive");
++            } else {
++                throw new AlreadyAliveException(topologyName + " is already alive");
++            }
++        }
++    }
+ }
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/nimbus/NimbusUtils.java b/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/nimbus/NimbusUtils.java
+index 2001b59..c1e5c17 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/nimbus/NimbusUtils.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/nimbus/NimbusUtils.java
+@@ -363,7 +363,7 @@ public class NimbusUtils {
+             }
+ 
+             taskHB = new TkHbCacheTime();
+-            taskHB.update(taskHbMap.get(taskId));
++            taskHbMap.get(taskId).update(taskHB);
+ 
+             taskHBs.put(taskId, taskHB);
+ 
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/nimbus/ServiceHandler.java b/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/nimbus/ServiceHandler.java
+index 64ecba8..34c983c 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/nimbus/ServiceHandler.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/nimbus/ServiceHandler.java
+@@ -230,7 +230,7 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
+         boolean isUpgrade = ConfigExtension.isUpgradeTopology(serializedConf);
+ 
+         try {
+-            checkTopologyActive(data, topologyName, enableDeploy || isUpgrade);
++            data.checkTopologyActive(topologyName, enableDeploy || isUpgrade, this);
+         } catch (AlreadyAliveException e) {
+             LOG.info(topologyName + " already exists ");
+             throw e;
+@@ -393,7 +393,7 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
+     @Override
+     public void killTopologyWithOpts(String topologyName, KillOptions options) throws TException {
+         try {
+-            checkTopologyActive(data, topologyName, true);
++            data.checkTopologyActive(topologyName, true, this);
+             String topologyId = getTopologyId(topologyName);
+ 
+             Integer wait_amt = null;
+@@ -463,7 +463,7 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
+     @Override
+     public void rebalance(String topologyName, RebalanceOptions options) throws TException {
+         try {
+-            checkTopologyActive(data, topologyName, true);
++            data.checkTopologyActive(topologyName, true, this);
+             Integer wait_amt = null;
+             String jsonConf = null;
+             Boolean reassign = false;
+@@ -1079,7 +1079,7 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
+                             earliest = startTime;
+                         }
+ 
+-                        workerSummary.add_to_tasks(taskComponent);
++                        taskComponent.add_to_tasks(workerSummary);
+                     }
+ 
+                     workerSummary.set_uptime(TimeUtils.time_delta(earliest));
+@@ -1228,7 +1228,7 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
+                     for (TaskError taskError : taskErrorList) {
+                         ErrorInfo errorInfo = new ErrorInfo(taskError.getError(), taskError.getTimSecs(),
+                                 taskError.getLevel(), taskError.getCode());
+-                        taskSummary.add_to_errors(errorInfo);
++                        errorInfo.add_to_errors(taskSummary);
+                         String component = taskToComponent.get(taskId);
+                         componentSummaryMap.get(component).add_to_errors(errorInfo);
+                     }
+@@ -1469,21 +1469,6 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
+     }
+ 
+     /**
+-     * check whether the topology is bActive?
+-     *
+-     * @throws Exception
+-     */
+-    public void checkTopologyActive(NimbusData nimbus, String topologyName, boolean bActive) throws Exception {
+-        if (isTopologyActive(nimbus.getStormClusterState(), topologyName) != bActive) {
+-            if (bActive) {
+-                throw new NotAliveException(topologyName + " is not alive");
+-            } else {
+-                throw new AlreadyAliveException(topologyName + " is already alive");
+-            }
+-        }
+-    }
+-
+-    /**
+      * whether the topology is active by topology name
+      *
+      * @param stormClusterState see Cluster_clj
+@@ -1592,7 +1577,7 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
+             BlobStoreUtils.updateBlob(blobStore, key, blobData);
+             LOG.info("Successfully updated blobstore for topology:{}, key:{}", topologyId, key);
+         } else {
+-            blobStore.createBlob(key, blobData, new SettableBlobMeta());
++            new SettableBlobMeta().createBlob(key, blobData, blobStore);
+             LOG.info("Successfully created blobstore for topology:{}, key:{}", topologyId, key);
+         }
+         if (blobStore instanceof LocalFsBlobStore) {
+@@ -1902,7 +1887,7 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
+     public void updateTopology(String name, String uploadedLocation, String updateConf) throws TException {
+         try {
+             // update jar and conf first
+-            checkTopologyActive(data, name, true);
++            data.checkTopologyActive(name, true, this);
+             String topologyId;
+             StormClusterState stormClusterState = data.getStormClusterState();
+             topologyId = Cluster.get_topology_id(stormClusterState, name);
+@@ -2023,7 +2008,7 @@ public class ServiceHandler implements Iface, Shutdownable, DaemonCommon {
+     @Override
+     public void rollbackTopology(String topologyName) throws TException {
+         try {
+-            checkTopologyActive(data, topologyName, true);
++            data.checkTopologyActive(topologyName, true, this);
+             String topologyId = getTopologyId(topologyName);
+ 
+             StormClusterState clusterState = data.getStormClusterState();
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/nimbus/TopologyAssign.java b/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/nimbus/TopologyAssign.java
+index 7962993..41ff5aa 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/nimbus/TopologyAssign.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/nimbus/TopologyAssign.java
+@@ -392,7 +392,7 @@ public class TopologyAssign implements Runnable {
+             aliveTasks.addAll(allTaskIds);
+             aliveTasks.removeAll(deadTasks);
+ 
+-            unstoppedTasks = getUnstoppedSlots(aliveTasks, supInfos, existingAssignment);
++            unstoppedTasks = existingAssignment.getUnstoppedSlots(aliveTasks, supInfos, this);
+         }
+ 
+         ret.setDeadTaskIds(deadTasks);
+@@ -696,33 +696,6 @@ public class TopologyAssign implements Runnable {
+         return sortedFreeSlots.subList(0, needSlotNum);
+     }
+ 
+-    /**
+-     * Get unstopped slots from alive task list
+-     */
+-    public Set<Integer> getUnstoppedSlots(Set<Integer> aliveTasks, Map<String, SupervisorInfo> supInfos,
+-                                          Assignment existAssignment) {
+-        Set<Integer> ret = new HashSet<>();
+-
+-        Set<ResourceWorkerSlot> oldWorkers = existAssignment.getWorkers();
+-        Set<String> aliveSupervisors = supInfos.keySet();
+-        for (ResourceWorkerSlot worker : oldWorkers) {
+-            for (Integer taskId : worker.getTasks()) {
+-                if (!aliveTasks.contains(taskId)) {
+-                    // task is dead
+-                    continue;
+-                }
+-
+-                String oldTaskSupervisorId = worker.getNodeId();
+-                if (!aliveSupervisors.contains(oldTaskSupervisorId)) {
+-                    // supervisor is dead
+-                    ret.add(taskId);
+-                }
+-            }
+-        }
+-
+-        return ret;
+-    }
+-
+     private Set<ResourceWorkerSlot> getUnstoppedWorkers(Set<Integer> aliveTasks, Assignment existAssignment) {
+         Set<ResourceWorkerSlot> ret = new HashSet<>();
+         for (ResourceWorkerSlot worker : existAssignment.getWorkers()) {
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/nimbus/metric/update/UpdateEvent.java b/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/nimbus/metric/update/UpdateEvent.java
+index 57651ab..74007fc 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/nimbus/metric/update/UpdateEvent.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/nimbus/metric/update/UpdateEvent.java
+@@ -160,7 +160,7 @@ public class UpdateEvent extends MetricEvent {
+ 
+         // save to local cache, waiting for merging
+         TopologyMetricContext clusterTpMetricContext = context.getClusterTopologyMetricContext();
+-        clusterTpMetricContext.addToMemCache(topologyId, clusterMetrics);
++        clusterMetrics.addToMemCache(topologyId, clusterTpMetricContext);
+         context.registerMetrics(JStormMetrics.CLUSTER_METRIC_KEY, metricNames);
+ 
+     }
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/supervisor/Supervisor.java b/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/supervisor/Supervisor.java
+index 9bf4e5a..818b102 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/supervisor/Supervisor.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/supervisor/Supervisor.java
+@@ -182,11 +182,6 @@ public class Supervisor {
+         supervisor.shutdown();
+     }
+ 
+-    private void initShutdownHook(SupervisorManger supervisor) {
+-        Runtime.getRuntime().addShutdownHook(new Thread(supervisor));
+-        //JStormUtils.registerJStormSignalHandler();
+-    }
+-
+     private void createPid(Map conf) throws Exception {
+         String pidDir = StormConfig.supervisorPids(conf);
+ 
+@@ -209,7 +204,7 @@ public class Supervisor {
+ 
+             JStormUtils.redirectOutput("/dev/null");
+ 
+-            initShutdownHook(supervisorManager);
++            supervisorManager.initShutdownHook(this);
+ 
+             while (!supervisorManager.isFinishShutdown()) {
+                 try {
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/supervisor/SupervisorManger.java b/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/supervisor/SupervisorManger.java
+index b4a3a3d..c8c2a81 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/supervisor/SupervisorManger.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/supervisor/SupervisorManger.java
+@@ -264,4 +264,9 @@ public class SupervisorManger extends ShutdownWork implements SupervisorDaemon,
+     public boolean isFinishShutdown() {
+         return isFinishShutdown;
+     }
++
++    public void initShutdownHook(Supervisor supervisor) {
++        Runtime.getRuntime().addShutdownHook(new Thread(this));
++        //JStormUtils.registerJStormSignalHandler();
++    }
+ }
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/worker/WorkerData.java b/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/worker/WorkerData.java
+index 7d28624..ee6a618 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/worker/WorkerData.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/daemon/worker/WorkerData.java
+@@ -49,7 +49,9 @@ import com.alibaba.jstorm.daemon.worker.timer.TimerTrigger;
+ import com.alibaba.jstorm.metric.*;
+ import com.alibaba.jstorm.schedule.Assignment;
+ import com.alibaba.jstorm.schedule.default_assign.ResourceWorkerSlot;
++import com.alibaba.jstorm.task.Task;
+ import com.alibaba.jstorm.task.TaskShutdownDameon;
++import com.alibaba.jstorm.task.TaskTransfer;
+ import com.alibaba.jstorm.utils.JStormServerUtils;
+ import com.alibaba.jstorm.utils.JStormUtils;
+ import com.alibaba.jstorm.utils.LogUtils;
+@@ -846,4 +848,13 @@ public class WorkerData {
+     public FlusherPool getFlusherPool() {
+         return flusherPool;
+     }
++
++    public TaskTransfer mkTaskSending(Task task) {
++        // sending tuple's serializer
++        KryoTupleSerializer serializer = new KryoTupleSerializer(
++                getStormConf(), task.getTopologyContext().getRawTopology());
++        String taskName = JStormServerUtils.getName(task.getComponentId(), task.getTaskId());
++        // Task sending all tuples through this Object
++        return new TaskTransfer(task, taskName, serializer, task.getTaskStatus(), this, task.getTopologyContext());
++    }
+ }
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/metric/MetricType.java b/jstorm-core/src/main/java/com/alibaba/jstorm/metric/MetricType.java
+index 473a94f..6d74107 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/metric/MetricType.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/metric/MetricType.java
+@@ -17,6 +17,8 @@
+  */
+ package com.alibaba.jstorm.metric;
+ 
++import com.alibaba.jstorm.task.TaskBaseMetric;
++
+ import java.util.HashMap;
+ import java.util.Map;
+ 
+@@ -64,4 +66,9 @@ public enum MetricType {
+     public static MetricType parse(int t) {
+         return typeMap.get(t);
+     }
++
++    public void update(final String streamId, final String name, final int count, TaskBaseMetric taskBaseMetric) {
++        if (count > 0)
++            taskBaseMetric.update(streamId, name, count, this, true);
++    }
+ }
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/metric/TopologyMetricContext.java b/jstorm-core/src/main/java/com/alibaba/jstorm/metric/TopologyMetricContext.java
+index 7178eb2..8e0acb9 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/metric/TopologyMetricContext.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/metric/TopologyMetricContext.java
+@@ -133,11 +133,6 @@ public class TopologyMetricContext {
+         return memCache;
+     }
+ 
+-    public void addToMemCache(String workerSlot, MetricInfo metricInfo) {
+-        memCache.put(workerSlot, metricInfo);
+-        LOG.info("update mem cache, worker:{}, total uploaded:{}", workerSlot, memCache.size());
+-    }
+-
+     public boolean readyToUpload() {
+         return memCache.size() >= workerSet.size();
+     }
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/schedule/Assignment.java b/jstorm-core/src/main/java/com/alibaba/jstorm/schedule/Assignment.java
+index f14cbe3..fd7a2bc 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/schedule/Assignment.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/schedule/Assignment.java
+@@ -23,6 +23,8 @@ import java.util.HashSet;
+ import java.util.Map;
+ import java.util.Set;
+ 
++import com.alibaba.jstorm.daemon.nimbus.TopologyAssign;
++import com.alibaba.jstorm.daemon.supervisor.SupervisorInfo;
+ import org.apache.commons.lang.builder.ToStringBuilder;
+ import org.apache.commons.lang.builder.ToStringStyle;
+ 
+@@ -38,6 +40,35 @@ import com.alibaba.jstorm.schedule.default_assign.ResourceWorkerSlot;
+  * @author Lixin/Longda
+  */
+ public class Assignment implements Serializable {
++    /**
++     * Get unstopped slots from alive task list
++     * @param aliveTasks
++     * @param supInfos
++     * @param topologyAssign
++     */
++    public Set<Integer> getUnstoppedSlots(Set<Integer> aliveTasks, Map<String, SupervisorInfo> supInfos, TopologyAssign topologyAssign) {
++        Set<Integer> ret = new HashSet<>();
++
++        Set<ResourceWorkerSlot> oldWorkers = getWorkers();
++        Set<String> aliveSupervisors = supInfos.keySet();
++        for (ResourceWorkerSlot worker : oldWorkers) {
++            for (Integer taskId : worker.getTasks()) {
++                if (!aliveTasks.contains(taskId)) {
++                    // task is dead
++                    continue;
++                }
++
++                String oldTaskSupervisorId = worker.getNodeId();
++                if (!aliveSupervisors.contains(oldTaskSupervisorId)) {
++                    // supervisor is dead
++                    ret.add(taskId);
++                }
++            }
++        }
++
++        return ret;
++    }
++
+     public enum AssignmentType {
+         Assign, UpdateTopology, ScaleTopology
+     }
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/schedule/default_assign/DefaultTopologyAssignContext.java b/jstorm-core/src/main/java/com/alibaba/jstorm/schedule/default_assign/DefaultTopologyAssignContext.java
+index 1b26273..0fd9ecf 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/schedule/default_assign/DefaultTopologyAssignContext.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/schedule/default_assign/DefaultTopologyAssignContext.java
+@@ -230,4 +230,21 @@ public class DefaultTopologyAssignContext extends TopologyAssignContext {
+     public int getReserveWorkerNum() {
+         return reserveWorkerNum;
+     }
++
++    public Set<Integer> getNeedAssignTasks(DefaultTopologyScheduler defaultTopologyScheduler) {
++        Set<Integer> needAssign = new HashSet<>();
++
++        int assignType = getAssignType();
++        if (assignType == ASSIGN_TYPE_NEW) {
++            needAssign.addAll(getAllTaskIds());
++        } else if (assignType == ASSIGN_TYPE_REBALANCE) {
++            needAssign.addAll(getAllTaskIds());
++            needAssign.removeAll(getUnstoppedTaskIds());
++        } else { // ASSIGN_TYPE_MONITOR
++            Set<Integer> deadTasks = getDeadTaskIds();
++            needAssign.addAll(deadTasks);
++        }
++
++        return needAssign;
++    }
+ }
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/schedule/default_assign/DefaultTopologyScheduler.java b/jstorm-core/src/main/java/com/alibaba/jstorm/schedule/default_assign/DefaultTopologyScheduler.java
+index fe56486..6851e63 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/schedule/default_assign/DefaultTopologyScheduler.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/schedule/default_assign/DefaultTopologyScheduler.java
+@@ -70,23 +70,6 @@ public class DefaultTopologyScheduler implements IToplogyScheduler {
+         }
+     }
+ 
+-    private Set<Integer> getNeedAssignTasks(DefaultTopologyAssignContext context) {
+-        Set<Integer> needAssign = new HashSet<>();
+-
+-        int assignType = context.getAssignType();
+-        if (assignType == TopologyAssignContext.ASSIGN_TYPE_NEW) {
+-            needAssign.addAll(context.getAllTaskIds());
+-        } else if (assignType == TopologyAssignContext.ASSIGN_TYPE_REBALANCE) {
+-            needAssign.addAll(context.getAllTaskIds());
+-            needAssign.removeAll(context.getUnstoppedTaskIds());
+-        } else { // ASSIGN_TYPE_MONITOR
+-            Set<Integer> deadTasks = context.getDeadTaskIds();
+-            needAssign.addAll(deadTasks);
+-        }
+-
+-        return needAssign;
+-    }
+-
+     /**
+      * Get the task Map which the task is alive and will be kept only when type is ASSIGN_TYPE_MONITOR, it is valid
+      *
+@@ -135,7 +118,7 @@ public class DefaultTopologyScheduler implements IToplogyScheduler {
+         LOG.info("Dead tasks:" + defaultContext.getDeadTaskIds());
+         LOG.info("Unstopped tasks:" + defaultContext.getUnstoppedTaskIds());
+ 
+-        Set<Integer> needAssignTasks = getNeedAssignTasks(defaultContext);
++        Set<Integer> needAssignTasks = defaultContext.getNeedAssignTasks(this);
+ 
+         Set<ResourceWorkerSlot> keepAssigns = getKeepAssign(defaultContext, needAssignTasks);
+ 
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/schedule/default_assign/ResourceWorkerSlot.java b/jstorm-core/src/main/java/com/alibaba/jstorm/schedule/default_assign/ResourceWorkerSlot.java
+index d19eafb..6d19785 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/schedule/default_assign/ResourceWorkerSlot.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/schedule/default_assign/ResourceWorkerSlot.java
+@@ -26,6 +26,7 @@ import java.util.Map;
+ import java.util.Map.Entry;
+ import java.util.Set;
+ 
++import com.alibaba.jstorm.daemon.supervisor.SupervisorInfo;
+ import org.apache.commons.lang.builder.ToStringBuilder;
+ import org.apache.commons.lang.builder.ToStringStyle;
+ import org.slf4j.Logger;
+@@ -154,4 +155,14 @@ public class ResourceWorkerSlot extends WorkerSlot implements Serializable {
+     public String getHostPort() {
+         return hostname + ":" + getPort();
+     }
++
++    public void putWorkerToSupervisor(SupervisorInfo supervisor, WorkerScheduler workerScheduler) {
++        int port = getPort();
++        if (!supervisor.getAvailableWorkerPorts().contains(getPort())) {
++            port = supervisor.getAvailableWorkerPorts().iterator().next();
++        }
++        setPort(port);
++        supervisor.getAvailableWorkerPorts().remove(port);
++        setNodeId(supervisor.getSupervisorId());
++    }
+ }
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/schedule/default_assign/WorkerScheduler.java b/jstorm-core/src/main/java/com/alibaba/jstorm/schedule/default_assign/WorkerScheduler.java
+index 3f8c376..cfd13da 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/schedule/default_assign/WorkerScheduler.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/schedule/default_assign/WorkerScheduler.java
+@@ -132,7 +132,7 @@ public class WorkerScheduler {
+                 for (SupervisorInfo supervisor : supervisors) {
+                     if (NetWorkUtils.equals(supervisor.getHostName(), worker.getHostname())
+                             && supervisor.getAvailableWorkerPorts().size() > 0) {
+-                        putWorkerToSupervisor(supervisor, worker);
++                        worker.putWorkerToSupervisor(supervisor, this);
+                         break;
+                     }
+                 }
+@@ -151,16 +151,6 @@ public class WorkerScheduler {
+         putWorkerToSupervisor(assignedWorkers, supervisors);
+     }
+ 
+-    private void putWorkerToSupervisor(SupervisorInfo supervisor, ResourceWorkerSlot worker) {
+-        int port = worker.getPort();
+-        if (!supervisor.getAvailableWorkerPorts().contains(worker.getPort())) {
+-            port = supervisor.getAvailableWorkerPorts().iterator().next();
+-        }
+-        worker.setPort(port);
+-        supervisor.getAvailableWorkerPorts().remove(port);
+-        worker.setNodeId(supervisor.getSupervisorId());
+-    }
+-
+     private void putWorkerToSupervisor(List<ResourceWorkerSlot> assignedWorkers, List<SupervisorInfo> supervisors) {
+         int allUsedPorts = 0;
+         for (SupervisorInfo supervisor : supervisors) {
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/task/Task.java b/jstorm-core/src/main/java/com/alibaba/jstorm/task/Task.java
+index 65bd067..4ef2930 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/task/Task.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/task/Task.java
+@@ -22,7 +22,6 @@ import backtype.storm.hooks.ITaskHook;
+ import backtype.storm.messaging.IConnection;
+ import backtype.storm.messaging.IContext;
+ import backtype.storm.scheduler.WorkerSlot;
+-import backtype.storm.serialization.KryoTupleSerializer;
+ import backtype.storm.spout.ISpout;
+ import backtype.storm.task.IBolt;
+ import backtype.storm.task.TopologyContext;
+@@ -242,7 +241,7 @@ public class Task implements Runnable {
+ 
+         // create thread to get tuple from zeroMQ,
+         // and pass the tuple to bolt/spout
+-        taskTransfer = mkTaskSending(workerData);
++        taskTransfer = workerData.mkTaskSending(this);
+         RunnableCallback baseExecutor = prepareExecutor();
+         //set baseExecutors for update
+         setBaseExecutors((BaseExecutors) baseExecutor);
+@@ -259,15 +258,6 @@ public class Task implements Runnable {
+         return taskShutdownDameon;
+     }
+ 
+-    private TaskTransfer mkTaskSending(WorkerData workerData) {
+-        // sending tuple's serializer
+-        KryoTupleSerializer serializer = new KryoTupleSerializer(
+-                workerData.getStormConf(), topologyContext.getRawTopology());
+-        String taskName = JStormServerUtils.getName(componentId, taskId);
+-        // Task sending all tuples through this Object
+-        return new TaskTransfer(this, taskName, serializer, taskStatus, workerData, topologyContext);
+-    }
+-
+     public TaskShutdownDameon getShutdown(List<AsyncLoopThread> allThreads, RunnableCallback baseExecutor) {
+         AsyncLoopThread ackerThread;
+         if (baseExecutor instanceof SpoutExecutors) {
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/task/TaskBaseMetric.java b/jstorm-core/src/main/java/com/alibaba/jstorm/task/TaskBaseMetric.java
+index cc48c52..00102f1 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/task/TaskBaseMetric.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/task/TaskBaseMetric.java
+@@ -105,15 +105,10 @@ public class TaskBaseMetric implements Serializable {
+         update(streamId, name, value, metricType, true);
+     }
+ 
+-    public void update(final String streamId, final String name, final int count, final MetricType metricType) {
+-        if (count > 0)
+-            update(streamId, name, count, metricType, true);
+-    }
+-
+     public void send_tuple(String stream, int num_out_tasks) {
+         if (JStormMetrics.enabled && num_out_tasks > 0) {
+-            update(stream, MetricDef.EMMITTED_NUM, num_out_tasks, MetricType.COUNTER);
+-            update(stream, MetricDef.SEND_TPS, num_out_tasks, MetricType.METER);
++            MetricType.COUNTER.update(stream, MetricDef.EMMITTED_NUM, num_out_tasks, this);
++            MetricType.METER.update(stream, MetricDef.SEND_TPS, num_out_tasks, this);
+         }
+     }
+ 
+@@ -123,7 +118,7 @@ public class TaskBaseMetric implements Serializable {
+ 
+     public void recv_tuple(String component, String stream, int tupleNum) {
+         if (JStormMetrics.enabled) {
+-            update(stream, fastConcat(component, MetricDef.RECV_TPS), tupleNum, MetricType.METER);
++            MetricType.METER.update(stream, fastConcat(component, MetricDef.RECV_TPS), tupleNum, this);
+         }
+     }
+ 
+@@ -139,7 +134,7 @@ public class TaskBaseMetric implements Serializable {
+ 
+     public void bolt_acked_tuple(String component, String stream, int tupleNum) {
+         if (JStormMetrics.enabled) {
+-            update(stream, MetricDef.ACKED_NUM, tupleNum, MetricType.COUNTER);
++            MetricType.COUNTER.update(stream, MetricDef.ACKED_NUM, tupleNum, this);
+         }
+     }
+ 
+@@ -156,19 +151,19 @@ public class TaskBaseMetric implements Serializable {
+     @SuppressWarnings("unused")
+     public void bolt_failed_tuple(String component, String stream) {
+         if (JStormMetrics.enabled) {
+-            update(stream, MetricDef.FAILED_NUM, 1, MetricType.COUNTER);
++            MetricType.COUNTER.update(stream, MetricDef.FAILED_NUM, 1, this);
+         }
+     }
+ 
+     public void boltFailedTuple(String component, String stream, int count) {
+         if (JStormMetrics.enabled) {
+-            update(stream, MetricDef.FAILED_NUM, count, MetricType.COUNTER);
++            MetricType.COUNTER.update(stream, MetricDef.FAILED_NUM, count, this);
+         }
+     }
+ 
+     public void spout_acked_tuple(String stream, long latencyStart, long lifeCycleStart, long endTime) {
+         if (JStormMetrics.enabled) {
+-            update(stream, MetricDef.ACKED_NUM, 1, MetricType.COUNTER);
++            MetricType.COUNTER.update(stream, MetricDef.ACKED_NUM, 1, this);
+             updateTime(stream, MetricDef.PROCESS_LATENCY, latencyStart, endTime, false);
+             updateTime(stream, fastConcat(Common.ACKER_COMPONENT_ID, MetricDef.TUPLE_LIEF_CYCLE), lifeCycleStart, endTime, false);
+         }
+@@ -176,7 +171,7 @@ public class TaskBaseMetric implements Serializable {
+ 
+     public void spoutAckedTuple(String stream, int count) {
+         if (JStormMetrics.enabled) {
+-            update(stream, MetricDef.ACKED_NUM, count, MetricType.COUNTER);
++            MetricType.COUNTER.update(stream, MetricDef.ACKED_NUM, count, this);
+         }
+     }
+ 
+@@ -187,13 +182,13 @@ public class TaskBaseMetric implements Serializable {
+ 
+     public void spout_failed_tuple(String stream) {
+         if (JStormMetrics.enabled) {
+-            update(stream, MetricDef.FAILED_NUM, 1, MetricType.COUNTER);
++            MetricType.COUNTER.update(stream, MetricDef.FAILED_NUM, 1, this);
+         }
+     }
+ 
+     public void spoutFailedTuple(String stream, int count) {
+         if (JStormMetrics.enabled) {
+-            update(stream, MetricDef.FAILED_NUM, count, MetricType.COUNTER);
++            MetricType.COUNTER.update(stream, MetricDef.FAILED_NUM, count, this);
+         }
+     }
+ 
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/task/TkHbCacheTime.java b/jstorm-core/src/main/java/com/alibaba/jstorm/task/TkHbCacheTime.java
+index 793d1c5..75e14e9 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/task/TkHbCacheTime.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/task/TkHbCacheTime.java
+@@ -17,10 +17,6 @@
+  */
+ package com.alibaba.jstorm.task;
+ 
+-import backtype.storm.generated.TaskHeartbeat;
+-
+-import com.alibaba.jstorm.utils.TimeUtils;
+-
+ /**
+  * TkHbCacheTime is used in taskHeartCache (Map<topologyId, Map<taskId, Map<tkHbCacheTime, time>>>)
+  */
+@@ -54,12 +50,4 @@ public class TkHbCacheTime {
+         this.taskAssignedTime = taskAssignedTime;
+     }
+ 
+-    public void update(TaskHeartbeat taskHeartbeat) {
+-        if (taskHeartbeat != null) {
+-            this.nimbusTime = TimeUtils.current_time_secs();
+-            this.taskReportedTime = taskHeartbeat.get_time();
+-            this.taskAssignedTime = taskHeartbeat.get_time() - taskHeartbeat.get_uptime();
+-        }
+-    }
+-
+ }
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/task/master/metrics/MetricsUpdater.java b/jstorm-core/src/main/java/com/alibaba/jstorm/task/master/metrics/MetricsUpdater.java
+index 369f154..9e35a38 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/task/master/metrics/MetricsUpdater.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/task/master/metrics/MetricsUpdater.java
+@@ -59,7 +59,7 @@ public class MetricsUpdater implements TMHandler {
+     private void updateMetrics(Tuple input) {
+         String workerSlot = (String) input.getValueByField(TopologyMaster.FIELD_METRIC_WORKER);
+         WorkerUploadMetrics metrics = (WorkerUploadMetrics) input.getValueByField(TopologyMaster.FIELD_METRIC_METRICS);
+-        topologyMetricContext.addToMemCache(workerSlot, metrics.get_allMetrics());
++        metrics.get_allMetrics().addToMemCache(workerSlot, topologyMetricContext);
+         metricLogger.info("received metrics from:{}, size:{}", workerSlot, metrics.get_allMetrics().get_metrics_size());
+     }
+ 
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/transactional/TransactionTopologyBuilder.java b/jstorm-core/src/main/java/com/alibaba/jstorm/transactional/TransactionTopologyBuilder.java
+index c16f32e..18b7017 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/transactional/TransactionTopologyBuilder.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/transactional/TransactionTopologyBuilder.java
+@@ -203,9 +203,9 @@ public class TransactionTopologyBuilder extends TopologyBuilder {
+             Set<String> downstreamBolts = upToDownstreamComponentsMap.get(componentId);
+             if (downstreamBolts != null && !downstreamBolts.contains(_boltId)) {
+                 downstreamBolts.add(_boltId);
+-                _commons.get(_boltId).put_to_inputs(new GlobalStreamId(componentId, TransactionCommon.BARRIER_STREAM_ID), Grouping.all(new NullStruct()));
++                new GlobalStreamId(componentId, TransactionCommon.BARRIER_STREAM_ID).put_to_inputs(Grouping.all(new NullStruct()), _commons.get(_boltId));
+             }
+-            _commons.get(_boltId).put_to_inputs(new GlobalStreamId(componentId, streamId), grouping);
++            new GlobalStreamId(componentId, streamId).put_to_inputs(grouping, _commons.get(_boltId));
+             //return this;
+             return super.grouping(componentId, streamId, grouping);
+         }
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/transactional/state/SnapshotStateMaster.java b/jstorm-core/src/main/java/com/alibaba/jstorm/transactional/state/SnapshotStateMaster.java
+index 0ef15f8..8a02980 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/transactional/state/SnapshotStateMaster.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/transactional/state/SnapshotStateMaster.java
+@@ -35,7 +35,6 @@ import com.alibaba.jstorm.transactional.state.TransactionState.State;
+ 
+ import java.io.Closeable;
+ import java.io.IOException;
+-import java.util.HashMap;
+ import java.util.HashSet;
+ import java.util.Iterator;
+ import java.util.Map;
+@@ -99,10 +98,10 @@ public class SnapshotStateMaster {
+         Set<String> endBolts = TransactionCommon.getEndBolts(topology);
+         Set<String> downstreamComponents = new HashSet<>(topology.get_bolts().keySet());
+ 
+-        spouts = componentToComponentTasks(context, spoutIds);
+-        statefulBolts = componentToComponentTasks(context, statefulBoltIds);
++        spouts = context.componentToComponentTasks(spoutIds, this);
++        statefulBolts = context.componentToComponentTasks(statefulBoltIds, this);
+         downstreamComponents.removeAll(statefulBoltIds);
+-        nonStatefulBoltTasks = componentToComponentTasks(context, downstreamComponents);
++        nonStatefulBoltTasks = context.componentToComponentTasks(downstreamComponents, this);
+         endBoltTasks = new HashSet<Integer>(context.getComponentsTasks(endBolts));
+         snapshotState = new SnapshotState(context, spouts, statefulBolts, nonStatefulBoltTasks, endBoltTasks, stateOperator);
+ 
+@@ -124,14 +123,6 @@ public class SnapshotStateMaster {
+         this.lock = new ReentrantLock(true);
+     }
+ 
+-    private Map<String, Set<Integer>> componentToComponentTasks(TopologyContext context, Set<String> components) {
+-        Map<String, Set<Integer>> ret = new HashMap<>();
+-        for (String component : components) {
+-            ret.put(component, new HashSet<Integer>(context.getComponentTasks(component)));
+-        }
+-        return ret;
+-    }
+-
+     public void process(Tuple tuple) {
+         try {
+             lock.lock();
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/window/TimeWindow.java b/jstorm-core/src/main/java/com/alibaba/jstorm/window/TimeWindow.java
+index 2b8d286..fe2711d 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/window/TimeWindow.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/window/TimeWindow.java
+@@ -17,7 +17,10 @@
+  */
+ package com.alibaba.jstorm.window;
+ 
++import backtype.storm.tuple.Tuple;
++
+ import java.io.Serializable;
++import java.util.Map;
+ 
+ /**
+  * A {@link TimeWindow} that represents a time interval from {@code start} (inclusive) to
+@@ -91,4 +94,16 @@ public class TimeWindow implements Serializable {
+         return new TimeWindow(Math.min(start, other.start), Math.max(end, other.end));
+     }
+ 
++    public void createTriggerForWindow(final WindowAssigner<Tuple> assigner,
++                                       final Map<TimeWindow, Trigger<Tuple>> triggerMap, WindowedBoltExecutor windowedBoltExecutor) {
++        if (assigner instanceof SlidingCountWindows || assigner instanceof TumblingCountWindows) {
++            triggerMap.put(this, CountTrigger.<Tuple>of(getEnd() - getStart()));
++        } else if (WindowAssigner.isProcessingTime(assigner)) {
++            triggerMap.put(this, ProcessingTimeTrigger.<Tuple>create());
++        } else if (WindowAssigner.isEventTime(assigner)) {
++            triggerMap.put(this, EventTimeTrigger.<Tuple>create());
++        } else if (WindowAssigner.isIngestionTime(assigner)) {
++            triggerMap.put(this, IngestionTimeTrigger.<Tuple>create());
++        }
++    }
+ }
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/window/TransactionalWindowedBoltExecutor.java b/jstorm-core/src/main/java/com/alibaba/jstorm/window/TransactionalWindowedBoltExecutor.java
+index 39f4ec6..456569c 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/window/TransactionalWindowedBoltExecutor.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/window/TransactionalWindowedBoltExecutor.java
+@@ -62,10 +62,10 @@ public class TransactionalWindowedBoltExecutor extends WindowedBoltExecutor impl
+             this.userWindowToStateWindow = (ConcurrentHashMap<TimeWindow, TimeWindow>) stateList.get(3);
+ 
+             for (TimeWindow window : this.userWindowStates.keySet()) {
+-                createTriggerForWindow(windowAssigner, window, windowToTriggers);
++                window.createTriggerForWindow(windowAssigner, windowToTriggers, TransactionalWindowedBoltExecutor.this);
+             }
+             for (TimeWindow window : this.accuUserWindowStates.keySet()) {
+-                createTriggerForWindow(stateWindowAssigner, window, windowToTriggers);
++                window.createTriggerForWindow(stateWindowAssigner, windowToTriggers, TransactionalWindowedBoltExecutor.this);
+             }
+ 
+             // delete timers that don't belong to current active windows
+diff --git a/jstorm-core/src/main/java/com/alibaba/jstorm/window/WindowedBoltExecutor.java b/jstorm-core/src/main/java/com/alibaba/jstorm/window/WindowedBoltExecutor.java
+index 157847f..a4e6a60 100644
+--- a/jstorm-core/src/main/java/com/alibaba/jstorm/window/WindowedBoltExecutor.java
++++ b/jstorm-core/src/main/java/com/alibaba/jstorm/window/WindowedBoltExecutor.java
+@@ -283,13 +283,13 @@ public class WindowedBoltExecutor implements IRichBolt, Triggerable {
+                     accuUserWindowStates.put(stateWindow, windowState);
+                 }
+                 if (!windowToTriggers.containsKey(window)) {
+-                    createTriggerForWindow(windowAssigner, window, windowToTriggers);
++                    window.createTriggerForWindow(windowAssigner, windowToTriggers, this);
+                 }
+                 userWindowToStateWindow.putIfAbsent(window, stateWindow);
+             } else {
+                 windowState = userWindowStates.get(window);
+                 if (windowState == null) {
+-                    createTriggerForWindow(windowAssigner, window, windowToTriggers);
++                    window.createTriggerForWindow(windowAssigner, windowToTriggers, this);
+ 
+                     windowState = bolt.initWindowState(window);
+                     userWindowStates.put(window, windowState);
+@@ -323,7 +323,7 @@ public class WindowedBoltExecutor implements IRichBolt, Triggerable {
+                     LOG.debug("merging windows, win1:{}, win2:{}, merged:{}",
+                             oldWindow, sessionWindow, mergedWindow);
+                     if (!mergedWindow.equals(sessionWindow) && !mergedWindow.equals(oldWindow)) {
+-                        createTriggerForWindow(windowAssigner, mergedWindow, windowToTriggers);
++                        mergedWindow.createTriggerForWindow(windowAssigner, windowToTriggers, this);
+                     }
+ 
+                     Object state1 = userWindowStates.get(sessionWindow);
+@@ -413,19 +413,6 @@ public class WindowedBoltExecutor implements IRichBolt, Triggerable {
+         }
+     }
+ 
+-    protected void createTriggerForWindow(final WindowAssigner<Tuple> assigner, final TimeWindow window,
+-                                          final Map<TimeWindow, Trigger<Tuple>> triggerMap) {
+-        if (assigner instanceof SlidingCountWindows || assigner instanceof TumblingCountWindows) {
+-            triggerMap.put(window, CountTrigger.<Tuple>of(window.getEnd() - window.getStart()));
+-        } else if (WindowAssigner.isProcessingTime(assigner)) {
+-            triggerMap.put(window, ProcessingTimeTrigger.<Tuple>create());
+-        } else if (WindowAssigner.isEventTime(assigner)) {
+-            triggerMap.put(window, EventTimeTrigger.<Tuple>create());
+-        } else if (WindowAssigner.isIngestionTime(assigner)) {
+-            triggerMap.put(window, IngestionTimeTrigger.<Tuple>create());
+-        }
+-    }
+-
+     /**
+      * merges two windows, if there's an overlap between two windows, return merged window;
+      * otherwise return the new window itself.
+diff --git a/jstorm-core/src/main/java/storm/trident/fluent/GroupedStream.java b/jstorm-core/src/main/java/storm/trident/fluent/GroupedStream.java
+index 5caa587..00cce77 100644
+--- a/jstorm-core/src/main/java/storm/trident/fluent/GroupedStream.java
++++ b/jstorm-core/src/main/java/storm/trident/fluent/GroupedStream.java
+@@ -51,11 +51,7 @@ public class GroupedStream implements IAggregatableStream, GlobalAggregationSche
+     }
+ 
+     public Stream aggregate(Aggregator agg, Fields functionFields) {
+-        return aggregate(null, agg, functionFields);
+-    }
+-
+-    public Stream aggregate(Fields inputFields, Aggregator agg, Fields functionFields) {
+-        return new ChainedAggregatorDeclarer(this, this).aggregate(inputFields, agg, functionFields).chainEnd();
++        return null.aggregate(agg, functionFields, this);
+     }
+ 
+     public Stream aggregate(CombinerAggregator agg, Fields functionFields) {
+diff --git a/jstorm-core/src/main/java/storm/trident/graph/GraphGrouper.java b/jstorm-core/src/main/java/storm/trident/graph/GraphGrouper.java
+index 30e7df5..eb48708 100644
+--- a/jstorm-core/src/main/java/storm/trident/graph/GraphGrouper.java
++++ b/jstorm-core/src/main/java/storm/trident/graph/GraphGrouper.java
+@@ -62,7 +62,7 @@ public class GraphGrouper {
+         while (somethingHappened) {
+             somethingHappened = false;
+             for (Group g : currGroups) {
+-                Collection<Group> outgoingGroups = outgoingGroups(g);
++                Collection<Group> outgoingGroups = g.outgoingGroups(this);
+                 if (outgoingGroups.size() == 1) {
+                     Group out = outgoingGroups.iterator().next();
+                     if (out != null) {
+@@ -95,17 +95,6 @@ public class GraphGrouper {
+         }
+     }
+ 
+-    public Collection<Group> outgoingGroups(Group g) {
+-        Set<Group> ret = new HashSet<>();
+-        for(Node n: g.outgoingNodes()) {
+-            Group other = nodeGroup(n);
+-            if (other == null || !other.equals(g)) {
+-                ret.add(other);
+-            }
+-        }
+-        return ret;
+-    }
+-
+     public Collection<Group> incomingGroups(Group g) {
+         Set<Group> ret = new HashSet<>();
+         for(Node n: g.incomingNodes()) {
+diff --git a/jstorm-core/src/main/java/storm/trident/graph/Group.java b/jstorm-core/src/main/java/storm/trident/graph/Group.java
+index 7bc4af6..f6a36b1 100644
+--- a/jstorm-core/src/main/java/storm/trident/graph/Group.java
++++ b/jstorm-core/src/main/java/storm/trident/graph/Group.java
+@@ -17,13 +17,8 @@
+  */
+ package storm.trident.graph;
+ 
+-import java.util.Arrays;
+-import java.util.HashMap;
+-import java.util.HashSet;
+-import java.util.List;
+-import java.util.Map;
+-import java.util.Set;
+-import java.util.UUID;
++import java.util.*;
++
+ import org.jgrapht.DirectedGraph;
+ 
+ import storm.trident.operation.ITridentResource;
+@@ -114,4 +109,15 @@ public class Group implements ITridentResource {
+     public String toString() {
+         return nodes.toString();
+     }
++
++    public Collection<Group> outgoingGroups(GraphGrouper graphGrouper) {
++        Set<Group> ret = new HashSet<>();
++        for(Node n: outgoingNodes()) {
++            Group other = graphGrouper.nodeGroup(n);
++            if (other == null || !other.equals(this)) {
++                ret.add(other);
++            }
++        }
++        return ret;
++    }
+ }
+diff --git a/jstorm-on-yarn/src/main/java/com/alibaba/jstorm/yarn/appmaster/JstormMaster.java b/jstorm-on-yarn/src/main/java/com/alibaba/jstorm/yarn/appmaster/JstormMaster.java
+index 8ba318d..e807a2e 100644
+--- a/jstorm-on-yarn/src/main/java/com/alibaba/jstorm/yarn/appmaster/JstormMaster.java
++++ b/jstorm-on-yarn/src/main/java/com/alibaba/jstorm/yarn/appmaster/JstormMaster.java
+@@ -17,12 +17,7 @@
+  */
+ package com.alibaba.jstorm.yarn.appmaster;
+ 
+-import java.io.BufferedReader;
+-import java.io.DataInputStream;
+-import java.io.File;
+-import java.io.FileInputStream;
+ import java.io.IOException;
+-import java.io.StringReader;
+ import java.lang.reflect.UndeclaredThrowableException;
+ import java.net.*;
+ import java.nio.ByteBuffer;
+@@ -33,9 +28,10 @@ import java.util.concurrent.ConcurrentMap;
+ import java.util.concurrent.LinkedBlockingQueue;
+ 
+ import com.alibaba.jstorm.yarn.constants.JOYConstants;
+-import com.alibaba.jstorm.yarn.Log4jPropertyHelper;
+ import com.alibaba.jstorm.yarn.container.ExecutorLoader;
+ import com.alibaba.jstorm.yarn.context.JstormMasterContext;
++import com.alibaba.jstorm.yarn.generated.JstormAM;
++import com.alibaba.jstorm.yarn.handler.JstormAMHandler;
+ import com.alibaba.jstorm.yarn.model.DSEntity;
+ import com.alibaba.jstorm.yarn.model.DSEvent;
+ import com.alibaba.jstorm.yarn.model.STARTType;
+@@ -50,14 +46,11 @@ import org.apache.commons.cli.Options;
+ import org.apache.commons.cli.ParseException;
+ import org.apache.commons.logging.Log;
+ import org.apache.commons.logging.LogFactory;
+-import org.apache.hadoop.classification.InterfaceAudience;
+-import org.apache.hadoop.classification.InterfaceStability;
+ import org.apache.hadoop.conf.Configuration;
+ import org.apache.hadoop.fs.FileStatus;
+ import org.apache.hadoop.fs.FileSystem;
+ import org.apache.hadoop.fs.Path;
+ import org.apache.hadoop.io.DataOutputBuffer;
+-import org.apache.hadoop.io.IOUtils;
+ import org.apache.hadoop.net.NetUtils;
+ import org.apache.hadoop.registry.client.api.BindFlags;
+ import org.apache.hadoop.registry.client.api.RegistryOperations;
+@@ -74,7 +67,6 @@ import org.apache.hadoop.security.token.Token;
+ import org.apache.hadoop.util.ExitUtil;
+ import org.apache.hadoop.util.Shell;
+ import org.apache.hadoop.yarn.api.ApplicationConstants;
+-import org.apache.hadoop.yarn.api.ApplicationConstants.Environment;
+ import org.apache.hadoop.yarn.api.ContainerManagementProtocol;
+ import org.apache.hadoop.yarn.api.protocolrecords.RegisterApplicationMasterResponse;
+ import org.apache.hadoop.yarn.api.records.*;
+@@ -95,8 +87,6 @@ import org.apache.log4j.LogManager;
+ 
+ import com.google.common.annotations.VisibleForTesting;
+ 
+-import static com.alibaba.jstorm.yarn.constants.JOYConstants.*;
+-
+ /**
+  * Created by fengjian on 16/4/7.
+  * Application master
+@@ -415,7 +405,7 @@ public class JstormMaster {
+             LOG.info("previousRegister:" + previousRegister.toString());
+             LOG.info("register path: " + instancePath);
+             AMServer as = new AMServer(jstormMasterContext.appMasterThriftPort);
+-            as.Start(this);
++            Start(as);
+         }
+     }
+ 
+@@ -545,6 +535,24 @@ public class JstormMaster {
+         return success;
+     }
+ 
++    public boolean Start(AMServer amServer) {
++        try {
++            amServer.handler = new JstormAMHandler(this);
++            amServer.processor = new JstormAM.Processor(amServer.handler);
++
++            Runnable simple = new Runnable() {
++                public void run() {
++                    this.simple(amServer.processor);
++                }
++            };
++            new Thread(simple).start();
++        } catch (Exception x) {
++            x.printStackTrace();
++            return false;
++        }
++        return true;
++    }
++
+     private class RMCallbackHandler implements AMRMClientAsync.CallbackHandler {
+         @SuppressWarnings("unchecked")
+         @Override
+diff --git a/jstorm-on-yarn/src/main/java/com/alibaba/jstorm/yarn/server/AMServer.java b/jstorm-on-yarn/src/main/java/com/alibaba/jstorm/yarn/server/AMServer.java
+index bb3e917..63746ba 100644
+--- a/jstorm-on-yarn/src/main/java/com/alibaba/jstorm/yarn/server/AMServer.java
++++ b/jstorm-on-yarn/src/main/java/com/alibaba/jstorm/yarn/server/AMServer.java
+@@ -45,24 +45,6 @@ public class AMServer {
+ 
+     public JstormAM.Processor processor;
+ 
+-    public boolean Start(JstormMaster jm) {
+-        try {
+-            handler = new JstormAMHandler(jm);
+-            processor = new JstormAM.Processor(handler);
+-
+-            Runnable simple = new Runnable() {
+-                public void run() {
+-                    simple(processor);
+-                }
+-            };
+-            new Thread(simple).start();
+-        } catch (Exception x) {
+-            x.printStackTrace();
+-            return false;
+-        }
+-        return true;
+-    }
+-
+     public void simple(JstormAM.Processor processor) {
+         try {
+             TServerTransport serverTransport = new TServerSocket(port);
+diff --git a/jstorm-utility/jstorm-kafka/src/main/java/com/alibaba/jstorm/kafka/KafkaSpoutConfig.java b/jstorm-utility/jstorm-kafka/src/main/java/com/alibaba/jstorm/kafka/KafkaSpoutConfig.java
+index dd42146..bd85f15 100644
+--- a/jstorm-utility/jstorm-kafka/src/main/java/com/alibaba/jstorm/kafka/KafkaSpoutConfig.java
++++ b/jstorm-utility/jstorm-kafka/src/main/java/com/alibaba/jstorm/kafka/KafkaSpoutConfig.java
+@@ -24,10 +24,15 @@ import java.util.Map;
+ import java.util.Properties;
+ 
+ 
++import backtype.storm.Config;
++import backtype.storm.utils.Utils;
+ import com.alibaba.jstorm.utils.JStormUtils;
+ 
+ import backtype.storm.spout.MultiScheme;
+ import backtype.storm.spout.RawMultiScheme;
++import org.apache.curator.framework.CuratorFramework;
++import org.apache.curator.framework.CuratorFrameworkFactory;
++import org.apache.curator.retry.RetryNTimes;
+ 
+ 
+ public class KafkaSpoutConfig implements Serializable {
+@@ -143,5 +148,14 @@ public class KafkaSpoutConfig implements Serializable {
+ 		this.topic = topic;
+ 	}
+ 
+-	
++
++    public CuratorFramework newCurator(Map conf, ZkState zkState) throws Exception {
++        String serverPorts = "";
++        List<Host> zkServers = this.zkServers;
++        for (Host server : zkServers) {
++            serverPorts = serverPorts + server.getHost() + ":" + server.getPort() + ",";
++        }
++        return CuratorFrameworkFactory.newClient(serverPorts, Utils.getInt(conf.get(Config.STORM_ZOOKEEPER_SESSION_TIMEOUT)), 15000, new RetryNTimes(
++                Utils.getInt(conf.get(Config.STORM_ZOOKEEPER_RETRY_TIMES)), Utils.getInt(conf.get(Config.STORM_ZOOKEEPER_RETRY_INTERVAL))));
++    }
+ }
+diff --git a/jstorm-utility/jstorm-kafka/src/main/java/com/alibaba/jstorm/kafka/ZkState.java b/jstorm-utility/jstorm-kafka/src/main/java/com/alibaba/jstorm/kafka/ZkState.java
+index 5403e4a..2c5d8a3 100644
+--- a/jstorm-utility/jstorm-kafka/src/main/java/com/alibaba/jstorm/kafka/ZkState.java
++++ b/jstorm-utility/jstorm-kafka/src/main/java/com/alibaba/jstorm/kafka/ZkState.java
+@@ -17,18 +17,12 @@
+  */
+ package com.alibaba.jstorm.kafka;
+ 
+-import backtype.storm.Config;
+-import backtype.storm.utils.Utils;
+-
+ import java.nio.charset.Charset;
+-import java.util.List;
+ import java.util.Map;
+ 
+ import org.apache.curator.framework.CuratorFramework;
+-import org.apache.curator.framework.CuratorFrameworkFactory;
+ import org.apache.curator.framework.api.CreateBuilder;
+ import org.apache.curator.framework.api.ProtectACLCreateModePathAndBytesable;
+-import org.apache.curator.retry.RetryNTimes;
+ import org.apache.zookeeper.CreateMode;
+ import org.json.simple.JSONValue;
+ import org.slf4j.Logger;
+@@ -38,16 +32,6 @@ public class ZkState {
+     public static final Logger LOG = LoggerFactory.getLogger(ZkState.class);
+     CuratorFramework _curator;
+ 
+-    private CuratorFramework newCurator(Map conf, KafkaSpoutConfig config) throws Exception {
+-        String serverPorts = "";
+-        List<Host> zkServers = config.zkServers;
+-        for (Host server : zkServers) {
+-            serverPorts = serverPorts + server.getHost() + ":" + server.getPort() + ",";
+-        }
+-        return CuratorFrameworkFactory.newClient(serverPorts, Utils.getInt(conf.get(Config.STORM_ZOOKEEPER_SESSION_TIMEOUT)), 15000, new RetryNTimes(
+-                Utils.getInt(conf.get(Config.STORM_ZOOKEEPER_RETRY_TIMES)), Utils.getInt(conf.get(Config.STORM_ZOOKEEPER_RETRY_INTERVAL))));
+-    }
+-
+     public CuratorFramework getCurator() {
+         assert _curator != null;
+         return _curator;
+@@ -55,7 +39,7 @@ public class ZkState {
+ 
+     public ZkState(Map stateConf, KafkaSpoutConfig config) {
+         try {
+-            _curator = newCurator(stateConf, config);
++            _curator = config.newCurator(stateConf, this);
+             _curator.start();
+         } catch (Exception e) {
+             throw new RuntimeException(e);
