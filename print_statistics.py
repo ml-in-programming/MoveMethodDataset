@@ -17,6 +17,7 @@ def process_no_info(dirname):
 
     if os.path.isfile(log_file):
         global num_no_info
+        print(dirname.split('/')[-1] + " UNKNOWN")
         num_no_info += 1
         return
     
@@ -25,6 +26,7 @@ def process_no_info(dirname):
     
     global manual_methods
     manual_methods += len(os.listdir(patches_folder))
+    print(dirname.split('/')[-1] + " " + str(len(os.listdir(patches_folder))))
 
 
 def process_project(dirname):
@@ -39,7 +41,7 @@ def process_project(dirname):
       csv_reader = csv.reader(moved_methods_file, delimiter=',')
       for _ in csv_reader:
           result += 1
-
+    print(dirname.split('/')[-1] + " " + str(result))
     global num_of_methods
     num_of_methods += result
     

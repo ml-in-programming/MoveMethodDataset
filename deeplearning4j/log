@@ -1,0 +1,26 @@
+2019-05-27 00:29:00,208 [INFO] Project /home/mikhail/Documents/Development/MoveMethodGenerator/../MoveMethodDataset/deeplearning4j/deeplearning4j is opened
+2019-05-27 00:36:16,322 [INFO] Total number of java files: 5192
+2019-05-27 00:36:16,322 [INFO] Total number of source java files: 5143
+2019-05-27 00:36:16,322 [INFO] Total number of classes: 3104
+2019-05-27 00:36:16,322 [INFO] Total number of methods: 32241
+2019-05-27 00:36:16,322 [INFO] StaticMethodsFilter filtered: 4858
+2019-05-27 00:36:16,322 [INFO] ConstructorsFilter filtered: 5620
+2019-05-27 00:36:16,322 [INFO] AbstractMethodsFilter filtered: 551
+2019-05-27 00:36:16,322 [INFO] GettersFilter filtered: 1036
+2019-05-27 00:36:16,322 [INFO] SettersFilter filtered: 402
+2019-05-27 00:36:16,322 [INFO] EmptyMethodsFilter filtered: 3179
+2019-05-27 00:36:16,322 [INFO] ExceptionsThrowersFilter filtered: 1357
+2019-05-27 00:36:16,322 [INFO] SingleMethodFilter filtered: 586
+2019-05-27 00:36:16,323 [INFO] SimpleDelegationsFilter filtered: 4164
+2019-05-27 00:36:16,323 [INFO] PrivateMethodsCallersFilter filtered: 2147
+2019-05-27 00:36:16,323 [INFO] PrivateFieldAccessorsFilter filtered: 4639
+2019-05-27 00:36:16,323 [INFO] OverridingMethodsFilter filtered: 2267
+2019-05-27 00:36:16,323 [INFO] OverriddenMethodsFilter filtered: 17
+2019-05-27 00:36:16,323 [INFO] MethodCallWithSuperFilter filtered: 18
+2019-05-27 00:36:16,323 [INFO] PrivateClassUserFilter filtered: 1
+2019-05-27 00:36:16,323 [INFO] GenericTypeUserFilter filtered: 0
+2019-05-27 00:36:16,323 [INFO] NoTargetsMethodsFilter filtered: 967
+2019-05-27 00:36:16,323 [INFO] Number of methods after filtration: 432
+2019-05-27 00:50:17,451 [INFO] Project /home/mikhail/Documents/Development/MoveMethodGenerator/../MoveMethodDataset/deeplearning4j/deeplearning4j is opened
+2019-05-27 00:51:33,243 [INFO] 448 potential moves found
+2019-05-27 00:51:33,243 [INFO] 25 moves performed

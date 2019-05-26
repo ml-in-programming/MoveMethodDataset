@@ -47,3 +47,6 @@
 [submodule "jstorm/jstorm"]
 	path = jstorm/jstorm
 	url = https://github.com/alibaba/jstorm.git
+[submodule "deeplearning4j/deeplearning4j"]
+	path = deeplearning4j/deeplearning4j
+	url = https://github.com/deeplearning4j/deeplearning4j.git
