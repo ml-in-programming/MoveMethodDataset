@@ -41,3 +41,6 @@
 [submodule "crate/crate"]
 	path = crate/crate
 	url = https://github.com/crate/crate.git
+[submodule "hbase/hbase"]
+	path = hbase/hbase
+	url = https://github.com/apache/hbase.git

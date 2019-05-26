@@ -1,0 +1,26 @@
+2019-05-26 16:40:39,753 [INFO] Project /home/mikhail/Documents/Development/MoveMethodGenerator/../MoveMethodDataset/hbase/hbase is opened
+2019-05-26 16:42:40,466 [INFO] Total number of java files: 3926
+2019-05-26 16:42:40,467 [INFO] Total number of source java files: 3926
+2019-05-26 16:42:40,467 [INFO] Total number of classes: 1430
+2019-05-26 16:42:40,467 [INFO] Total number of methods: 20845
+2019-05-26 16:42:40,467 [INFO] StaticMethodsFilter filtered: 3842
+2019-05-26 16:42:40,467 [INFO] ConstructorsFilter filtered: 1700
+2019-05-26 16:42:40,467 [INFO] AbstractMethodsFilter filtered: 236
+2019-05-26 16:42:40,467 [INFO] GettersFilter filtered: 1604
+2019-05-26 16:42:40,467 [INFO] SettersFilter filtered: 260
+2019-05-26 16:42:40,467 [INFO] EmptyMethodsFilter filtered: 496
+2019-05-26 16:42:40,467 [INFO] ExceptionsThrowersFilter filtered: 333
+2019-05-26 16:42:40,467 [INFO] SingleMethodFilter filtered: 74
+2019-05-26 16:42:40,467 [INFO] SimpleDelegationsFilter filtered: 3253
+2019-05-26 16:42:40,467 [INFO] PrivateMethodsCallersFilter filtered: 3001
+2019-05-26 16:42:40,467 [INFO] PrivateFieldAccessorsFilter filtered: 3349
+2019-05-26 16:42:40,467 [INFO] OverridingMethodsFilter filtered: 1107
+2019-05-26 16:42:40,467 [INFO] OverriddenMethodsFilter filtered: 44
+2019-05-26 16:42:40,467 [INFO] MethodCallWithSuperFilter filtered: 3
+2019-05-26 16:42:40,467 [INFO] PrivateClassUserFilter filtered: 6
+2019-05-26 16:42:40,467 [INFO] GenericTypeUserFilter filtered: 0
+2019-05-26 16:42:40,467 [INFO] NoTargetsMethodsFilter filtered: 1437
+2019-05-26 16:42:40,467 [INFO] Number of methods after filtration: 100
+2019-05-26 16:46:44,175 [INFO] Project /home/mikhail/Documents/Development/MoveMethodGenerator/../MoveMethodDataset/hbase/hbase is opened
+2019-05-26 16:48:32,137 [INFO] 104 potential moves found
+2019-05-26 16:48:32,137 [INFO] 34 moves performed

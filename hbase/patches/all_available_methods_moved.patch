@@ -1,0 +1,2748 @@
+diff --git a/hbase-backup/src/main/java/org/apache/hadoop/hbase/backup/BackupInfo.java b/hbase-backup/src/main/java/org/apache/hadoop/hbase/backup/BackupInfo.java
+index 6c304ca..c0048d5 100644
+--- a/hbase-backup/src/main/java/org/apache/hadoop/hbase/backup/BackupInfo.java
++++ b/hbase-backup/src/main/java/org/apache/hadoop/hbase/backup/BackupInfo.java
+@@ -31,6 +31,8 @@ import java.util.Set;
+ 
+ import org.apache.commons.lang3.StringUtils;
+ import org.apache.hadoop.hbase.TableName;
++import org.apache.hadoop.hbase.backup.impl.BackupManager;
++import org.apache.hadoop.hbase.backup.impl.BackupManifest;
+ import org.apache.hadoop.hbase.backup.util.BackupUtils;
+ import org.apache.hadoop.hbase.util.Bytes;
+ import org.apache.yetus.audience.InterfaceAudience;
+@@ -48,7 +50,29 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.BackupProtos.BackupInfo
+ public class BackupInfo implements Comparable<BackupInfo> {
+   private static final Logger LOG = LoggerFactory.getLogger(BackupInfo.class);
+ 
+-  public interface Filter {
++    /**
++     * Get the direct ancestors of this backup for one table involved.
++     * @param table table
++     * @param backupManager
++     * @return backupImages on the dependency list
++     * @throws IOException exception
++     */
++    public ArrayList<BackupManifest.BackupImage> getAncestors(TableName table, BackupManager backupManager)
++        throws IOException {
++        ArrayList<BackupManifest.BackupImage> ancestors = backupManager.getAncestors(this);
++      ArrayList<BackupManifest.BackupImage> tableAncestors = new ArrayList<>();
++      for (BackupManifest.BackupImage image : ancestors) {
++        if (image.hasTable(table)) {
++          tableAncestors.add(image);
++          if (image.getType() == BackupType.FULL) {
++            break;
++          }
++        }
++      }
++      return tableAncestors;
++    }
++
++    public interface Filter {
+     /**
+      * Filter interface
+      * @param info backup info
+diff --git a/hbase-backup/src/main/java/org/apache/hadoop/hbase/backup/impl/BackupAdminImpl.java b/hbase-backup/src/main/java/org/apache/hadoop/hbase/backup/impl/BackupAdminImpl.java
+index 0d20f37..f169943 100644
+--- a/hbase-backup/src/main/java/org/apache/hadoop/hbase/backup/impl/BackupAdminImpl.java
++++ b/hbase-backup/src/main/java/org/apache/hadoop/hbase/backup/impl/BackupAdminImpl.java
+@@ -143,7 +143,7 @@ public class BackupAdminImpl implements BackupAdmin {
+             totalDeleted += deleteBackup(backupIds[i], sysTable);
+           }
+         }
+-        finalizeDelete(allTablesMap, sysTable);
++        sysTable.finalizeDelete(allTablesMap, this);
+         // Finish
+         sysTable.finishDeleteOperation();
+         // delete snapshot
+@@ -174,33 +174,7 @@ public class BackupAdminImpl implements BackupAdmin {
+     return totalDeleted;
+   }
+ 
+-  /**
+-   * Updates incremental backup set for every backupRoot
+-   * @param tablesMap map [backupRoot: {@code Set<TableName>}]
+-   * @param table backup system table
+-   * @throws IOException if a table operation fails
+-   */
+-  private void finalizeDelete(Map<String, HashSet<TableName>> tablesMap, BackupSystemTable table)
+-      throws IOException {
+-    for (String backupRoot : tablesMap.keySet()) {
+-      Set<TableName> incrTableSet = table.getIncrementalBackupTableSet(backupRoot);
+-      Map<TableName, ArrayList<BackupInfo>> tableMap =
+-          table.getBackupHistoryForTableSet(incrTableSet, backupRoot);
+-      for (Map.Entry<TableName, ArrayList<BackupInfo>> entry : tableMap.entrySet()) {
+-        if (entry.getValue() == null) {
+-          // No more backups for a table
+-          incrTableSet.remove(entry.getKey());
+-        }
+-      }
+-      if (!incrTableSet.isEmpty()) {
+-        table.addIncrementalBackupTableSet(incrTableSet, backupRoot);
+-      } else { // empty
+-        table.deleteIncrementalBackupTableSet(backupRoot);
+-      }
+-    }
+-  }
+-
+-  /**
++    /**
+    * Delete single backup and all related backups <br>
+    * Algorithm:<br>
+    * Backup type: FULL or INCREMENTAL <br>
+diff --git a/hbase-backup/src/main/java/org/apache/hadoop/hbase/backup/impl/BackupManager.java b/hbase-backup/src/main/java/org/apache/hadoop/hbase/backup/impl/BackupManager.java
+index d49aef2..b856082 100644
+--- a/hbase-backup/src/main/java/org/apache/hadoop/hbase/backup/impl/BackupManager.java
++++ b/hbase-backup/src/main/java/org/apache/hadoop/hbase/backup/impl/BackupManager.java
+@@ -337,29 +337,7 @@ public class BackupManager implements Closeable {
+     return ancestors;
+   }
+ 
+-  /**
+-   * Get the direct ancestors of this backup for one table involved.
+-   * @param backupInfo backup info
+-   * @param table table
+-   * @return backupImages on the dependency list
+-   * @throws IOException exception
+-   */
+-  public ArrayList<BackupImage> getAncestors(BackupInfo backupInfo, TableName table)
+-      throws IOException {
+-    ArrayList<BackupImage> ancestors = getAncestors(backupInfo);
+-    ArrayList<BackupImage> tableAncestors = new ArrayList<>();
+-    for (BackupImage image : ancestors) {
+-      if (image.hasTable(table)) {
+-        tableAncestors.add(image);
+-        if (image.getType() == BackupType.FULL) {
+-          break;
+-        }
+-      }
+-    }
+-    return tableAncestors;
+-  }
+-
+-  /*
++    /*
+    * backup system table operations
+    */
+ 
+diff --git a/hbase-backup/src/main/java/org/apache/hadoop/hbase/backup/impl/BackupSystemTable.java b/hbase-backup/src/main/java/org/apache/hadoop/hbase/backup/impl/BackupSystemTable.java
+index cdb535b..8f8086b 100644
+--- a/hbase-backup/src/main/java/org/apache/hadoop/hbase/backup/impl/BackupSystemTable.java
++++ b/hbase-backup/src/main/java/org/apache/hadoop/hbase/backup/impl/BackupSystemTable.java
+@@ -97,7 +97,33 @@ public final class BackupSystemTable implements Closeable {
+ 
+   private static final Logger LOG = LoggerFactory.getLogger(BackupSystemTable.class);
+ 
+-  static class WALItem {
++    /**
++     * Updates incremental backup set for every backupRoot
++     * @param tablesMap map [backupRoot: {@code Set<TableName>}]
++     * @param backupAdmin
++     * @throws IOException if a table operation fails
++     */
++    public void finalizeDelete(Map<String, HashSet<TableName>> tablesMap, BackupAdminImpl backupAdmin)
++        throws IOException {
++        for (String backupRoot : tablesMap.keySet()) {
++        Set<TableName> incrTableSet = getIncrementalBackupTableSet(backupRoot);
++        Map<TableName, ArrayList<BackupInfo>> tableMap =
++            getBackupHistoryForTableSet(incrTableSet, backupRoot);
++        for (Entry<TableName, ArrayList<BackupInfo>> entry : tableMap.entrySet()) {
++          if (entry.getValue() == null) {
++            // No more backups for a table
++            incrTableSet.remove(entry.getKey());
++          }
++        }
++        if (!incrTableSet.isEmpty()) {
++          addIncrementalBackupTableSet(incrTableSet, backupRoot);
++        } else { // empty
++          deleteIncrementalBackupTableSet(backupRoot);
++        }
++      }
++    }
++
++    static class WALItem {
+     String backupId;
+     String walFile;
+     String backupRoot;
+diff --git a/hbase-backup/src/main/java/org/apache/hadoop/hbase/backup/impl/TableBackupClient.java b/hbase-backup/src/main/java/org/apache/hadoop/hbase/backup/impl/TableBackupClient.java
+index 7d960b4..70d9411 100644
+--- a/hbase-backup/src/main/java/org/apache/hadoop/hbase/backup/impl/TableBackupClient.java
++++ b/hbase-backup/src/main/java/org/apache/hadoop/hbase/backup/impl/TableBackupClient.java
+@@ -291,7 +291,7 @@ public abstract class TableBackupClient {
+     // we'll store its manifest with the table directory.
+     for (TableName table : backupInfo.getTables()) {
+       manifest = new BackupManifest(backupInfo, table);
+-      ArrayList<BackupImage> ancestors = backupManager.getAncestors(backupInfo, table);
++      ArrayList<BackupImage> ancestors = backupInfo.getAncestors(table, backupManager);
+       for (BackupImage image : ancestors) {
+         manifest.addDependentImage(image);
+       }
+diff --git a/hbase-client/src/main/java/org/apache/hadoop/hbase/HRegionLocation.java b/hbase-client/src/main/java/org/apache/hadoop/hbase/HRegionLocation.java
+index fd679bd..2cdab20 100644
+--- a/hbase-client/src/main/java/org/apache/hadoop/hbase/HRegionLocation.java
++++ b/hbase-client/src/main/java/org/apache/hadoop/hbase/HRegionLocation.java
+@@ -131,4 +131,31 @@ public class HRegionLocation implements Comparable<HRegionLocation> {
+   public int compareTo(HRegionLocation o) {
+     return serverName.compareTo(o.getServerName());
+   }
++
++    /**
++     * Removes the given location from the list
++     *
++     * @param regionLocations@return an RegionLocations object with removed locations or the same object
++     * if nothing is removed
++     */
++    public RegionLocations remove(RegionLocations regionLocations) {
++        if (this == null) return regionLocations;
++      if (getRegion() == null) return regionLocations;
++      int replicaId = getRegion().getReplicaId();
++      if (replicaId >= regionLocations.getRegionLocations().length) return regionLocations;
++
++      // check whether something to remove. HRL.compareTo() compares ONLY the
++      // serverName. We want to compare the HRI's as well.
++      if (regionLocations.getRegionLocations()[replicaId] == null
++          || RegionInfo.COMPARATOR.compare(getRegion(), regionLocations.getRegionLocations()[replicaId].getRegion()) != 0
++          || !equals(regionLocations.getRegionLocations()[replicaId])) {
++        return regionLocations;
++      }
++
++      HRegionLocation[] newLocations = new HRegionLocation[regionLocations.getRegionLocations().length];
++      System.arraycopy(regionLocations.getRegionLocations(), 0, newLocations, 0, regionLocations.getRegionLocations().length);
++      newLocations[replicaId] = null;
++
++      return new RegionLocations(newLocations);
++    }
+ }
+diff --git a/hbase-client/src/main/java/org/apache/hadoop/hbase/RegionLocations.java b/hbase-client/src/main/java/org/apache/hadoop/hbase/RegionLocations.java
+index e119ebb..db1f145 100644
+--- a/hbase-client/src/main/java/org/apache/hadoop/hbase/RegionLocations.java
++++ b/hbase-client/src/main/java/org/apache/hadoop/hbase/RegionLocations.java
+@@ -136,34 +136,7 @@ public class RegionLocations {
+     return newLocations == null ? this : new RegionLocations(newLocations);
+   }
+ 
+-  /**
+-   * Removes the given location from the list
+-   * @param location the location to remove
+-   * @return an RegionLocations object with removed locations or the same object
+-   * if nothing is removed
+-   */
+-  public RegionLocations remove(HRegionLocation location) {
+-    if (location == null) return this;
+-    if (location.getRegion() == null) return this;
+-    int replicaId = location.getRegion().getReplicaId();
+-    if (replicaId >= locations.length) return this;
+-
+-    // check whether something to remove. HRL.compareTo() compares ONLY the
+-    // serverName. We want to compare the HRI's as well.
+-    if (locations[replicaId] == null
+-        || RegionInfo.COMPARATOR.compare(location.getRegion(), locations[replicaId].getRegion()) != 0
+-        || !location.equals(locations[replicaId])) {
+-      return this;
+-    }
+-
+-    HRegionLocation[] newLocations = new HRegionLocation[locations.length];
+-    System.arraycopy(locations, 0, newLocations, 0, locations.length);
+-    newLocations[replicaId] = null;
+-
+-    return new RegionLocations(newLocations);
+-  }
+-
+-  /**
++    /**
+    * Removes location of the given replicaId from the list
+    * @param replicaId the replicaId of the location to remove
+    * @return an RegionLocations object with removed locations or the same object
+diff --git a/hbase-client/src/main/java/org/apache/hadoop/hbase/client/MetaCache.java b/hbase-client/src/main/java/org/apache/hadoop/hbase/client/MetaCache.java
+index fde2838..72ef272 100644
+--- a/hbase-client/src/main/java/org/apache/hadoop/hbase/client/MetaCache.java
++++ b/hbase-client/src/main/java/org/apache/hadoop/hbase/client/MetaCache.java
+@@ -385,7 +385,7 @@ public class MetaCache {
+     if (regionLocations != null) {
+       HRegionLocation oldLocation = regionLocations.getRegionLocation(hri.getReplicaId());
+       if (oldLocation == null) return;
+-      RegionLocations updatedLocations = regionLocations.remove(oldLocation);
++      RegionLocations updatedLocations = oldLocation.remove(regionLocations);
+       boolean removed;
+       if (updatedLocations != regionLocations) {
+         if (updatedLocations.isEmpty()) {
+@@ -413,7 +413,7 @@ public class MetaCache {
+     ConcurrentMap<byte[], RegionLocations> tableLocations = getTableLocations(tableName);
+     RegionLocations regionLocations = tableLocations.get(location.getRegion().getStartKey());
+     if (regionLocations != null) {
+-      RegionLocations updatedLocations = regionLocations.remove(location);
++      RegionLocations updatedLocations = location.remove(regionLocations);
+       boolean removed;
+       if (updatedLocations != regionLocations) {
+         if (updatedLocations.isEmpty()) {
+diff --git a/hbase-client/src/test/java/org/apache/hadoop/hbase/TestRegionLocations.java b/hbase-client/src/test/java/org/apache/hadoop/hbase/TestRegionLocations.java
+index f43ce4a..e70ef84 100644
+--- a/hbase-client/src/test/java/org/apache/hadoop/hbase/TestRegionLocations.java
++++ b/hbase-client/src/test/java/org/apache/hadoop/hbase/TestRegionLocations.java
+@@ -143,25 +143,25 @@ public class TestRegionLocations {
+ 
+     // test remove from empty list
+     list = new RegionLocations();
+-    assertTrue(list == list.remove(hrl(info0, sn0)));
++    assertTrue(list == hrl(info0, sn0).remove(list));
+ 
+     // test remove from single element list
+     list = hrll(hrl(info0, sn0));
+-    assertTrue(list == list.remove(hrl(info0, sn1)));
+-    list = list.remove(hrl(info0, sn0));
++    assertTrue(list == hrl(info0, sn1).remove(list));
++    list = hrl(info0, sn0).remove(list);
+     assertTrue(list.isEmpty());
+ 
+     // test remove from multi element list
+     list = hrll(hrl(info0, sn0), hrl(info1, sn1), hrl(info2, sn2), hrl(info9, sn2));
+-    assertTrue(list == list.remove(hrl(info1, sn3))); // no region is mapped to sn3
+-    list = list.remove(hrl(info0, sn0));
++    assertTrue(list == hrl(info1, sn3).remove(list)); // no region is mapped to sn3
++    list = hrl(info0, sn0).remove(list);
+     assertNull(list.getRegionLocation(0));
+     assertEquals(sn1, list.getRegionLocation(1).getServerName());
+     assertEquals(sn2, list.getRegionLocation(2).getServerName());
+     assertNull(list.getRegionLocation(5));
+     assertEquals(sn2, list.getRegionLocation(9).getServerName());
+ 
+-    list = list.remove(hrl(info9, sn2));
++    list = hrl(info9, sn2).remove(list);
+     assertNull(list.getRegionLocation(0));
+     assertEquals(sn1, list.getRegionLocation(1).getServerName());
+     assertEquals(sn2, list.getRegionLocation(2).getServerName());
+@@ -171,7 +171,7 @@ public class TestRegionLocations {
+ 
+     // test multi-element remove from multi element list
+     list = hrll(hrl(info0, sn1), hrl(info1, sn1), hrl(info2, sn0), hrl(info9, sn0));
+-    list = list.remove(hrl(info9, sn0));
++    list = hrl(info9, sn0).remove(list);
+     assertEquals(sn1, list.getRegionLocation(0).getServerName());
+     assertEquals(sn1, list.getRegionLocation(1).getServerName());
+     assertEquals(sn0, list.getRegionLocation(2).getServerName());
+diff --git a/hbase-procedure/src/main/java/org/apache/hadoop/hbase/procedure2/store/ProcedureStoreTracker.java b/hbase-procedure/src/main/java/org/apache/hadoop/hbase/procedure2/store/ProcedureStoreTracker.java
+index 9edd871..0052891 100644
+--- a/hbase-procedure/src/main/java/org/apache/hadoop/hbase/procedure2/store/ProcedureStoreTracker.java
++++ b/hbase-procedure/src/main/java/org/apache/hadoop/hbase/procedure2/store/ProcedureStoreTracker.java
+@@ -25,6 +25,7 @@ import java.util.TreeMap;
+ import java.util.function.BiFunction;
+ import java.util.stream.LongStream;
+ import org.apache.hadoop.hbase.procedure2.Procedure;
++import org.apache.hadoop.hbase.procedure2.store.wal.ProcedureWALFormatReader;
+ import org.apache.yetus.audience.InterfaceAudience;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+@@ -62,7 +63,13 @@ public class ProcedureStoreTracker {
+   private long minModifiedProcId = Long.MAX_VALUE;
+   private long maxModifiedProcId = Long.MIN_VALUE;
+ 
+-  public enum DeleteState { YES, NO, MAYBE }
++    public void setDeletedIfPartial(long procId, ProcedureWALFormatReader procedureWALFormatReader) {
++        if (isPartial()) {
++        setDeleted(procId, true);
++      }
++    }
++
++    public enum DeleteState { YES, NO, MAYBE }
+ 
+   public void resetToProto(ProcedureProtos.ProcedureStoreTracker trackerProtoBuf) {
+     reset();
+diff --git a/hbase-procedure/src/main/java/org/apache/hadoop/hbase/procedure2/store/wal/ProcedureWALFormatReader.java b/hbase-procedure/src/main/java/org/apache/hadoop/hbase/procedure2/store/wal/ProcedureWALFormatReader.java
+index 1b19abb..3d334bc 100644
+--- a/hbase-procedure/src/main/java/org/apache/hadoop/hbase/procedure2/store/wal/ProcedureWALFormatReader.java
++++ b/hbase-procedure/src/main/java/org/apache/hadoop/hbase/procedure2/store/wal/ProcedureWALFormatReader.java
+@@ -149,13 +149,7 @@ public class ProcedureWALFormatReader {
+     loader.handleCorrupted(tree.getCorruptedProcs());
+   }
+ 
+-  private void setDeletedIfPartial(ProcedureStoreTracker tracker, long procId) {
+-    if (tracker.isPartial()) {
+-      tracker.setDeleted(procId, true);
+-    }
+-  }
+-
+-  private void insertIfPartial(ProcedureStoreTracker tracker, ProcedureProtos.Procedure proc) {
++    private void insertIfPartial(ProcedureStoreTracker tracker, ProcedureProtos.Procedure proc) {
+     if (tracker.isPartial()) {
+       tracker.insert(proc.getProcId());
+     }
+@@ -215,8 +209,8 @@ public class ProcedureWALFormatReader {
+     maxProcId = Math.max(maxProcId, procId);
+     localProcedureMap.remove(procId);
+     assert !procedureMap.contains(procId);
+-    setDeletedIfPartial(tracker, procId);
+-    setDeletedIfPartial(localTracker, procId);
++    tracker.setDeletedIfPartial(procId, this);
++    localTracker.setDeletedIfPartial(procId, this);
+   }
+ 
+   private boolean isDeleted(long procId) {
+diff --git a/hbase-rest/src/main/java/org/apache/hadoop/hbase/rest/client/Client.java b/hbase-rest/src/main/java/org/apache/hadoop/hbase/rest/client/Client.java
+index 9e6661b..0726588 100644
+--- a/hbase-rest/src/main/java/org/apache/hadoop/hbase/rest/client/Client.java
++++ b/hbase-rest/src/main/java/org/apache/hadoop/hbase/rest/client/Client.java
+@@ -248,26 +248,7 @@ public class Client {
+     return resp;
+   }
+ 
+-  /**
+-   * Execute a transaction method. Will call either <tt>executePathOnly</tt>
+-   * or <tt>executeURI</tt> depending on whether a path only is supplied in
+-   * 'path', or if a complete URI is passed instead, respectively.
+-   * @param cluster the cluster definition
+-   * @param method the HTTP method
+-   * @param headers HTTP header values to send
+-   * @param path the properly urlencoded path or URI
+-   * @return the HTTP response code
+-   * @throws IOException
+-   */
+-  public HttpResponse execute(Cluster cluster, HttpUriRequest method, Header[] headers,
+-      String path) throws IOException {
+-    if (path.startsWith("/")) {
+-      return executePathOnly(cluster, method, headers, path);
+-    }
+-    return executeURI(method, headers, path);
+-  }
+-
+-  /**
++    /**
+    * Initiate client side Kerberos negotiation with the server.
+    * @param method method to inject the authentication token into.
+    * @param uri the String to parse as a URL.
+@@ -337,7 +318,7 @@ public class Client {
+       throws IOException {
+     HttpHead method = new HttpHead(path);
+     try {
+-      HttpResponse resp = execute(cluster, method, null, path);
++      HttpResponse resp = cluster.execute(method, null, path, this);
+       return new Response(resp.getStatusLine().getStatusCode(), resp.getAllHeaders(), null);
+     } finally {
+       method.releaseConnection();
+@@ -456,7 +437,7 @@ public class Client {
+       httpGet.releaseConnection();
+     }
+     httpGet = new HttpGet(path);
+-    HttpResponse resp = execute(c, httpGet, headers, path);
++    HttpResponse resp = c.execute(httpGet, headers, path, this);
+     return new Response(resp.getStatusLine().getStatusCode(), resp.getAllHeaders(),
+         resp, resp.getEntity() == null ? null : resp.getEntity().getContent());
+   }
+@@ -554,7 +535,7 @@ public class Client {
+     HttpPut method = new HttpPut(path);
+     try {
+       method.setEntity(new InputStreamEntity(new ByteArrayInputStream(content), content.length));
+-      HttpResponse resp = execute(cluster, method, headers, path);
++      HttpResponse resp = cluster.execute(method, headers, path, this);
+       headers = resp.getAllHeaders();
+       content = getResponseBody(resp);
+       return new Response(resp.getStatusLine().getStatusCode(), headers, content);
+@@ -656,7 +637,7 @@ public class Client {
+     HttpPost method = new HttpPost(path);
+     try {
+       method.setEntity(new InputStreamEntity(new ByteArrayInputStream(content), content.length));
+-      HttpResponse resp = execute(cluster, method, headers, path);
++      HttpResponse resp = cluster.execute(method, headers, path, this);
+       headers = resp.getAllHeaders();
+       content = getResponseBody(resp);
+       return new Response(resp.getStatusLine().getStatusCode(), headers, content);
+@@ -696,7 +677,7 @@ public class Client {
+   public Response delete(Cluster cluster, String path) throws IOException {
+     HttpDelete method = new HttpDelete(path);
+     try {
+-      HttpResponse resp = execute(cluster, method, null, path);
++      HttpResponse resp = cluster.execute(method, null, path, this);
+       Header[] headers = resp.getAllHeaders();
+       byte[] content = getResponseBody(resp);
+       return new Response(resp.getStatusLine().getStatusCode(), headers, content);
+@@ -716,7 +697,7 @@ public class Client {
+     HttpDelete method = new HttpDelete(path);
+     try {
+       Header[] headers = { extraHdr };
+-      HttpResponse resp = execute(cluster, method, headers, path);
++      HttpResponse resp = cluster.execute(method, headers, path, this);
+       headers = resp.getAllHeaders();
+       byte[] content = getResponseBody(resp);
+       return new Response(resp.getStatusLine().getStatusCode(), headers, content);
+diff --git a/hbase-rest/src/main/java/org/apache/hadoop/hbase/rest/client/Cluster.java b/hbase-rest/src/main/java/org/apache/hadoop/hbase/rest/client/Cluster.java
+index 0084708..581f306 100644
+--- a/hbase-rest/src/main/java/org/apache/hadoop/hbase/rest/client/Cluster.java
++++ b/hbase-rest/src/main/java/org/apache/hadoop/hbase/rest/client/Cluster.java
+@@ -19,10 +19,14 @@
+ 
+ package org.apache.hadoop.hbase.rest.client;
+ 
++import java.io.IOException;
+ import java.util.ArrayList;
+ import java.util.Collections;
+ import java.util.List;
+ 
++import org.apache.http.Header;
++import org.apache.http.HttpResponse;
++import org.apache.http.client.methods.HttpUriRequest;
+ import org.apache.yetus.audience.InterfaceAudience;
+ 
+ /**
+@@ -105,4 +109,23 @@ public class Cluster {
+         ", lastHost='" + lastHost + '\'' +
+         '}';
+   }
++
++    /**
++     * Execute a transaction method. Will call either <tt>executePathOnly</tt>
++     * or <tt>executeURI</tt> depending on whether a path only is supplied in
++     * 'path', or if a complete URI is passed instead, respectively.
++     * @param method the HTTP method
++     * @param headers HTTP header values to send
++     * @param path the properly urlencoded path or URI
++     * @param client
++     * @return the HTTP response code
++     * @throws IOException
++     */
++    public HttpResponse execute(HttpUriRequest method, Header[] headers,
++                                String path, Client client) throws IOException {
++        if (path.startsWith("/")) {
++        return client.executePathOnly(this, method, headers, path);
++      }
++      return client.executeURI(method, headers, path);
++    }
+ }
+diff --git a/hbase-rest/src/main/java/org/apache/hadoop/hbase/rest/client/RemoteAdmin.java b/hbase-rest/src/main/java/org/apache/hadoop/hbase/rest/client/RemoteAdmin.java
+index 152fe4c..936f7d4 100644
+--- a/hbase-rest/src/main/java/org/apache/hadoop/hbase/rest/client/RemoteAdmin.java
++++ b/hbase-rest/src/main/java/org/apache/hadoop/hbase/rest/client/RemoteAdmin.java
+@@ -19,16 +19,12 @@
+ 
+ package org.apache.hadoop.hbase.rest.client;
+ 
+-import java.io.ByteArrayInputStream;
+ import java.io.IOException;
+ import java.io.InterruptedIOException;
+ 
+ import javax.xml.bind.JAXBContext;
+ import javax.xml.bind.JAXBException;
+ import javax.xml.bind.Unmarshaller;
+-import javax.xml.stream.XMLInputFactory;
+-import javax.xml.stream.XMLStreamException;
+-import javax.xml.stream.XMLStreamReader;
+ 
+ import org.apache.yetus.audience.InterfaceAudience;
+ import org.apache.hadoop.conf.Configuration;
+@@ -210,7 +206,7 @@ public class RemoteAdmin {
+         try {
+ 
+           return (StorageClusterVersionModel) getUnmarsheller().unmarshal(
+-              getInputStream(response));
++              response.getInputStream(this));
+         } catch (JAXBException jaxbe) {
+ 
+           throw new IOException(
+@@ -400,22 +396,4 @@ public class RemoteAdmin {
+         + " request timed out");
+   }
+ 
+-  /**
+-   * Convert the REST server's response to an XML reader.
+-   *
+-   * @param response The REST server's response.
+-   * @return A reader over the parsed XML document.
+-   * @throws IOException If the document fails to parse
+-   */
+-  private XMLStreamReader getInputStream(Response response) throws IOException {
+-    try {
+-      // Prevent the parser from reading XMl with external entities defined
+-      XMLInputFactory xif = XMLInputFactory.newFactory();
+-      xif.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
+-      xif.setProperty(XMLInputFactory.SUPPORT_DTD, false);
+-      return xif.createXMLStreamReader(new ByteArrayInputStream(response.getBody()));
+-    } catch (XMLStreamException e) {
+-      throw new IOException("Failed to parse XML", e);
+-    }
+-  }
+ }
+diff --git a/hbase-rest/src/main/java/org/apache/hadoop/hbase/rest/client/RemoteHTable.java b/hbase-rest/src/main/java/org/apache/hadoop/hbase/rest/client/RemoteHTable.java
+index bdb3838..c7f9533 100644
+--- a/hbase-rest/src/main/java/org/apache/hadoop/hbase/rest/client/RemoteHTable.java
++++ b/hbase-rest/src/main/java/org/apache/hadoop/hbase/rest/client/RemoteHTable.java
+@@ -179,30 +179,7 @@ public class RemoteHTable implements Table {
+     return sb.toString();
+   }
+ 
+-  protected Result[] buildResultFromModel(final CellSetModel model) {
+-    List<Result> results = new ArrayList<>();
+-    for (RowModel row: model.getRows()) {
+-      List<Cell> kvs = new ArrayList<>(row.getCells().size());
+-      for (CellModel cell: row.getCells()) {
+-        byte[][] split = CellUtil.parseColumn(cell.getColumn());
+-        byte[] column = split[0];
+-        byte[] qualifier = null;
+-        if (split.length == 1) {
+-          qualifier = HConstants.EMPTY_BYTE_ARRAY;
+-        } else if (split.length == 2) {
+-          qualifier = split[1];
+-        } else {
+-          throw new IllegalArgumentException("Invalid familyAndQualifier provided.");
+-        }
+-        kvs.add(new KeyValue(row.getKey(), column, qualifier,
+-          cell.getTimestamp(), cell.getValue()));
+-      }
+-      results.add(Result.create(kvs));
+-    }
+-    return results.toArray(new Result[results.size()]);
+-  }
+-
+-  protected CellSetModel buildModelFromPut(Put put) {
++    protected CellSetModel buildModelFromPut(Put put) {
+     RowModel row = new RowModel(put.getRow());
+     long ts = put.getTimestamp();
+     for (List<Cell> cells: put.getFamilyCellMap().values()) {
+@@ -345,7 +322,7 @@ public class RemoteHTable implements Table {
+         case 200:
+           CellSetModel model = new CellSetModel();
+           model.getObjectFromMessage(response.getBody());
+-          Result[] results = buildResultFromModel(model);
++          Result[] results = model.buildResultFromModel(this);
+           if ( results.length > 0) {
+             return results;
+           }
+@@ -559,7 +536,7 @@ public class RemoteHTable implements Table {
+         case 200:
+           CellSetModel model = new CellSetModel();
+           model.getObjectFromMessage(response.getBody());
+-          return buildResultFromModel(model);
++          return model.buildResultFromModel(this);
+         case 204:
+         case 206:
+           return null;
+diff --git a/hbase-rest/src/main/java/org/apache/hadoop/hbase/rest/client/Response.java b/hbase-rest/src/main/java/org/apache/hadoop/hbase/rest/client/Response.java
+index adffc12..dca7466 100644
+--- a/hbase-rest/src/main/java/org/apache/hadoop/hbase/rest/client/Response.java
++++ b/hbase-rest/src/main/java/org/apache/hadoop/hbase/rest/client/Response.java
+@@ -19,6 +19,7 @@
+ 
+ package org.apache.hadoop.hbase.rest.client;
+ 
++import java.io.ByteArrayInputStream;
+ import java.io.IOException;
+ import java.io.InputStream;
+ 
+@@ -28,6 +29,10 @@ import org.slf4j.LoggerFactory;
+ import org.apache.http.Header;
+ import org.apache.http.HttpResponse;
+ 
++import javax.xml.stream.XMLInputFactory;
++import javax.xml.stream.XMLStreamException;
++import javax.xml.stream.XMLStreamReader;
++
+ /**
+  * The HTTP result code, response headers, and body of a HTTP response.
+  */
+@@ -166,4 +171,23 @@ public class Response {
+   public void setBody(byte[] body) {
+     this.body = body;
+   }
++
++    /**
++     * Convert the REST server's response to an XML reader.
++     *
++     *
++     * @param remoteAdmin@return A reader over the parsed XML document.
++     * @throws IOException If the document fails to parse
++     */
++    public XMLStreamReader getInputStream(RemoteAdmin remoteAdmin) throws IOException {
++        try {
++        // Prevent the parser from reading XMl with external entities defined
++        XMLInputFactory xif = XMLInputFactory.newFactory();
++        xif.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
++        xif.setProperty(XMLInputFactory.SUPPORT_DTD, false);
++        return xif.createXMLStreamReader(new ByteArrayInputStream(getBody()));
++      } catch (XMLStreamException e) {
++        throw new IOException("Failed to parse XML", e);
++      }
++    }
+ }
+diff --git a/hbase-rest/src/main/java/org/apache/hadoop/hbase/rest/model/CellSetModel.java b/hbase-rest/src/main/java/org/apache/hadoop/hbase/rest/model/CellSetModel.java
+index 9b1bacb..358ce4e 100644
+--- a/hbase-rest/src/main/java/org/apache/hadoop/hbase/rest/model/CellSetModel.java
++++ b/hbase-rest/src/main/java/org/apache/hadoop/hbase/rest/model/CellSetModel.java
+@@ -29,6 +29,11 @@ import javax.xml.bind.annotation.XmlAccessorType;
+ import javax.xml.bind.annotation.XmlElement;
+ import javax.xml.bind.annotation.XmlRootElement;
+ 
++import org.apache.hadoop.hbase.Cell;
++import org.apache.hadoop.hbase.CellUtil;
++import org.apache.hadoop.hbase.KeyValue;
++import org.apache.hadoop.hbase.client.Result;
++import org.apache.hadoop.hbase.rest.client.RemoteHTable;
+ import org.apache.hadoop.hbase.util.ByteStringer;
+ import org.apache.yetus.audience.InterfaceAudience;
+ import org.apache.hadoop.hbase.HConstants;
+@@ -150,4 +155,27 @@ public class CellSetModel implements Serializable, ProtobufMessageHandler {
+     }
+     return this;
+   }
++
++    public Result[] buildResultFromModel(RemoteHTable remoteHTable) {
++        List<Result> results = new ArrayList<>();
++      for (RowModel row: getRows()) {
++        List<Cell> kvs = new ArrayList<>(row.getCells().size());
++        for (CellModel cell: row.getCells()) {
++          byte[][] split = CellUtil.parseColumn(cell.getColumn());
++          byte[] column = split[0];
++          byte[] qualifier = null;
++          if (split.length == 1) {
++            qualifier = HConstants.EMPTY_BYTE_ARRAY;
++          } else if (split.length == 2) {
++            qualifier = split[1];
++          } else {
++            throw new IllegalArgumentException("Invalid familyAndQualifier provided.");
++          }
++          kvs.add(new KeyValue(row.getKey(), column, qualifier,
++            cell.getTimestamp(), cell.getValue()));
++        }
++        results.add(Result.create(kvs));
++      }
++      return results.toArray(new Result[results.size()]);
++    }
+ }
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/executor/ExecutorService.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/executor/ExecutorService.java
+index 71d8ea5..648e276 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/executor/ExecutorService.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/executor/ExecutorService.java
+@@ -19,6 +19,7 @@
+ package org.apache.hadoop.hbase.executor;
+ 
+ import java.io.IOException;
++import java.io.PrintWriter;
+ import java.io.Writer;
+ import java.lang.management.ThreadInfo;
+ import java.util.List;
+@@ -33,6 +34,7 @@ import java.util.concurrent.ThreadPoolExecutor;
+ import java.util.concurrent.TimeUnit;
+ import java.util.concurrent.atomic.AtomicLong;
+ 
++import org.apache.hadoop.hbase.monitoring.StateDumpServlet;
+ import org.apache.hadoop.hbase.monitoring.ThreadMonitoring;
+ import org.apache.yetus.audience.InterfaceAudience;
+ import org.slf4j.Logger;
+@@ -185,7 +187,20 @@ public class ExecutorService {
+     return ret;
+   }
+ 
+-  /**
++    public void dumpExecutors(PrintWriter out, StateDumpServlet stateDumpServlet)
++        throws IOException {
++        if (this == null) {
++        out.println("ExecutorService is not initialized");
++        return;
++      }
++
++      Map<String, ExecutorStatus> statuses = getAllExecutorStatuses();
++      for (ExecutorStatus status : statuses.values()) {
++        status.dumpTo(out, "  ");
++      }
++    }
++
++    /**
+    * Executor instance.
+    */
+   static class Executor {
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/favored/FavoredNodeAssignmentHelper.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/favored/FavoredNodeAssignmentHelper.java
+index a1fde74..65ac8d0 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/favored/FavoredNodeAssignmentHelper.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/favored/FavoredNodeAssignmentHelper.java
+@@ -47,6 +47,7 @@ import org.apache.hadoop.hbase.client.Put;
+ import org.apache.hadoop.hbase.client.RegionInfo;
+ import org.apache.hadoop.hbase.client.Table;
+ import org.apache.hadoop.hbase.master.RackManager;
++import org.apache.hadoop.hbase.master.balancer.FavoredStochasticBalancer;
+ import org.apache.hadoop.hbase.util.Bytes;
+ import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+ import org.apache.yetus.audience.InterfaceAudience;
+@@ -852,4 +853,23 @@ public class FavoredNodeAssignmentHelper {
+       return rack;
+     }
+   }
++
++    public Set<ServerName> getInheritedFNForDaughter(List<ServerName> parentFavoredNodes, FavoredNodesPlan.Position primary, FavoredNodesPlan.Position secondary, FavoredStochasticBalancer favoredStochasticBalancer)
++        throws IOException {
++
++        Set<ServerName> daughterFN = Sets.newLinkedHashSet();
++      if (parentFavoredNodes.size() >= primary.ordinal()) {
++        daughterFN.add(parentFavoredNodes.get(primary.ordinal()));
++      }
++
++      if (parentFavoredNodes.size() >= secondary.ordinal()) {
++        daughterFN.add(parentFavoredNodes.get(secondary.ordinal()));
++      }
++
++      while (daughterFN.size() < FAVORED_NODES_NUM) {
++        ServerName newNode = generateMissingFavoredNode(Lists.newArrayList(daughterFN));
++        daughterFN.add(newNode);
++      }
++      return daughterFN;
++    }
+ }
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/io/hfile/HFileBlock.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/io/hfile/HFileBlock.java
+index 968a87e..cac099a 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/io/hfile/HFileBlock.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/io/hfile/HFileBlock.java
+@@ -112,7 +112,32 @@ import org.apache.hbase.thirdparty.com.google.common.base.Preconditions;
+ public class HFileBlock implements Cacheable {
+   private static final Logger LOG = LoggerFactory.getLogger(HFileBlock.class);
+ 
+-  // Block Header fields.
++    /**
++     * Compares the actual type of a block retrieved from cache or disk with its
++     * expected type and throws an exception in case of a mismatch. Expected
++     * block type of {@link BlockType#DATA} is considered to match the actual
++     * block type [@link {@link BlockType#ENCODED_DATA} as well.
++     * @param expectedBlockType the expected block type, or null to skip the
++     *          check
++     * @param hFileReader
++     */
++    public void validateBlockType(BlockType expectedBlockType, HFileReaderImpl hFileReader) throws IOException {
++        if (expectedBlockType == null) {
++        return;
++      }
++      BlockType actualBlockType = getBlockType();
++      if (expectedBlockType.isData() && actualBlockType.isData()) {
++        // We consider DATA to match ENCODED_DATA for the purpose of this
++        // verification.
++        return;
++      }
++      if (actualBlockType != expectedBlockType) {
++        throw new IOException("Expected block type " + expectedBlockType + ", " +
++            "but got " + actualBlockType + ": " + this + ", path=" + hFileReader.getPath());
++      }
++    }
++
++    // Block Header fields.
+ 
+   // TODO: encapsulate Header related logic in this inner class.
+   static class Header {
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/io/hfile/HFileReaderImpl.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/io/hfile/HFileReaderImpl.java
+index 69f45be..a1f5c52 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/io/hfile/HFileReaderImpl.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/io/hfile/HFileReaderImpl.java
+@@ -1321,7 +1321,7 @@ public class HFileReaderImpl implements HFile.Reader, Configurable {
+             cache.returnBlock(cacheKey, compressedBlock);
+           }
+         }
+-        validateBlockType(cachedBlock, expectedBlockType);
++        cachedBlock.validateBlockType(expectedBlockType, this);
+ 
+         if (expectedDataBlockEncoding == null) {
+           return cachedBlock;
+@@ -1496,7 +1496,7 @@ public class HFileReaderImpl implements HFile.Reader, Configurable {
+         // Load block from filesystem.
+         HFileBlock hfileBlock =
+             fsBlockReader.readBlockData(dataBlockOffset, onDiskBlockSize, pread, !isCompaction);
+-        validateBlockType(hfileBlock, expectedBlockType);
++        hfileBlock.validateBlockType(expectedBlockType, this);
+         HFileBlock unpacked = hfileBlock.unpack(hfileContext, fsBlockReader);
+         BlockType.BlockCategory category = hfileBlock.getBlockType().getCategory();
+ 
+@@ -1527,33 +1527,7 @@ public class HFileReaderImpl implements HFile.Reader, Configurable {
+     return includesMemstoreTS && decodeMemstoreTS;
+   }
+ 
+-  /**
+-   * Compares the actual type of a block retrieved from cache or disk with its
+-   * expected type and throws an exception in case of a mismatch. Expected
+-   * block type of {@link BlockType#DATA} is considered to match the actual
+-   * block type [@link {@link BlockType#ENCODED_DATA} as well.
+-   * @param block a block retrieved from cache or disk
+-   * @param expectedBlockType the expected block type, or null to skip the
+-   *          check
+-   */
+-  private void validateBlockType(HFileBlock block,
+-      BlockType expectedBlockType) throws IOException {
+-    if (expectedBlockType == null) {
+-      return;
+-    }
+-    BlockType actualBlockType = block.getBlockType();
+-    if (expectedBlockType.isData() && actualBlockType.isData()) {
+-      // We consider DATA to match ENCODED_DATA for the purpose of this
+-      // verification.
+-      return;
+-    }
+-    if (actualBlockType != expectedBlockType) {
+-      throw new IOException("Expected block type " + expectedBlockType + ", " +
+-          "but got " + actualBlockType + ": " + block + ", path=" + path);
+-    }
+-  }
+-
+-  /**
++    /**
+    * @return Last key as cell in the file. May be null if file has no entries. Note that
+    *         this is not the last row key, but it is the Cell representation of the last
+    *         key
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/master/HMaster.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/master/HMaster.java
+index 137b558..6438dec 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/master/HMaster.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/master/HMaster.java
+@@ -25,6 +25,7 @@ import com.google.protobuf.Descriptors;
+ import com.google.protobuf.Service;
+ import java.io.IOException;
+ import java.io.InterruptedIOException;
++import java.io.PrintWriter;
+ import java.lang.reflect.Constructor;
+ import java.lang.reflect.InvocationTargetException;
+ import java.net.InetAddress;
+@@ -258,7 +259,20 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.WALProtos;
+ public class HMaster extends HRegionServer implements MasterServices {
+   private static Logger LOG = LoggerFactory.getLogger(HMaster.class);
+ 
+-  /**
++    public void dumpRIT(PrintWriter out, MasterDumpServlet masterDumpServlet) {
++        AssignmentManager am = getAssignmentManager();
++      if (am == null) {
++        out.println("AssignmentManager is not initialized");
++        return;
++      }
++
++      for (RegionStateNode rs : am.getRegionsInTransition()) {
++        String rid = rs.getRegionInfo().getEncodedName();
++        out.println("Region " + rid + ": " + rs.toDescriptiveString());
++      }
++    }
++
++    /**
+    * Protection against zombie master. Started once Master accepts active responsibility and
+    * starts taking over responsibilities. Allows a finite time window before giving up ownership.
+    */
+@@ -827,7 +841,7 @@ public class HMaster extends HRegionServer implements MasterServices {
+     this.mpmHost.register(this.snapshotManager);
+     this.mpmHost.register(new MasterFlushTableProcedureManager());
+     this.mpmHost.loadProcedures(conf);
+-    this.mpmHost.initialize(this, this.metricsMaster);
++    this.metricsMaster.initialize(this, this.mpmHost);
+   }
+ 
+   private static final ImmutableSet<Class<? extends Procedure>> UNSUPPORTED_PROCEDURES =
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/master/MasterDumpServlet.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/master/MasterDumpServlet.java
+index ec8e523..14abbd9 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/master/MasterDumpServlet.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/master/MasterDumpServlet.java
+@@ -29,8 +29,6 @@ import javax.servlet.http.HttpServletResponse;
+ import org.apache.hadoop.conf.Configuration;
+ import org.apache.hadoop.hbase.ServerMetrics;
+ import org.apache.hadoop.hbase.ServerName;
+-import org.apache.hadoop.hbase.master.assignment.AssignmentManager;
+-import org.apache.hadoop.hbase.master.assignment.RegionStateNode;
+ import org.apache.hadoop.hbase.monitoring.LogMonitoring;
+ import org.apache.hadoop.hbase.monitoring.StateDumpServlet;
+ import org.apache.hadoop.hbase.monitoring.TaskMonitor;
+@@ -71,11 +69,11 @@ public class MasterDumpServlet extends StateDumpServlet {
+ 
+       out.println("\n\nRegions-in-transition:");
+       out.println(LINE);
+-      dumpRIT(master, out);
++      master.dumpRIT(out, this);
+ 
+       out.println("\n\nExecutors:");
+       out.println(LINE);
+-      dumpExecutors(master.getExecutorService(), out);
++      master.getExecutorService().dumpExecutors(out, MasterDumpServlet.this);
+ 
+       out.println("\n\nStacks:");
+       out.println(LINE);
+@@ -110,20 +108,7 @@ public class MasterDumpServlet extends StateDumpServlet {
+   }
+ 
+ 
+-  private void dumpRIT(HMaster master, PrintWriter out) {
+-    AssignmentManager am = master.getAssignmentManager();
+-    if (am == null) {
+-      out.println("AssignmentManager is not initialized");
+-      return;
+-    }
+-
+-    for (RegionStateNode rs : am.getRegionsInTransition()) {
+-      String rid = rs.getRegionInfo().getEncodedName();
+-      out.println("Region " + rid + ": " + rs.toDescriptiveString());
+-    }
+-  }
+-
+-  private void dumpServers(HMaster master, PrintWriter out) {
++    private void dumpServers(HMaster master, PrintWriter out) {
+     ServerManager sm = master.getServerManager();
+     if (sm == null) {
+       out.println("ServerManager is not initialized");
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/master/MasterFileSystem.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/master/MasterFileSystem.java
+index 9e9f278..697fd73 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/master/MasterFileSystem.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/master/MasterFileSystem.java
+@@ -38,7 +38,9 @@ import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
+ import org.apache.hadoop.hbase.exceptions.DeserializationException;
+ import org.apache.hadoop.hbase.fs.HFileSystem;
+ import org.apache.hadoop.hbase.log.HBaseMarkers;
++import org.apache.hadoop.hbase.master.procedure.CloneSnapshotProcedure;
+ import org.apache.hadoop.hbase.mob.MobConstants;
++import org.apache.hadoop.hbase.mob.MobUtils;
+ import org.apache.hadoop.hbase.procedure2.store.wal.WALProcedureStore;
+ import org.apache.hadoop.hbase.regionserver.HRegion;
+ import org.apache.hadoop.hbase.replication.ReplicationUtils;
+@@ -456,4 +458,27 @@ public class MasterFileSystem {
+   public void logFileSystemState(Logger log) throws IOException {
+     FSUtils.logFileSystemState(fs, rootdir, log);
+   }
++
++    /**
++     * Move table temp mob directory to the hbase root location
++     * @param tableDescriptor The table to operate on
++     * @param tempMobTableDir The temp mob directory of table
++     * @param cloneSnapshotProcedure
++     * @throws IOException If failed to move temp mob dir to hbase root dir
++     */
++    public void moveTempMobDirectoryToHBaseRoot(final TableDescriptor tableDescriptor, final Path tempMobTableDir, CloneSnapshotProcedure cloneSnapshotProcedure) throws IOException {
++        FileSystem fs = getFileSystem();
++      final Path tableMobDir =
++          MobUtils.getMobTableDir(getRootDir(), tableDescriptor.getTableName());
++      if (!fs.delete(tableMobDir, true) && fs.exists(tableMobDir)) {
++        throw new IOException("Couldn't delete mob table " + tableMobDir);
++      }
++      if (!fs.exists(tableMobDir.getParent())) {
++        fs.mkdirs(tableMobDir.getParent());
++      }
++      if (!fs.rename(tempMobTableDir, tableMobDir)) {
++        throw new IOException("Unable to move mob table from temp=" + tempMobTableDir
++            + " to hbase root=" + tableMobDir);
++      }
++    }
+ }
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/master/MetricsMaster.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/master/MetricsMaster.java
+index 83a6988..ac29f0f 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/master/MetricsMaster.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/master/MetricsMaster.java
+@@ -18,8 +18,11 @@
+ 
+ package org.apache.hadoop.hbase.master;
+ 
++import org.apache.hadoop.hbase.procedure.MasterProcedureManager;
++import org.apache.hadoop.hbase.procedure.MasterProcedureManagerHost;
+ import org.apache.yetus.audience.InterfaceAudience;
+ import org.apache.yetus.audience.InterfaceStability;
++import org.apache.zookeeper.KeeperException;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ import org.apache.hadoop.hbase.CompatibilitySingletonFactory;
+@@ -28,6 +31,8 @@ import org.apache.hadoop.hbase.metrics.Histogram;
+ import org.apache.hadoop.hbase.metrics.OperationMetrics;
+ import org.apache.hadoop.hbase.procedure2.ProcedureMetrics;
+ 
++import java.io.IOException;
++
+ /**
+  * This class is for maintaining the various master statistics
+  * and publishing them through the metrics interfaces.
+@@ -177,4 +182,11 @@ public class MetricsMaster {
+   public void incrementSnapshotFetchTime(long executionTime) {
+     masterQuotaSource.incrementSnapshotObserverSnapshotFetchTime(executionTime);
+   }
++
++    public void initialize(MasterServices master, MasterProcedureManagerHost masterProcedureManagerHost)
++        throws KeeperException, IOException, UnsupportedOperationException {
++        for (MasterProcedureManager mpm : masterProcedureManagerHost.getProcedureManagers()) {
++        mpm.initialize(master, this);
++      }
++    }
+ }
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/master/assignment/MergeTableRegionsProcedure.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/master/assignment/MergeTableRegionsProcedure.java
+index 241e8f9..751473b 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/master/assignment/MergeTableRegionsProcedure.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/master/assignment/MergeTableRegionsProcedure.java
+@@ -20,11 +20,10 @@ package org.apache.hadoop.hbase.master.assignment;
+ import java.io.IOException;
+ import java.util.ArrayList;
+ import java.util.Arrays;
+-import java.util.Collection;
+ import java.util.Collections;
+ import java.util.List;
+ import java.util.stream.Stream;
+-import org.apache.hadoop.conf.Configuration;
++
+ import org.apache.hadoop.fs.FileSystem;
+ import org.apache.hadoop.fs.Path;
+ import org.apache.hadoop.hbase.HConstants;
+@@ -32,7 +31,6 @@ import org.apache.hadoop.hbase.MetaMutationAnnotation;
+ import org.apache.hadoop.hbase.ServerName;
+ import org.apache.hadoop.hbase.TableName;
+ import org.apache.hadoop.hbase.UnknownRegionException;
+-import org.apache.hadoop.hbase.client.ColumnFamilyDescriptor;
+ import org.apache.hadoop.hbase.client.DoNotRetryRegionException;
+ import org.apache.hadoop.hbase.client.MasterSwitchType;
+ import org.apache.hadoop.hbase.client.Mutation;
+@@ -40,7 +38,6 @@ import org.apache.hadoop.hbase.client.RegionInfo;
+ import org.apache.hadoop.hbase.client.RegionInfoBuilder;
+ import org.apache.hadoop.hbase.client.TableDescriptor;
+ import org.apache.hadoop.hbase.exceptions.MergeRegionException;
+-import org.apache.hadoop.hbase.io.hfile.CacheConfig;
+ import org.apache.hadoop.hbase.master.CatalogJanitor;
+ import org.apache.hadoop.hbase.master.MasterCoprocessorHost;
+ import org.apache.hadoop.hbase.master.MasterFileSystem;
+@@ -54,8 +51,6 @@ import org.apache.hadoop.hbase.procedure2.ProcedureMetrics;
+ import org.apache.hadoop.hbase.procedure2.ProcedureStateSerializer;
+ import org.apache.hadoop.hbase.quotas.QuotaExceededException;
+ import org.apache.hadoop.hbase.regionserver.HRegionFileSystem;
+-import org.apache.hadoop.hbase.regionserver.HStoreFile;
+-import org.apache.hadoop.hbase.regionserver.StoreFileInfo;
+ import org.apache.hadoop.hbase.util.Bytes;
+ import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+ import org.apache.hadoop.hbase.util.FSUtils;
+@@ -621,10 +616,10 @@ public class MergeTableRegionsProcedure
+       env.getMasterConfiguration(), fs, tabledir, regionsToMerge[0], false);
+     regionFs.createMergesDir();
+ 
+-    mergeStoreFiles(env, regionFs, regionFs.getMergesDir());
++    regionFs.mergeStoreFiles(env, regionFs.getMergesDir(), this);
+     HRegionFileSystem regionFs2 = HRegionFileSystem.openRegionFromFileSystem(
+       env.getMasterConfiguration(), fs, tabledir, regionsToMerge[1], false);
+-    mergeStoreFiles(env, regionFs2, regionFs.getMergesDir());
++    regionFs2.mergeStoreFiles(env, regionFs.getMergesDir(), this);
+ 
+     regionFs.commitMergedRegion(mergedRegion);
+ 
+@@ -633,37 +628,7 @@ public class MergeTableRegionsProcedure
+         getOrCreateRegionStateNode(mergedRegion).setState(State.MERGING_NEW);
+   }
+ 
+-  /**
+-   * Create reference file(s) of merging regions under the merged directory
+-   * @param env MasterProcedureEnv
+-   * @param regionFs region file system
+-   * @param mergedDir the temp directory of merged region
+-   */
+-  private void mergeStoreFiles(
+-      final MasterProcedureEnv env, final HRegionFileSystem regionFs, final Path mergedDir)
+-      throws IOException {
+-    final MasterFileSystem mfs = env.getMasterServices().getMasterFileSystem();
+-    final Configuration conf = env.getMasterConfiguration();
+-    final TableDescriptor htd = env.getMasterServices().getTableDescriptors().get(getTableName());
+-
+-    for (String family : regionFs.getFamilies()) {
+-      final ColumnFamilyDescriptor hcd = htd.getColumnFamily(Bytes.toBytes(family));
+-      final Collection<StoreFileInfo> storeFiles = regionFs.getStoreFiles(family);
+-
+-      if (storeFiles != null && storeFiles.size() > 0) {
+-        for (StoreFileInfo storeFileInfo : storeFiles) {
+-          // Create reference file(s) of the region in mergedDir.
+-          // As this procedure is running on master, use CacheConfig.DISABLED means
+-          // don't cache any block.
+-          regionFs.mergeStoreFile(mergedRegion, family,
+-              new HStoreFile(mfs.getFileSystem(), storeFileInfo, conf, CacheConfig.DISABLED,
+-                  hcd.getBloomFilterType(), true), mergedDir);
+-        }
+-      }
+-    }
+-  }
+-
+-  /**
++    /**
+    * Clean up a merged region
+    * @param env MasterProcedureEnv
+    */
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/master/assignment/RegionStateNode.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/master/assignment/RegionStateNode.java
+index 7dbdbee..ea3a22d 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/master/assignment/RegionStateNode.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/master/assignment/RegionStateNode.java
+@@ -17,7 +17,10 @@
+  */
+ package org.apache.hadoop.hbase.master.assignment;
+ 
++import java.util.ArrayList;
+ import java.util.Arrays;
++import java.util.List;
++import java.util.Map;
+ import java.util.concurrent.ConcurrentMap;
+ import java.util.concurrent.locks.Lock;
+ import java.util.concurrent.locks.ReentrantLock;
+@@ -71,7 +74,21 @@ public class RegionStateNode implements Comparable<RegionStateNode> {
+ 
+   private static final Logger LOG = LoggerFactory.getLogger(RegionStateNode.class);
+ 
+-  private static final class AssignmentProcedureEvent extends ProcedureEvent<RegionInfo> {
++    public void createSnapshot(Map<ServerName, List<RegionInfo>> result, RegionStates regionStates) {
++        final ServerName serverName = getRegionLocation();
++      if (serverName == null) {
++        return;
++      }
++
++      List<RegionInfo> serverRegions = result.get(serverName);
++      if (serverRegions == null) {
++        serverRegions = new ArrayList<RegionInfo>();
++        result.put(serverName, serverRegions);
++      }
++      serverRegions.add(getRegionInfo());
++    }
++
++    private static final class AssignmentProcedureEvent extends ProcedureEvent<RegionInfo> {
+     public AssignmentProcedureEvent(final RegionInfo regionInfo) {
+       super(regionInfo);
+     }
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/master/assignment/RegionStates.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/master/assignment/RegionStates.java
+index 1470a5a..1cd04a0 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/master/assignment/RegionStates.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/master/assignment/RegionStates.java
+@@ -458,34 +458,20 @@ public class RegionStates {
+         if (node == null) {
+           continue;
+         }
+-        createSnapshot(node, result);
++        node.createSnapshot(result, this);
+       }
+     } else {
+       for (RegionStateNode node : regionsMap.values()) {
+         if (node == null) {
+           continue;
+         }
+-        createSnapshot(node, result);
++        node.createSnapshot(result, this);
+       }
+     }
+     return result;
+   }
+ 
+-  private void createSnapshot(RegionStateNode node, Map<ServerName, List<RegionInfo>> result) {
+-    final ServerName serverName = node.getRegionLocation();
+-    if (serverName == null) {
+-      return;
+-    }
+-
+-    List<RegionInfo> serverRegions = result.get(serverName);
+-    if (serverRegions == null) {
+-      serverRegions = new ArrayList<RegionInfo>();
+-      result.put(serverName, serverRegions);
+-    }
+-    serverRegions.add(node.getRegionInfo());
+-  }
+-
+-  public Map<RegionInfo, ServerName> getRegionAssignments() {
++    public Map<RegionInfo, ServerName> getRegionAssignments() {
+     final HashMap<RegionInfo, ServerName> assignments = new HashMap<RegionInfo, ServerName>();
+     for (RegionStateNode node: regionsMap.values()) {
+       assignments.put(node.getRegionInfo(), node.getRegionLocation());
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/master/balancer/FavoredStochasticBalancer.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/master/balancer/FavoredStochasticBalancer.java
+index 5a6659e..2a73b34 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/master/balancer/FavoredStochasticBalancer.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/master/balancer/FavoredStochasticBalancer.java
+@@ -506,39 +506,19 @@ public class FavoredStochasticBalancer extends StochasticLoadBalancer implements
+ 
+       // Lets get the primary and secondary from parent for regionA
+       Set<ServerName> regionAFN =
+-          getInheritedFNForDaughter(helper, parentFavoredNodes, PRIMARY, SECONDARY);
++          helper.getInheritedFNForDaughter(parentFavoredNodes, PRIMARY, SECONDARY, this);
+       result.put(regionA, Lists.newArrayList(regionAFN));
+ 
+       // Lets get the primary and tertiary from parent for regionB
+       Set<ServerName> regionBFN =
+-          getInheritedFNForDaughter(helper, parentFavoredNodes, PRIMARY, TERTIARY);
++          helper.getInheritedFNForDaughter(parentFavoredNodes, PRIMARY, TERTIARY, this);
+       result.put(regionB, Lists.newArrayList(regionBFN));
+     }
+ 
+     fnm.updateFavoredNodes(result);
+   }
+ 
+-  private Set<ServerName> getInheritedFNForDaughter(FavoredNodeAssignmentHelper helper,
+-      List<ServerName> parentFavoredNodes, Position primary, Position secondary)
+-      throws IOException {
+-
+-    Set<ServerName> daughterFN = Sets.newLinkedHashSet();
+-    if (parentFavoredNodes.size() >= primary.ordinal()) {
+-      daughterFN.add(parentFavoredNodes.get(primary.ordinal()));
+-    }
+-
+-    if (parentFavoredNodes.size() >= secondary.ordinal()) {
+-      daughterFN.add(parentFavoredNodes.get(secondary.ordinal()));
+-    }
+-
+-    while (daughterFN.size() < FAVORED_NODES_NUM) {
+-      ServerName newNode = helper.generateMissingFavoredNode(Lists.newArrayList(daughterFN));
+-      daughterFN.add(newNode);
+-    }
+-    return daughterFN;
+-  }
+-
+-  /*
++    /*
+    * Generate favored nodes for a region during merge. Choose the FN from one of the sources to
+    * keep it simple.
+    */
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/master/procedure/CloneSnapshotProcedure.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/master/procedure/CloneSnapshotProcedure.java
+index d351d67..7c3ddbd 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/master/procedure/CloneSnapshotProcedure.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/master/procedure/CloneSnapshotProcedure.java
+@@ -474,36 +474,12 @@ public class CloneSnapshotProcedure
+     // Move Table temp mob directory to the hbase root location
+     Path tempMobTableDir = MobUtils.getMobTableDir(tempdir, tableDescriptor.getTableName());
+     if (mfs.getFileSystem().exists(tempMobTableDir)) {
+-      moveTempMobDirectoryToHBaseRoot(mfs, tableDescriptor, tempMobTableDir);
++      mfs.moveTempMobDirectoryToHBaseRoot(tableDescriptor, tempMobTableDir, this);
+     }
+     return newRegions;
+   }
+ 
+-  /**
+-   * Move table temp mob directory to the hbase root location
+-   * @param mfs The master file system
+-   * @param tableDescriptor The table to operate on
+-   * @param tempMobTableDir The temp mob directory of table
+-   * @throws IOException If failed to move temp mob dir to hbase root dir
+-   */
+-  private void moveTempMobDirectoryToHBaseRoot(final MasterFileSystem mfs,
+-      final TableDescriptor tableDescriptor, final Path tempMobTableDir) throws IOException {
+-    FileSystem fs = mfs.getFileSystem();
+-    final Path tableMobDir =
+-        MobUtils.getMobTableDir(mfs.getRootDir(), tableDescriptor.getTableName());
+-    if (!fs.delete(tableMobDir, true) && fs.exists(tableMobDir)) {
+-      throw new IOException("Couldn't delete mob table " + tableMobDir);
+-    }
+-    if (!fs.exists(tableMobDir.getParent())) {
+-      fs.mkdirs(tableMobDir.getParent());
+-    }
+-    if (!fs.rename(tempMobTableDir, tableMobDir)) {
+-      throw new IOException("Unable to move mob table from temp=" + tempMobTableDir
+-          + " to hbase root=" + tableMobDir);
+-    }
+-  }
+-
+-  /**
++    /**
+    * Add regions to hbase:meta table.
+    * @param env MasterProcedureEnv
+    * @throws IOException
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/master/procedure/MasterProcedureEnv.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/master/procedure/MasterProcedureEnv.java
+index 4fcf7e0..5cad204 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/master/procedure/MasterProcedureEnv.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/master/procedure/MasterProcedureEnv.java
+@@ -19,9 +19,12 @@
+ package org.apache.hadoop.hbase.master.procedure;
+ 
+ import java.io.IOException;
++import java.util.List;
++
+ import org.apache.hadoop.conf.Configuration;
+ import org.apache.hadoop.fs.FileSystem;
+ import org.apache.hadoop.fs.Path;
++import org.apache.hadoop.hbase.client.RegionInfo;
+ import org.apache.hadoop.hbase.conf.ConfigurationObserver;
+ import org.apache.hadoop.hbase.ipc.RpcServer;
+ import org.apache.hadoop.hbase.master.MasterCoprocessorHost;
+@@ -46,7 +49,16 @@ import org.slf4j.LoggerFactory;
+ public class MasterProcedureEnv implements ConfigurationObserver {
+   private static final Logger LOG = LoggerFactory.getLogger(MasterProcedureEnv.class);
+ 
+-  @InterfaceAudience.Private
++    /**
++     * Fetches all Regions for a table. Cache the result of this method if you need to use it multiple
++     * times. Be aware that it may change over in between calls to this procedure.
++     * @param modifyTableProcedure
++     */
++    public List<RegionInfo> getRegionInfoList(ModifyTableProcedure modifyTableProcedure) throws IOException {
++        return getAssignmentManager().getRegionStates().getRegionsOfTable(modifyTableProcedure.getTableName());
++    }
++
++    @InterfaceAudience.Private
+   public static class WALStoreLeaseRecovery implements WALProcedureStore.LeaseRecovery {
+     private final MasterServices master;
+ 
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/master/procedure/ModifyTableProcedure.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/master/procedure/ModifyTableProcedure.java
+index dd834db..06974a1 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/master/procedure/ModifyTableProcedure.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/master/procedure/ModifyTableProcedure.java
+@@ -333,7 +333,7 @@ public class ModifyTableProcedure
+         MasterDDLOperationHelper.deleteColumnFamilyFromFileSystem(
+           env,
+           getTableName(),
+-          getRegionInfoList(env),
++          env.getRegionInfoList(this),
+           familyName, oldTableDescriptor.getColumnFamily(familyName).isMobEnabled());
+       }
+     }
+@@ -428,11 +428,4 @@ public class ModifyTableProcedure
+     }
+   }
+ 
+-  /**
+-   * Fetches all Regions for a table. Cache the result of this method if you need to use it multiple
+-   * times. Be aware that it may change over in between calls to this procedure.
+-   */
+-  private List<RegionInfo> getRegionInfoList(final MasterProcedureEnv env) throws IOException {
+-    return env.getAssignmentManager().getRegionStates().getRegionsOfTable(getTableName());
+-  }
+ }
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/monitoring/StateDumpServlet.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/monitoring/StateDumpServlet.java
+index 230f943..249eef5 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/monitoring/StateDumpServlet.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/monitoring/StateDumpServlet.java
+@@ -18,17 +18,13 @@
+  */
+ package org.apache.hadoop.hbase.monitoring;
+ 
+-import java.io.IOException;
+ import java.io.PrintWriter;
+-import java.util.Map;
+ 
+ import javax.servlet.http.HttpServlet;
+ import javax.servlet.http.HttpServletRequest;
+ 
+ import org.apache.yetus.audience.InterfaceAudience;
+ import org.apache.hadoop.conf.Configuration;
+-import org.apache.hadoop.hbase.executor.ExecutorService;
+-import org.apache.hadoop.hbase.executor.ExecutorService.ExecutorStatus;
+ import org.apache.hadoop.hbase.util.VersionInfo;
+ 
+ @InterfaceAudience.Private
+@@ -58,16 +54,4 @@ public abstract class StateDumpServlet extends HttpServlet {
+     return Long.parseLong(param);
+   }
+ 
+-  protected void dumpExecutors(ExecutorService service, PrintWriter out)
+-      throws IOException {
+-    if (service == null) {
+-      out.println("ExecutorService is not initialized");
+-      return;
+-    }
+-
+-    Map<String, ExecutorStatus> statuses = service.getAllExecutorStatuses();
+-    for (ExecutorStatus status : statuses.values()) {
+-      status.dumpTo(out, "  ");
+-    }
+-  }
+ }
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/procedure/MasterProcedureManagerHost.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/procedure/MasterProcedureManagerHost.java
+index 736257f..883ab6e 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/procedure/MasterProcedureManagerHost.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/procedure/MasterProcedureManagerHost.java
+@@ -17,13 +17,9 @@
+  */
+ package org.apache.hadoop.hbase.procedure;
+ 
+-import java.io.IOException;
+ import java.util.Hashtable;
+ import org.apache.hadoop.conf.Configuration;
+-import org.apache.hadoop.hbase.master.MasterServices;
+-import org.apache.hadoop.hbase.master.MetricsMaster;
+ import org.apache.yetus.audience.InterfaceAudience;
+-import org.apache.zookeeper.KeeperException;
+ 
+ /**
+  * Provides the globally barriered procedure framework and environment for
+@@ -44,14 +40,7 @@ public class MasterProcedureManagerHost extends
+     }
+   }
+ 
+-  public void initialize(MasterServices master, final MetricsMaster metricsMaster)
+-      throws KeeperException, IOException, UnsupportedOperationException {
+-    for (MasterProcedureManager mpm : getProcedureManagers()) {
+-      mpm.initialize(master, metricsMaster);
+-    }
+-  }
+-
+-  public void stop(String why) {
++    public void stop(String why) {
+     for (MasterProcedureManager mpm : getProcedureManagers()) {
+       mpm.stop(why);
+     }
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/CSLMImmutableSegment.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/CSLMImmutableSegment.java
+index 52ff44a..ce1e85e 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/CSLMImmutableSegment.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/CSLMImmutableSegment.java
+@@ -54,4 +54,24 @@ public class CSLMImmutableSegment extends ImmutableSegment {
+   @Override protected boolean canBeFlattened() {
+     return true;
+   }
++
++    // create flat immutable segment from non-flat immutable segment
++    // for flattening
++    public ImmutableSegment createImmutableSegmentByFlattening(
++            CompactingMemStore.IndexType idxType,
++            MemStoreSizing memstoreSizing, MemStoreCompactionStrategy.Action action, SegmentFactory segmentFactory) {
++        ImmutableSegment res = null;
++      switch (idxType) {
++        case CHUNK_MAP:
++          res = new CellChunkImmutableSegment(this, memstoreSizing, action);
++          break;
++        case CSLM_MAP:
++          assert false; // non-flat segment can not be the result of flattening
++          break;
++        case ARRAY_MAP:
++          res = new CellArrayImmutableSegment(this, memstoreSizing, action);
++          break;
++      }
++      return res;
++    }
+ }
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/CompactionPipeline.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/CompactionPipeline.java
+index d97a2aa..07a9395 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/CompactionPipeline.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/CompactionPipeline.java
+@@ -229,8 +229,8 @@ public class CompactionPipeline {
+           s.waitForUpdates(); // to ensure all updates preceding s in-memory flush have completed
+           // size to be updated
+           MemStoreSizing newMemstoreAccounting = new NonThreadSafeMemStoreSizing();
+-          ImmutableSegment newS = SegmentFactory.instance().createImmutableSegmentByFlattening(
+-              (CSLMImmutableSegment)s,idxType,newMemstoreAccounting,action);
++          ImmutableSegment newS = ((CSLMImmutableSegment)s).createImmutableSegmentByFlattening(
++                  idxType,newMemstoreAccounting,action, SegmentFactory.instance());
+           replaceAtIndex(i,newS);
+           if (region != null) {
+             // Update the global memstore size counter upon flattening there is no change in the
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/HRegion.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/HRegion.java
+index 500c894..ae6ffc9 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/HRegion.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/HRegion.java
+@@ -3565,7 +3565,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
+         byte[] family = e.getKey();
+         List<Cell> cells = e.getValue();
+         assert cells instanceof RandomAccess;
+-        region.applyToMemStore(region.getStore(family), cells, false, memstoreAccounting);
++        region.getStore(family).applyToMemStore(cells, false, memstoreAccounting, region);
+       }
+     }
+   }
+@@ -4492,25 +4492,8 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
+     doBatchMutate(p);
+   }
+ 
+-  /**
+-   * @param delta If we are doing delta changes -- e.g. increment/append -- then this flag will be
+-   *          set; when set we will run operations that make sense in the increment/append scenario
+-   *          but that do not make sense otherwise.
+-   * @see #applyToMemStore(HStore, Cell, MemStoreSizing)
+-   */
+-  private void applyToMemStore(HStore store, List<Cell> cells, boolean delta,
+-      MemStoreSizing memstoreAccounting) throws IOException {
+-    // Any change in how we update Store/MemStore needs to also be done in other applyToMemStore!!!!
+-    boolean upsert = delta && store.getColumnFamilyDescriptor().getMaxVersions() == 1;
+-    if (upsert) {
+-      store.upsert(cells, getSmallestReadPoint(), memstoreAccounting);
+-    } else {
+-      store.add(cells, memstoreAccounting);
+-    }
+-  }
+-
+-  /**
+-   * @see #applyToMemStore(HStore, List, boolean, MemStoreSizing)
++    /**
++   * @see HStore#applyToMemStore(List, boolean, MemStoreSizing, HRegion)
+    */
+   private void applyToMemStore(HStore store, Cell cell, MemStoreSizing memstoreAccounting)
+       throws IOException {
+@@ -7881,7 +7864,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
+         }
+         // Now write to MemStore. Do it a column family at a time.
+         for (Map.Entry<HStore, List<Cell>> e : forMemStore.entrySet()) {
+-          applyToMemStore(e.getKey(), e.getValue(), true, memstoreAccounting);
++          e.getKey().applyToMemStore(e.getValue(), true, memstoreAccounting, this);
+         }
+         mvcc.completeAndWait(writeEntry);
+         if (rsServices != null && rsServices.getNonceManager() != null) {
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/HRegionFileSystem.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/HRegionFileSystem.java
+index 4d19bd5..8112df5 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/HRegionFileSystem.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/HRegionFileSystem.java
+@@ -44,6 +44,10 @@ import org.apache.hadoop.hbase.client.RegionInfo;
+ import org.apache.hadoop.hbase.client.TableDescriptor;
+ import org.apache.hadoop.hbase.fs.HFileSystem;
+ import org.apache.hadoop.hbase.io.Reference;
++import org.apache.hadoop.hbase.io.hfile.CacheConfig;
++import org.apache.hadoop.hbase.master.MasterFileSystem;
++import org.apache.hadoop.hbase.master.assignment.MergeTableRegionsProcedure;
++import org.apache.hadoop.hbase.master.procedure.MasterProcedureEnv;
+ import org.apache.hadoop.hbase.util.Bytes;
+ import org.apache.hadoop.hbase.util.FSHDFSUtils;
+ import org.apache.hadoop.hbase.util.FSUtils;
+@@ -1212,4 +1216,34 @@ public class HRegionFileSystem {
+     }
+     Thread.sleep((long)baseSleepBeforeRetries * sleepMultiplier);
+   }
++
++    /**
++     * Create reference file(s) of merging regions under the merged directory
++     * @param env MasterProcedureEnv
++     * @param mergedDir the temp directory of merged region
++     * @param mergeTableRegionsProcedure
++     */
++    public void mergeStoreFiles(
++            final MasterProcedureEnv env, final Path mergedDir, MergeTableRegionsProcedure mergeTableRegionsProcedure)
++        throws IOException {
++        final MasterFileSystem mfs = env.getMasterServices().getMasterFileSystem();
++      final Configuration conf = env.getMasterConfiguration();
++      final TableDescriptor htd = env.getMasterServices().getTableDescriptors().get(mergeTableRegionsProcedure.getTableName());
++
++      for (String family : getFamilies()) {
++        final ColumnFamilyDescriptor hcd = htd.getColumnFamily(Bytes.toBytes(family));
++        final Collection<StoreFileInfo> storeFiles = getStoreFiles(family);
++
++        if (storeFiles != null && storeFiles.size() > 0) {
++          for (StoreFileInfo storeFileInfo : storeFiles) {
++            // Create reference file(s) of the region in mergedDir.
++            // As this procedure is running on master, use CacheConfig.DISABLED means
++            // don't cache any block.
++            mergeStoreFile(mergeTableRegionsProcedure.getMergedRegion(), family,
++                new HStoreFile(mfs.getFileSystem(), storeFileInfo, conf, CacheConfig.DISABLED,
++                    hcd.getBloomFilterType(), true), mergedDir);
++          }
++        }
++      }
++    }
+ }
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/HStore.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/HStore.java
+index 2f40bcb..9b3d213 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/HStore.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/HStore.java
+@@ -2286,7 +2286,28 @@ public class HStore implements Store, HeapSize, StoreConfigInformation, Propagat
+     return new StoreFlusherImpl(cacheFlushId, tracker);
+   }
+ 
+-  private final class StoreFlusherImpl implements StoreFlushContext {
++    /**
++     *
++     * @param cells
++     * @param delta If we are doing delta changes -- e.g. increment/append -- then this flag will be
++     *          set; when set we will run operations that make sense in the increment/append scenario
++     *          but that do not make sense otherwise.
++     * @param memstoreAccounting
++     * @param hRegion
++     * @see #applyToMemStore(HStore, Cell, MemStoreSizing)
++     */
++    public void applyToMemStore(List<Cell> cells, boolean delta,
++                                MemStoreSizing memstoreAccounting, HRegion hRegion) throws IOException {
++        // Any change in how we update Store/MemStore needs to also be done in other applyToMemStore!!!!
++      boolean upsert = delta && getColumnFamilyDescriptor().getMaxVersions() == 1;
++      if (upsert) {
++        upsert(cells, hRegion.getSmallestReadPoint(), memstoreAccounting);
++      } else {
++        add(cells, memstoreAccounting);
++      }
++    }
++
++    private final class StoreFlusherImpl implements StoreFlushContext {
+ 
+     private final FlushLifeCycleTracker tracker;
+     private final long cacheFlushSeqNum;
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/HStoreFile.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/HStoreFile.java
+index 41ed3d7..de5b38e 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/HStoreFile.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/HStoreFile.java
+@@ -38,6 +38,7 @@ import org.apache.hadoop.hbase.io.TimeRange;
+ import org.apache.hadoop.hbase.io.hfile.BlockType;
+ import org.apache.hadoop.hbase.io.hfile.CacheConfig;
+ import org.apache.hadoop.hbase.io.hfile.HFile;
++import org.apache.hadoop.hbase.regionserver.compactions.FIFOCompactionPolicy;
+ import org.apache.hadoop.hbase.util.BloomFilterFactory;
+ import org.apache.hadoop.hbase.util.Bytes;
+ import org.apache.yetus.audience.InterfaceAudience;
+@@ -617,4 +618,16 @@ public class HStoreFile implements StoreFile {
+   Set<String> getCompactedStoreFiles() {
+     return Collections.unmodifiableSet(this.compactedStoreFiles);
+   }
++
++    /**
++     * The FIFOCompactionPolicy only choose those TTL expired HFiles as the compaction candidates. So
++     * if all HFiles are TTL expired, then the compaction will generate a new empty HFile. While its
++     * max timestamp will be Long.MAX_VALUE. If not considered separately, the HFile will never be
++     * archived because its TTL will be never expired. So we'll check the empty store file separately.
++     * (See HBASE-21504)
++     * @param fifoCompactionPolicy
++     */
++    public boolean isEmptyStoreFile(FIFOCompactionPolicy fifoCompactionPolicy) {
++        return getReader().getEntries() == 0;
++    }
+ }
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/RSDumpServlet.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/RSDumpServlet.java
+index 2852ecf..21ea69c 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/RSDumpServlet.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/RSDumpServlet.java
+@@ -75,7 +75,7 @@ public class RSDumpServlet extends StateDumpServlet {
+ 
+       out.println("\n\nExecutors:");
+       out.println(LINE);
+-      dumpExecutors(hrs.getExecutorService(), out);
++      hrs.getExecutorService().dumpExecutors(out, RSDumpServlet.this);
+ 
+       out.println("\n\nStacks:");
+       out.println(LINE);
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/SegmentFactory.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/SegmentFactory.java
+index 26b7ecc..97115f8 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/SegmentFactory.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/SegmentFactory.java
+@@ -101,28 +101,8 @@ public final class SegmentFactory {
+ 
+   }
+ 
+-  // create flat immutable segment from non-flat immutable segment
+-  // for flattening
+-  public ImmutableSegment createImmutableSegmentByFlattening(
+-      CSLMImmutableSegment segment, CompactingMemStore.IndexType idxType,
+-      MemStoreSizing memstoreSizing, MemStoreCompactionStrategy.Action action) {
+-    ImmutableSegment res = null;
+-    switch (idxType) {
+-      case CHUNK_MAP:
+-        res = new CellChunkImmutableSegment(segment, memstoreSizing, action);
+-        break;
+-      case CSLM_MAP:
+-        assert false; // non-flat segment can not be the result of flattening
+-        break;
+-      case ARRAY_MAP:
+-        res = new CellArrayImmutableSegment(segment, memstoreSizing, action);
+-        break;
+-    }
+-    return res;
+-  }
+-
+ 
+-  //****** private methods to instantiate concrete store segments **********//
++    //****** private methods to instantiate concrete store segments **********//
+   private ImmutableSegment createImmutableSegment(final Configuration conf, final CellComparator comparator,
+       MemStoreSegmentsIterator iterator, MemStoreLAB memStoreLAB, int numOfCells,
+       MemStoreCompactionStrategy.Action action, CompactingMemStore.IndexType idxType) {
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/compactions/FIFOCompactionPolicy.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/compactions/FIFOCompactionPolicy.java
+index 5c8626b..99623b1 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/compactions/FIFOCompactionPolicy.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/compactions/FIFOCompactionPolicy.java
+@@ -96,21 +96,10 @@ public class FIFOCompactionPolicy extends ExploringCompactionPolicy {
+     return hasExpiredStores(storeFiles);
+   }
+ 
+-  /**
+-   * The FIFOCompactionPolicy only choose those TTL expired HFiles as the compaction candidates. So
+-   * if all HFiles are TTL expired, then the compaction will generate a new empty HFile. While its
+-   * max timestamp will be Long.MAX_VALUE. If not considered separately, the HFile will never be
+-   * archived because its TTL will be never expired. So we'll check the empty store file separately.
+-   * (See HBASE-21504)
+-   */
+-  private boolean isEmptyStoreFile(HStoreFile sf) {
+-    return sf.getReader().getEntries() == 0;
+-  }
+-
+-  private boolean hasExpiredStores(Collection<HStoreFile> files) {
++    private boolean hasExpiredStores(Collection<HStoreFile> files) {
+     long currentTime = EnvironmentEdgeManager.currentTime();
+     for (HStoreFile sf : files) {
+-      if (isEmptyStoreFile(sf)) {
++      if (sf.isEmptyStoreFile(this)) {
+         return true;
+       }
+       // Check MIN_VERSIONS is in HStore removeUnneededFiles
+@@ -130,7 +119,7 @@ public class FIFOCompactionPolicy extends ExploringCompactionPolicy {
+     long currentTime = EnvironmentEdgeManager.currentTime();
+     Collection<HStoreFile> expiredStores = new ArrayList<>();
+     for (HStoreFile sf : files) {
+-      if (isEmptyStoreFile(sf)) {
++      if (sf.isEmptyStoreFile(this)) {
+         expiredStores.add(sf);
+         continue;
+       }
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/security/visibility/ExpressionExpander.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/security/visibility/ExpressionExpander.java
+index 11842a2..89cc0ab 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/security/visibility/ExpressionExpander.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/security/visibility/ExpressionExpander.java
+@@ -21,7 +21,6 @@ import java.util.List;
+ 
+ import org.apache.yetus.audience.InterfaceAudience;
+ import org.apache.hadoop.hbase.security.visibility.expression.ExpressionNode;
+-import org.apache.hadoop.hbase.security.visibility.expression.LeafExpressionNode;
+ import org.apache.hadoop.hbase.security.visibility.expression.NonLeafExpressionNode;
+ import org.apache.hadoop.hbase.security.visibility.expression.Operator;
+ 
+@@ -50,32 +49,12 @@ public class ExpressionExpander {
+     if (src instanceof NonLeafExpressionNode
+         && ((NonLeafExpressionNode) src).getOperator() == Operator.NOT) {
+       // Negate the exp
+-      return negate((NonLeafExpressionNode) src);
++      return ((NonLeafExpressionNode) src).negate(this);
+     }
+     return src;
+   }
+ 
+-  private ExpressionNode negate(NonLeafExpressionNode nlExp) {
+-    ExpressionNode notChild = nlExp.getChildExps().get(0);
+-    if (notChild instanceof LeafExpressionNode) {
+-      return nlExp;
+-    }
+-    NonLeafExpressionNode nlNotChild = (NonLeafExpressionNode) notChild;
+-    if (nlNotChild.getOperator() == Operator.NOT) {
+-      // negate the negate
+-      return nlNotChild.getChildExps().get(0);
+-    }
+-    Operator negateOp = nlNotChild.getOperator() == Operator.AND ? Operator.OR : Operator.AND;
+-    NonLeafExpressionNode newNode = new NonLeafExpressionNode(negateOp);
+-    for (ExpressionNode expNode : nlNotChild.getChildExps()) {
+-      NonLeafExpressionNode negateNode = new NonLeafExpressionNode(Operator.NOT);
+-      negateNode.addChildExp(expNode.deepClone());
+-      newNode.addChildExp(expand(negateNode));
+-    }
+-    return newNode;
+-  }
+-
+-  private boolean isToBeExpanded(List<ExpressionNode> childExps) {
++    private boolean isToBeExpanded(List<ExpressionNode> childExps) {
+     for (ExpressionNode exp : childExps) {
+       if (!exp.isSingleNode()) {
+         return true;
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/security/visibility/ExpressionParser.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/security/visibility/ExpressionParser.java
+index 313e880..7646ec6 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/security/visibility/ExpressionParser.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/security/visibility/ExpressionParser.java
+@@ -92,7 +92,7 @@ public class ExpressionParser {
+           if (leafExp.isEmpty()) {
+             throw new ParseException("Error parsing expression " + expS + " at column : " + index);
+           }
+-          processLabelExpNode(new LeafExpressionNode(leafExp), expStack, expS, index);
++          new LeafExpressionNode(leafExp).processLabelExpNode(expStack, expS, index, this);
+           index = skipSpaces(exp, index);
+           break;
+         default:
+@@ -109,7 +109,7 @@ public class ExpressionParser {
+           if (leafExp.isEmpty()) {
+             throw new ParseException("Error parsing expression " + expS + " at column : " + index);
+           }
+-          processLabelExpNode(new LeafExpressionNode(leafExp), expStack, expS, index);
++          new LeafExpressionNode(leafExp).processLabelExpNode(expStack, expS, index, this);
+           // We already crossed the label node index. So need to reduce 1 here.
+           index--;
+           index = skipSpaces(exp, index);
+@@ -226,34 +226,7 @@ public class ExpressionParser {
+     expStack.push(LeafExpressionNode.OPEN_PARAN_NODE);
+   }
+ 
+-  private void processLabelExpNode(LeafExpressionNode node, Stack<ExpressionNode> expStack,
+-      String expS, int index) throws ParseException {
+-    if (expStack.isEmpty()) {
+-      expStack.push(node);
+-    } else {
+-      ExpressionNode top = expStack.peek();
+-      if (top == LeafExpressionNode.OPEN_PARAN_NODE) {
+-        expStack.push(node);
+-      } else if (top instanceof NonLeafExpressionNode) {
+-        NonLeafExpressionNode nlTop = (NonLeafExpressionNode) expStack.pop();
+-        nlTop.addChildExp(node);
+-        if (nlTop.getOperator() == Operator.NOT && !expStack.isEmpty()) {
+-          ExpressionNode secondTop = expStack.peek();
+-          if (secondTop == LeafExpressionNode.OPEN_PARAN_NODE) {
+-            expStack.push(nlTop);
+-          } else if (secondTop instanceof NonLeafExpressionNode) {
+-            ((NonLeafExpressionNode) secondTop).addChildExp(nlTop);
+-          }
+-        } else {
+-          expStack.push(nlTop);
+-        }
+-      } else {
+-        throw new ParseException("Error parsing expression " + expS + " at column : " + index);
+-      }
+-    }
+-  }
+-
+-  private void processANDorOROp(Operator op, Stack<ExpressionNode> expStack, String expS, int index)
++    private void processANDorOROp(Operator op, Stack<ExpressionNode> expStack, String expS, int index)
+       throws ParseException {
+     if (expStack.isEmpty()) {
+       throw new ParseException("Error parsing expression " + expS + " at column : " + index);
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/security/visibility/expression/LeafExpressionNode.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/security/visibility/expression/LeafExpressionNode.java
+index fd479b4..8b221c2 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/security/visibility/expression/LeafExpressionNode.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/security/visibility/expression/LeafExpressionNode.java
+@@ -17,8 +17,12 @@
+  */
+ package org.apache.hadoop.hbase.security.visibility.expression;
+ 
++import org.apache.hadoop.hbase.security.visibility.ExpressionParser;
++import org.apache.hadoop.hbase.security.visibility.ParseException;
+ import org.apache.yetus.audience.InterfaceAudience;
+ 
++import java.util.Stack;
++
+ @InterfaceAudience.Private
+ public class LeafExpressionNode implements ExpressionNode {
+   public static final LeafExpressionNode OPEN_PARAN_NODE = new LeafExpressionNode("(");
+@@ -63,4 +67,31 @@ public class LeafExpressionNode implements ExpressionNode {
+     LeafExpressionNode clone = new LeafExpressionNode(this.identifier);
+     return clone;
+   }
++
++    public void processLabelExpNode(Stack<ExpressionNode> expStack,
++                                    String expS, int index, ExpressionParser expressionParser) throws ParseException {
++        if (expStack.isEmpty()) {
++        expStack.push(this);
++      } else {
++        ExpressionNode top = expStack.peek();
++        if (top == OPEN_PARAN_NODE) {
++          expStack.push(this);
++        } else if (top instanceof NonLeafExpressionNode) {
++          NonLeafExpressionNode nlTop = (NonLeafExpressionNode) expStack.pop();
++          nlTop.addChildExp(this);
++          if (nlTop.getOperator() == Operator.NOT && !expStack.isEmpty()) {
++            ExpressionNode secondTop = expStack.peek();
++            if (secondTop == OPEN_PARAN_NODE) {
++              expStack.push(nlTop);
++            } else if (secondTop instanceof NonLeafExpressionNode) {
++              ((NonLeafExpressionNode) secondTop).addChildExp(nlTop);
++            }
++          } else {
++            expStack.push(nlTop);
++          }
++        } else {
++          throw new ParseException("Error parsing expression " + expS + " at column : " + index);
++        }
++      }
++    }
+ }
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/security/visibility/expression/NonLeafExpressionNode.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/security/visibility/expression/NonLeafExpressionNode.java
+index 83610fa..1f9d4e3 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/security/visibility/expression/NonLeafExpressionNode.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/security/visibility/expression/NonLeafExpressionNode.java
+@@ -21,6 +21,7 @@ import java.util.ArrayList;
+ import java.util.Collections;
+ import java.util.List;
+ 
++import org.apache.hadoop.hbase.security.visibility.ExpressionExpander;
+ import org.apache.yetus.audience.InterfaceAudience;
+ 
+ @InterfaceAudience.Private
+@@ -99,4 +100,24 @@ public class NonLeafExpressionNode implements ExpressionNode {
+     }
+     return clone;
+   }
++
++    public ExpressionNode negate(ExpressionExpander expressionExpander) {
++        ExpressionNode notChild = getChildExps().get(0);
++      if (notChild instanceof LeafExpressionNode) {
++        return this;
++      }
++      NonLeafExpressionNode nlNotChild = (NonLeafExpressionNode) notChild;
++      if (nlNotChild.getOperator() == Operator.NOT) {
++        // negate the negate
++        return nlNotChild.getChildExps().get(0);
++      }
++      Operator negateOp = nlNotChild.getOperator() == Operator.AND ? Operator.OR : Operator.AND;
++      NonLeafExpressionNode newNode = new NonLeafExpressionNode(negateOp);
++      for (ExpressionNode expNode : nlNotChild.getChildExps()) {
++        NonLeafExpressionNode negateNode = new NonLeafExpressionNode(Operator.NOT);
++        negateNode.addChildExp(expNode.deepClone());
++        newNode.addChildExp(expressionExpander.expand(negateNode));
++      }
++      return newNode;
++    }
+ }
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/util/FSTableDescriptors.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/util/FSTableDescriptors.java
+index 3dce0de..8065c20 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/util/FSTableDescriptors.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/util/FSTableDescriptors.java
+@@ -19,10 +19,7 @@ package org.apache.hadoop.hbase.util;
+ 
+ import java.io.FileNotFoundException;
+ import java.io.IOException;
+-import java.util.Comparator;
+-import java.util.List;
+-import java.util.Map;
+-import java.util.TreeMap;
++import java.util.*;
+ import java.util.concurrent.ConcurrentHashMap;
+ import java.util.function.Function;
+ import java.util.regex.Matcher;
+@@ -37,14 +34,11 @@ import org.apache.hadoop.fs.FileStatus;
+ import org.apache.hadoop.fs.FileSystem;
+ import org.apache.hadoop.fs.Path;
+ import org.apache.hadoop.fs.PathFilter;
+-import org.apache.hadoop.hbase.client.CoprocessorDescriptorBuilder;
++import org.apache.hadoop.hbase.client.*;
+ import org.apache.hadoop.hbase.coprocessor.MultiRowMutationEndpoint;
+ import org.apache.yetus.audience.InterfaceAudience;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+-import org.apache.hadoop.hbase.client.ColumnFamilyDescriptorBuilder;
+-import org.apache.hadoop.hbase.client.TableDescriptor;
+-import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
+ import org.apache.hadoop.hbase.Coprocessor;
+ import org.apache.hadoop.hbase.exceptions.DeserializationException;
+ import org.apache.hadoop.hbase.HConstants;
+@@ -776,5 +770,25 @@ public class FSTableDescriptors implements TableDescriptors {
+     return p != null;
+   }
+ 
++    /**
++     * To fabricate a .tableinfo file with following contents<br>
++     * 1. the correct tablename <br>
++     * 2. the correct colfamily list<br>
++     * 3. the default properties for both {@link TableDescriptor} and {@link ColumnFamilyDescriptor}<br>
++     * @throws IOException
++     * @param tableName
++     * @param columns
++     * @param hBaseFsck
++     */
++    public boolean fabricateTableInfo(TableName tableName,
++                                      Set<String> columns, HBaseFsck hBaseFsck) throws IOException {
++        if (columns ==null || columns.isEmpty()) return false;
++      TableDescriptorBuilder builder = TableDescriptorBuilder.newBuilder(tableName);
++      for (String columnfamimly : columns) {
++        builder.setColumnFamily(ColumnFamilyDescriptorBuilder.of(columnfamimly));
++      }
++      createTableDescriptor(builder.build(), true);
++      return true;
++    }
+ }
+ 
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/util/HBaseFsck.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/util/HBaseFsck.java
+index 1a00945..9e23609 100644
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/util/HBaseFsck.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/util/HBaseFsck.java
+@@ -91,7 +91,6 @@ import org.apache.hadoop.hbase.ZooKeeperConnectionException;
+ import org.apache.hadoop.hbase.client.Admin;
+ import org.apache.hadoop.hbase.client.ClusterConnection;
+ import org.apache.hadoop.hbase.client.ColumnFamilyDescriptor;
+-import org.apache.hadoop.hbase.client.ColumnFamilyDescriptorBuilder;
+ import org.apache.hadoop.hbase.client.Connection;
+ import org.apache.hadoop.hbase.client.ConnectionFactory;
+ import org.apache.hadoop.hbase.client.Delete;
+@@ -106,7 +105,6 @@ import org.apache.hadoop.hbase.client.RowMutations;
+ import org.apache.hadoop.hbase.client.Scan;
+ import org.apache.hadoop.hbase.client.Table;
+ import org.apache.hadoop.hbase.client.TableDescriptor;
+-import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
+ import org.apache.hadoop.hbase.client.TableState;
+ import org.apache.hadoop.hbase.io.FileLink;
+ import org.apache.hadoop.hbase.io.HFileLink;
+@@ -1430,25 +1428,7 @@ public class HBaseFsck extends Configured implements Closeable {
+     return columns;
+   }
+ 
+-  /**
+-   * To fabricate a .tableinfo file with following contents<br>
+-   * 1. the correct tablename <br>
+-   * 2. the correct colfamily list<br>
+-   * 3. the default properties for both {@link TableDescriptor} and {@link ColumnFamilyDescriptor}<br>
+-   * @throws IOException
+-   */
+-  private boolean fabricateTableInfo(FSTableDescriptors fstd, TableName tableName,
+-      Set<String> columns) throws IOException {
+-    if (columns ==null || columns.isEmpty()) return false;
+-    TableDescriptorBuilder builder = TableDescriptorBuilder.newBuilder(tableName);
+-    for (String columnfamimly : columns) {
+-      builder.setColumnFamily(ColumnFamilyDescriptorBuilder.of(columnfamimly));
+-    }
+-    fstd.createTableDescriptor(builder.build(), true);
+-    return true;
+-  }
+-
+-  /**
++    /**
+    * To fix the empty REGIONINFO_QUALIFIER rows from hbase:meta <br>
+    * @throws IOException
+    */
+@@ -1497,7 +1477,7 @@ public class HBaseFsck extends Configured implements Closeable {
+             iter.remove();
+           }
+         } else {
+-          if (fabricateTableInfo(fstd, tableName, entry.getValue())) {
++          if (fstd.fabricateTableInfo(tableName, entry.getValue(), this)) {
+             LOG.warn("fixing orphan table: " + tableName + " with a default .tableinfo file");
+             LOG.warn("Strongly recommend to modify the TableDescriptor if necessary for: " + tableName);
+             iter.remove();
+diff --git a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift/generated/BatchMutation.java b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift/generated/BatchMutation.java
+index ac6d26f..af6a229 100644
+--- a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift/generated/BatchMutation.java
++++ b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift/generated/BatchMutation.java
+@@ -180,14 +180,7 @@ public class BatchMutation implements org.apache.thrift.TBase<BatchMutation, Bat
+     return (this.mutations == null) ? null : this.mutations.iterator();
+   }
+ 
+-  public void addToMutations(Mutation elem) {
+-    if (this.mutations == null) {
+-      this.mutations = new java.util.ArrayList<Mutation>();
+-    }
+-    this.mutations.add(elem);
+-  }
+-
+-  @org.apache.thrift.annotation.Nullable
++    @org.apache.thrift.annotation.Nullable
+   public java.util.List<Mutation> getMutations() {
+     return this.mutations;
+   }
+diff --git a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift/generated/Mutation.java b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift/generated/Mutation.java
+index d8bc858..6503156 100644
+--- a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift/generated/Mutation.java
++++ b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift/generated/Mutation.java
+@@ -27,7 +27,14 @@ public class Mutation implements org.apache.thrift.TBase<Mutation, Mutation._Fie
+   public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer value; // required
+   public boolean writeToWAL; // required
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void addToMutations(BatchMutation batchMutation) {
++        if (batchMutation.mutations == null) {
++        batchMutation.mutations = new java.util.ArrayList<Mutation>();
++      }
++      batchMutation.mutations.add(this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+     IS_DELETE((short)1, "isDelete"),
+     COLUMN((short)2, "column"),
+diff --git a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift/generated/TCell.java b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift/generated/TCell.java
+index 2b895c3..d40d56b 100644
+--- a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift/generated/TCell.java
++++ b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift/generated/TCell.java
+@@ -26,7 +26,12 @@ public class TCell implements org.apache.thrift.TBase<TCell, TCell._Fields>, jav
+   public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer value; // required
+   public long timestamp; // required
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public TColumn setCell(TColumn tColumn) {
++        tColumn.cell = this;
++      return tColumn;
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+     VALUE((short)1, "value"),
+     TIMESTAMP((short)2, "timestamp");
+diff --git a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift/generated/TColumn.java b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift/generated/TColumn.java
+index 068657b..1690dae 100644
+--- a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift/generated/TColumn.java
++++ b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift/generated/TColumn.java
+@@ -171,12 +171,7 @@ public class TColumn implements org.apache.thrift.TBase<TColumn, TColumn._Fields
+     return this.cell;
+   }
+ 
+-  public TColumn setCell(@org.apache.thrift.annotation.Nullable TCell cell) {
+-    this.cell = cell;
+-    return this;
+-  }
+-
+-  public void unsetCell() {
++    public void unsetCell() {
+     this.cell = null;
+   }
+ 
+@@ -209,7 +204,7 @@ public class TColumn implements org.apache.thrift.TBase<TColumn, TColumn._Fields
+       if (value == null) {
+         unsetCell();
+       } else {
+-        setCell((TCell)value);
++        ((TCell)value).setCell(this);
+       }
+       break;
+ 
+diff --git a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/ThriftUtilities.java b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/ThriftUtilities.java
+index 7d1fd84..4c12242 100644
+--- a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/ThriftUtilities.java
++++ b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/ThriftUtilities.java
+@@ -483,7 +483,7 @@ public final class ThriftUtilities {
+       columns.add(column);
+     }
+     out.setColumns(columns);
+-    out.setDeleteType(type);
++    type.setDeleteType(out);
+ 
+     return out;
+   }
+@@ -632,7 +632,7 @@ public final class ThriftUtilities {
+     }
+     TTimeRange tTimeRange = new TTimeRange();
+     tTimeRange.setMinStamp(in.getTimeRange().getMin()).setMaxStamp(in.getTimeRange().getMax());
+-    out.setTimeRange(tTimeRange);
++    tTimeRange.setTimeRange(out);
+     out.setBatchSize(in.getBatch());
+ 
+     for (Map.Entry<String, byte[]> attribute : in.getAttributesMap().entrySet()) {
+@@ -744,7 +744,7 @@ public final class ThriftUtilities {
+     thRegionInfo.setReplicaId(hri.getReplicaId());
+ 
+     thRegionLocation.setRegionInfo(thRegionInfo);
+-    thRegionLocation.setServerName(tServerName);
++    tServerName.setServerName(thRegionLocation);
+ 
+     return thRegionLocation;
+   }
+@@ -1072,7 +1072,7 @@ public final class ThriftUtilities {
+ 
+   public static TTableDescriptor tableDescriptorFromHBase(TableDescriptor in) {
+     TTableDescriptor out = new TTableDescriptor();
+-    out.setTableName(tableNameFromHBase(in.getTableName()));
++    tableNameFromHBase(in.getTableName()).setTableName(out);
+     Map<Bytes, Bytes> attributes = in.getValues();
+     for (Map.Entry<Bytes, Bytes> attribute : attributes.entrySet()) {
+       out.putToAttributes(ByteBuffer.wrap(attribute.getKey().get()),
+@@ -1157,7 +1157,7 @@ public final class ThriftUtilities {
+       out.putToConfiguration(conf.getKey(), conf.getValue());
+     }
+     out.setBlockSize(in.getBlocksize());
+-    out.setBloomnFilterType(bloomFilterFromHBase(in.getBloomFilterType()));
++    bloomFilterFromHBase(in.getBloomFilterType()).setBloomnFilterType(out);
+     out.setCompressionType(compressionAlgorithmFromHBase(in.getCompressionType()));
+     out.setDfsReplication(in.getDFSReplication());
+     out.setDataBlockEncoding(dataBlockEncodingFromHBase(in.getDataBlockEncoding()));
+@@ -1221,12 +1221,12 @@ public final class ThriftUtilities {
+           TColumn column = new TColumn();
+           column.setFamily(family.getKey());
+           column.setQualifier(qualifier);
+-          out.addToColumns(column);
++          column.addToColumns(out);
+         }
+       } else {
+         TColumn column = new TColumn();
+         column.setFamily(family.getKey());
+-        out.addToColumns(column);
++        column.addToColumns(out);
+       }
+     }
+     if (in.getFilter() != null) {
+@@ -1293,7 +1293,7 @@ public final class ThriftUtilities {
+         if (cell.getTagsLength() != 0) {
+           columnValue.setTags(CellUtil.cloneTags(cell));
+         }
+-        out.addToColumnValues(columnValue);
++        columnValue.addToColumnValues(out);
+       }
+     }
+     for (Map.Entry<String, byte[]> attribute : in.getAttributesMap().entrySet()) {
+@@ -1344,7 +1344,7 @@ public final class ThriftUtilities {
+     out.setRow(in.getRow());
+ 
+     if (in.getDurability() != Durability.USE_DEFAULT) {
+-      out.setDurability(durabilityFromHBase(in.getDurability()));
++      durabilityFromHBase(in.getDurability()).setDurability(out);
+     }
+     for (Map.Entry<byte [], List<Cell>> entry : in.getFamilyCellMap().entrySet()) {
+       byte[] family = entry.getKey();
+@@ -1393,7 +1393,7 @@ public final class ThriftUtilities {
+         columnValue.setFamily(family).setQualifier(CellUtil.cloneQualifier(cell));
+         columnValue.setAmount(
+             Bytes.toLong(cell.getValueArray(), cell.getValueOffset(), cell.getValueLength()));
+-        out.addToColumns(columnValue);
++        columnValue.addToColumns(out);
+       }
+     }
+     for (Map.Entry<String, byte[]> attribute : in.getAttributesMap().entrySet()) {
+@@ -1427,7 +1427,7 @@ public final class ThriftUtilities {
+         throw new IllegalArgumentException(
+             "Only Put and Delete is supported in mutateRow, but muation=" + mutation);
+       }
+-      tRowMutations.addToMutations(tMutation);
++      tMutation.addToMutations(tRowMutations);
+     }
+     return tRowMutations;
+   }
+diff --git a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TAppend.java b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TAppend.java
+index 6eab296..6def576 100644
+--- a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TAppend.java
++++ b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TAppend.java
+@@ -312,16 +312,7 @@ public class TAppend implements org.apache.thrift.TBase<TAppend, TAppend._Fields
+     return this.durability;
+   }
+ 
+-  /**
+-   * 
+-   * @see TDurability
+-   */
+-  public TAppend setDurability(@org.apache.thrift.annotation.Nullable TDurability durability) {
+-    this.durability = durability;
+-    return this;
+-  }
+-
+-  public void unsetDurability() {
++    public void unsetDurability() {
+     this.durability = null;
+   }
+ 
+@@ -418,7 +409,7 @@ public class TAppend implements org.apache.thrift.TBase<TAppend, TAppend._Fields
+       if (value == null) {
+         unsetDurability();
+       } else {
+-        setDurability((TDurability)value);
++        ((TDurability)value).setDurability(this);
+       }
+       break;
+ 
+diff --git a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TBloomFilterType.java b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TBloomFilterType.java
+index d48e4c5..adc6289 100644
+--- a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TBloomFilterType.java
++++ b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TBloomFilterType.java
+@@ -62,4 +62,14 @@ public enum TBloomFilterType implements org.apache.thrift.TEnum {
+         return null;
+     }
+   }
++
++    /**
++     *
++     * @see TBloomFilterType
++     * @param tColumnFamilyDescriptor
++     */
++    public TColumnFamilyDescriptor setBloomnFilterType(TColumnFamilyDescriptor tColumnFamilyDescriptor) {
++        tColumnFamilyDescriptor.bloomnFilterType = this;
++      return tColumnFamilyDescriptor;
++    }
+ }
+diff --git a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TColumn.java b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TColumn.java
+index 2089f51..cec6632 100644
+--- a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TColumn.java
++++ b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TColumn.java
+@@ -27,7 +27,14 @@ public class TColumn implements org.apache.thrift.TBase<TColumn, TColumn._Fields
+   public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer qualifier; // optional
+   public long timestamp; // optional
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void addToColumns(TGet tGet) {
++        if (tGet.columns == null) {
++        tGet.columns = new java.util.ArrayList<TColumn>();
++      }
++      tGet.columns.add(this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+     FAMILY((short)1, "family"),
+     QUALIFIER((short)2, "qualifier"),
+diff --git a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TColumnFamilyDescriptor.java b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TColumnFamilyDescriptor.java
+index 6b11f13..6a5fdaf 100644
+--- a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TColumnFamilyDescriptor.java
++++ b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TColumnFamilyDescriptor.java
+@@ -508,16 +508,7 @@ public class TColumnFamilyDescriptor implements org.apache.thrift.TBase<TColumnF
+     return this.bloomnFilterType;
+   }
+ 
+-  /**
+-   * 
+-   * @see TBloomFilterType
+-   */
+-  public TColumnFamilyDescriptor setBloomnFilterType(@org.apache.thrift.annotation.Nullable TBloomFilterType bloomnFilterType) {
+-    this.bloomnFilterType = bloomnFilterType;
+-    return this;
+-  }
+-
+-  public void unsetBloomnFilterType() {
++    public void unsetBloomnFilterType() {
+     this.bloomnFilterType = null;
+   }
+ 
+@@ -949,7 +940,7 @@ public class TColumnFamilyDescriptor implements org.apache.thrift.TBase<TColumnF
+       if (value == null) {
+         unsetBloomnFilterType();
+       } else {
+-        setBloomnFilterType((TBloomFilterType)value);
++        ((TBloomFilterType)value).setBloomnFilterType(this);
+       }
+       break;
+ 
+diff --git a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TColumnIncrement.java b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TColumnIncrement.java
+index 531aefa..0b3178a 100644
+--- a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TColumnIncrement.java
++++ b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TColumnIncrement.java
+@@ -25,7 +25,14 @@ public class TColumnIncrement implements org.apache.thrift.TBase<TColumnIncremen
+   public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer qualifier; // required
+   public long amount; // optional
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void addToColumns(TIncrement tIncrement) {
++        if (tIncrement.columns == null) {
++        tIncrement.columns = new java.util.ArrayList<TColumnIncrement>();
++      }
++      tIncrement.columns.add(this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+     FAMILY((short)1, "family"),
+     QUALIFIER((short)2, "qualifier"),
+diff --git a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TColumnValue.java b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TColumnValue.java
+index 35b39ad..ccdbca6 100644
+--- a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TColumnValue.java
++++ b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TColumnValue.java
+@@ -31,7 +31,14 @@ public class TColumnValue implements org.apache.thrift.TBase<TColumnValue, TColu
+   public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer tags; // optional
+   public byte type; // optional
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void addToColumnValues(TPut tPut) {
++        if (tPut.columnValues == null) {
++        tPut.columnValues = new java.util.ArrayList<TColumnValue>();
++      }
++      tPut.columnValues.add(this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+     FAMILY((short)1, "family"),
+     QUALIFIER((short)2, "qualifier"),
+diff --git a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TDelete.java b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TDelete.java
+index 34bf479..eb8dd78 100644
+--- a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TDelete.java
++++ b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TDelete.java
+@@ -334,16 +334,7 @@ public class TDelete implements org.apache.thrift.TBase<TDelete, TDelete._Fields
+     return this.deleteType;
+   }
+ 
+-  /**
+-   * 
+-   * @see TDeleteType
+-   */
+-  public TDelete setDeleteType(@org.apache.thrift.annotation.Nullable TDeleteType deleteType) {
+-    this.deleteType = deleteType;
+-    return this;
+-  }
+-
+-  public void unsetDeleteType() {
++    public void unsetDeleteType() {
+     this.deleteType = null;
+   }
+ 
+@@ -461,7 +452,7 @@ public class TDelete implements org.apache.thrift.TBase<TDelete, TDelete._Fields
+       if (value == null) {
+         unsetDeleteType();
+       } else {
+-        setDeleteType((TDeleteType)value);
++        ((TDeleteType)value).setDeleteType(this);
+       }
+       break;
+ 
+diff --git a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TDeleteType.java b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TDeleteType.java
+index 53a21bc..82ee3f6 100644
+--- a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TDeleteType.java
++++ b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TDeleteType.java
+@@ -51,4 +51,14 @@ public enum TDeleteType implements org.apache.thrift.TEnum {
+         return null;
+     }
+   }
++
++    /**
++     *
++     * @see TDeleteType
++     * @param tDelete
++     */
++    public TDelete setDeleteType(TDelete tDelete) {
++        tDelete.deleteType = this;
++      return tDelete;
++    }
+ }
+diff --git a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TDurability.java b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TDurability.java
+index 87d0458..43ab621 100644
+--- a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TDurability.java
++++ b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TDurability.java
+@@ -56,4 +56,14 @@ public enum TDurability implements org.apache.thrift.TEnum {
+         return null;
+     }
+   }
++
++    /**
++     *
++     * @see TDurability
++     * @param tAppend
++     */
++    public TAppend setDurability(TAppend tAppend) {
++        tAppend.durability = this;
++      return tAppend;
++    }
+ }
+diff --git a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TGet.java b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TGet.java
+index 8bcfda2..3d35d17 100644
+--- a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TGet.java
++++ b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TGet.java
+@@ -345,14 +345,7 @@ public class TGet implements org.apache.thrift.TBase<TGet, TGet._Fields>, java.i
+     return (this.columns == null) ? null : this.columns.iterator();
+   }
+ 
+-  public void addToColumns(TColumn elem) {
+-    if (this.columns == null) {
+-      this.columns = new java.util.ArrayList<TColumn>();
+-    }
+-    this.columns.add(elem);
+-  }
+-
+-  @org.apache.thrift.annotation.Nullable
++    @org.apache.thrift.annotation.Nullable
+   public java.util.List<TColumn> getColumns() {
+     return this.columns;
+   }
+diff --git a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/THRegionLocation.java b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/THRegionLocation.java
+index 7f3db74..a3e4545 100644
+--- a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/THRegionLocation.java
++++ b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/THRegionLocation.java
+@@ -134,12 +134,7 @@ public class THRegionLocation implements org.apache.thrift.TBase<THRegionLocatio
+     return this.serverName;
+   }
+ 
+-  public THRegionLocation setServerName(@org.apache.thrift.annotation.Nullable TServerName serverName) {
+-    this.serverName = serverName;
+-    return this;
+-  }
+-
+-  public void unsetServerName() {
++    public void unsetServerName() {
+     this.serverName = null;
+   }
+ 
+@@ -185,7 +180,7 @@ public class THRegionLocation implements org.apache.thrift.TBase<THRegionLocatio
+       if (value == null) {
+         unsetServerName();
+       } else {
+-        setServerName((TServerName)value);
++        ((TServerName)value).setServerName(this);
+       }
+       break;
+ 
+diff --git a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TIncrement.java b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TIncrement.java
+index d34c2d1..efcead4 100644
+--- a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TIncrement.java
++++ b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TIncrement.java
+@@ -242,14 +242,7 @@ public class TIncrement implements org.apache.thrift.TBase<TIncrement, TIncremen
+     return (this.columns == null) ? null : this.columns.iterator();
+   }
+ 
+-  public void addToColumns(TColumnIncrement elem) {
+-    if (this.columns == null) {
+-      this.columns = new java.util.ArrayList<TColumnIncrement>();
+-    }
+-    this.columns.add(elem);
+-  }
+-
+-  @org.apache.thrift.annotation.Nullable
++    @org.apache.thrift.annotation.Nullable
+   public java.util.List<TColumnIncrement> getColumns() {
+     return this.columns;
+   }
+diff --git a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TMutation.java b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TMutation.java
+index aafeb47..e6f5caa 100644
+--- a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TMutation.java
++++ b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TMutation.java
+@@ -16,7 +16,14 @@ public class TMutation extends org.apache.thrift.TUnion<TMutation, TMutation._Fi
+   private static final org.apache.thrift.protocol.TField PUT_FIELD_DESC = new org.apache.thrift.protocol.TField("put", org.apache.thrift.protocol.TType.STRUCT, (short)1);
+   private static final org.apache.thrift.protocol.TField DELETE_SINGLE_FIELD_DESC = new org.apache.thrift.protocol.TField("deleteSingle", org.apache.thrift.protocol.TType.STRUCT, (short)2);
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public void addToMutations(TRowMutations tRowMutations) {
++        if (tRowMutations.mutations == null) {
++        tRowMutations.mutations = new java.util.ArrayList<TMutation>();
++      }
++      tRowMutations.mutations.add(this);
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+     PUT((short)1, "put"),
+     DELETE_SINGLE((short)2, "deleteSingle");
+diff --git a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TPut.java b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TPut.java
+index fc04ed2..2882396 100644
+--- a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TPut.java
++++ b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TPut.java
+@@ -247,14 +247,7 @@ public class TPut implements org.apache.thrift.TBase<TPut, TPut._Fields>, java.i
+     return (this.columnValues == null) ? null : this.columnValues.iterator();
+   }
+ 
+-  public void addToColumnValues(TColumnValue elem) {
+-    if (this.columnValues == null) {
+-      this.columnValues = new java.util.ArrayList<TColumnValue>();
+-    }
+-    this.columnValues.add(elem);
+-  }
+-
+-  @org.apache.thrift.annotation.Nullable
++    @org.apache.thrift.annotation.Nullable
+   public java.util.List<TColumnValue> getColumnValues() {
+     return this.columnValues;
+   }
+diff --git a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TRowMutations.java b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TRowMutations.java
+index fdbb9c7..b2d779f 100644
+--- a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TRowMutations.java
++++ b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TRowMutations.java
+@@ -180,14 +180,7 @@ public class TRowMutations implements org.apache.thrift.TBase<TRowMutations, TRo
+     return (this.mutations == null) ? null : this.mutations.iterator();
+   }
+ 
+-  public void addToMutations(TMutation elem) {
+-    if (this.mutations == null) {
+-      this.mutations = new java.util.ArrayList<TMutation>();
+-    }
+-    this.mutations.add(elem);
+-  }
+-
+-  @org.apache.thrift.annotation.Nullable
++    @org.apache.thrift.annotation.Nullable
+   public java.util.List<TMutation> getMutations() {
+     return this.mutations;
+   }
+diff --git a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TScan.java b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TScan.java
+index 5a54dce..9b33eb3 100644
+--- a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TScan.java
++++ b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TScan.java
+@@ -503,12 +503,7 @@ public class TScan implements org.apache.thrift.TBase<TScan, TScan._Fields>, jav
+     return this.timeRange;
+   }
+ 
+-  public TScan setTimeRange(@org.apache.thrift.annotation.Nullable TTimeRange timeRange) {
+-    this.timeRange = timeRange;
+-    return this;
+-  }
+-
+-  public void unsetTimeRange() {
++    public void unsetTimeRange() {
+     this.timeRange = null;
+   }
+ 
+@@ -923,7 +918,7 @@ public class TScan implements org.apache.thrift.TBase<TScan, TScan._Fields>, jav
+       if (value == null) {
+         unsetTimeRange();
+       } else {
+-        setTimeRange((TTimeRange)value);
++        ((TTimeRange)value).setTimeRange(this);
+       }
+       break;
+ 
+diff --git a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TServerName.java b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TServerName.java
+index 9d2d804..939c1d5 100644
+--- a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TServerName.java
++++ b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TServerName.java
+@@ -22,7 +22,12 @@ public class TServerName implements org.apache.thrift.TBase<TServerName, TServer
+   public int port; // optional
+   public long startCode; // optional
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public THRegionLocation setServerName(THRegionLocation thRegionLocation) {
++        thRegionLocation.serverName = this;
++      return thRegionLocation;
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+     HOST_NAME((short)1, "hostName"),
+     PORT((short)2, "port"),
+diff --git a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TTableDescriptor.java b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TTableDescriptor.java
+index ae563d1..2c01a9e 100644
+--- a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TTableDescriptor.java
++++ b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TTableDescriptor.java
+@@ -175,12 +175,7 @@ public class TTableDescriptor implements org.apache.thrift.TBase<TTableDescripto
+     return this.tableName;
+   }
+ 
+-  public TTableDescriptor setTableName(@org.apache.thrift.annotation.Nullable TTableName tableName) {
+-    this.tableName = tableName;
+-    return this;
+-  }
+-
+-  public void unsetTableName() {
++    public void unsetTableName() {
+     this.tableName = null;
+   }
+ 
+@@ -311,7 +306,7 @@ public class TTableDescriptor implements org.apache.thrift.TBase<TTableDescripto
+       if (value == null) {
+         unsetTableName();
+       } else {
+-        setTableName((TTableName)value);
++        ((TTableName)value).setTableName(this);
+       }
+       break;
+ 
+diff --git a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TTableName.java b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TTableName.java
+index ed7aeea..4b0d777 100644
+--- a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TTableName.java
++++ b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TTableName.java
+@@ -30,7 +30,12 @@ public class TTableName implements org.apache.thrift.TBase<TTableName, TTableNam
+    */
+   public @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer qualifier; // required
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public TTableDescriptor setTableName(TTableDescriptor tTableDescriptor) {
++        tTableDescriptor.tableName = this;
++      return tTableDescriptor;
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+     /**
+      * namespace name
+diff --git a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TTimeRange.java b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TTimeRange.java
+index 7308cae..fd8517d 100644
+--- a/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TTimeRange.java
++++ b/hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/TTimeRange.java
+@@ -20,7 +20,12 @@ public class TTimeRange implements org.apache.thrift.TBase<TTimeRange, TTimeRang
+   public long minStamp; // required
+   public long maxStamp; // required
+ 
+-  /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
++    public TScan setTimeRange(TScan tScan) {
++        tScan.timeRange = this;
++      return tScan;
++    }
++
++    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+     MIN_STAMP((short)1, "minStamp"),
+     MAX_STAMP((short)2, "maxStamp");
+diff --git a/hbase-thrift/src/test/java/org/apache/hadoop/hbase/thrift2/TestThrift2HttpServer.java b/hbase-thrift/src/test/java/org/apache/hadoop/hbase/thrift2/TestThrift2HttpServer.java
+index cf084c9..321db91 100644
+--- a/hbase-thrift/src/test/java/org/apache/hadoop/hbase/thrift2/TestThrift2HttpServer.java
++++ b/hbase-thrift/src/test/java/org/apache/hadoop/hbase/thrift2/TestThrift2HttpServer.java
+@@ -73,7 +73,7 @@ public class TestThrift2HttpServer extends TestThriftHttpServer {
+       if (!tableCreated){
+         Assert.assertTrue(!client.tableExists(tTableName));
+         TTableDescriptor tTableDescriptor = new TTableDescriptor();
+-        tTableDescriptor.setTableName(tTableName);
++        tTableName.setTableName(tTableDescriptor);
+         TColumnFamilyDescriptor columnFamilyDescriptor = new TColumnFamilyDescriptor();
+         columnFamilyDescriptor.setName(Bytes.toBytes(TABLENAME));
+         tTableDescriptor.addToColumns(columnFamilyDescriptor);
+diff --git a/hbase-thrift/src/test/java/org/apache/hadoop/hbase/thrift2/TestThrift2ServerCmdLine.java b/hbase-thrift/src/test/java/org/apache/hadoop/hbase/thrift2/TestThrift2ServerCmdLine.java
+index 7489bd7..4841a94 100644
+--- a/hbase-thrift/src/test/java/org/apache/hadoop/hbase/thrift2/TestThrift2ServerCmdLine.java
++++ b/hbase-thrift/src/test/java/org/apache/hadoop/hbase/thrift2/TestThrift2ServerCmdLine.java
+@@ -83,7 +83,7 @@ public class TestThrift2ServerCmdLine extends TestThriftServerCmdLine {
+       if (!tableCreated){
+         Assert.assertTrue(!client.tableExists(tTableName));
+         TTableDescriptor tTableDescriptor = new TTableDescriptor();
+-        tTableDescriptor.setTableName(tTableName);
++        tTableName.setTableName(tTableDescriptor);
+         TColumnFamilyDescriptor columnFamilyDescriptor = new TColumnFamilyDescriptor();
+         columnFamilyDescriptor.setName(Bytes.toBytes(TABLENAME));
+         tTableDescriptor.addToColumns(columnFamilyDescriptor);
+diff --git a/hbase-thrift/src/test/java/org/apache/hadoop/hbase/thrift2/TestThriftHBaseServiceHandler.java b/hbase-thrift/src/test/java/org/apache/hadoop/hbase/thrift2/TestThriftHBaseServiceHandler.java
+index 8da9d50..6cc5186 100644
+--- a/hbase-thrift/src/test/java/org/apache/hadoop/hbase/thrift2/TestThriftHBaseServiceHandler.java
++++ b/hbase-thrift/src/test/java/org/apache/hadoop/hbase/thrift2/TestThriftHBaseServiceHandler.java
+@@ -406,7 +406,7 @@ public class TestThriftHBaseServiceHandler {
+     deleteColumn.setQualifier(qualifierAname);
+     deleteColumns.add(deleteColumn);
+     delete.setColumns(deleteColumns);
+-    delete.setDeleteType(TDeleteType.DELETE_COLUMNS); // This is the default anyway.
++    TDeleteType.DELETE_COLUMNS.setDeleteType(delete); // This is the default anyway.
+ 
+     handler.deleteSingle(table, delete);
+ 
+@@ -449,7 +449,7 @@ public class TestThriftHBaseServiceHandler {
+     deleteColumn.setQualifier(qualifierAname);
+     deleteColumns.add(deleteColumn);
+     delete.setColumns(deleteColumns);
+-    delete.setDeleteType(TDeleteType.DELETE_COLUMN);
++    TDeleteType.DELETE_COLUMN.setDeleteType(delete);
+ 
+     handler.deleteSingle(table, delete);
+ 
+@@ -493,7 +493,7 @@ public class TestThriftHBaseServiceHandler {
+     TColumn deleteColumn = new TColumn(wrap(familyAname));
+     deleteColumns.add(deleteColumn);
+     delete.setColumns(deleteColumns);
+-    delete.setDeleteType(TDeleteType.DELETE_FAMILY);
++    TDeleteType.DELETE_FAMILY.setDeleteType(delete);
+ 
+     handler.deleteSingle(table, delete);
+ 
+@@ -536,7 +536,7 @@ public class TestThriftHBaseServiceHandler {
+     deleteColumn.setTimestamp(timestamp1);
+     deleteColumns.add(deleteColumn);
+     delete.setColumns(deleteColumns);
+-    delete.setDeleteType(TDeleteType.DELETE_FAMILY_VERSION);
++    TDeleteType.DELETE_FAMILY_VERSION.setDeleteType(delete);
+ 
+     handler.deleteSingle(table, delete);
+ 
+@@ -1627,7 +1627,7 @@ public class TestThriftHBaseServiceHandler {
+     assertTrue(namespaceDescriptorReturned.getConfiguration().size() == 3);
+     //create table
+     TTableDescriptor tableDescriptor = new TTableDescriptor();
+-    tableDescriptor.setTableName(tTableName);
++    tTableName.setTableName(tableDescriptor);
+     TColumnFamilyDescriptor columnFamilyDescriptor1 = new TColumnFamilyDescriptor();
+     columnFamilyDescriptor1.setName(familyAname);
+     columnFamilyDescriptor1.setDataBlockEncoding(TDataBlockEncoding.DIFF);
