@@ -50,3 +50,9 @@
 [submodule "deeplearning4j/deeplearning4j"]
 	path = deeplearning4j/deeplearning4j
 	url = https://github.com/deeplearning4j/deeplearning4j.git
+[submodule "vespa/vespa"]
+	path = vespa/vespa
+	url = https://github.com/vespa-engine/vespa.git
+[submodule "elasticsearch/elasticsearch"]
+	path = elasticsearch/elasticsearch
+	url = https://github.com/elastic/elasticsearch.git
