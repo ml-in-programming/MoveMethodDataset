@@ -1,0 +1,3907 @@
+diff --git a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTMethod.java b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTMethod.java
+index 3a73b44..f08b946 100644
+--- a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTMethod.java
++++ b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTMethod.java
+@@ -6,10 +6,13 @@ package net.sourceforge.pmd.lang.apex.ast;
+ 
+ import net.sourceforge.pmd.Rule;
+ import net.sourceforge.pmd.lang.apex.metrics.signature.ApexOperationSignature;
++import net.sourceforge.pmd.lang.apex.rule.codestyle.MethodNamingConventionsRule;
+ import net.sourceforge.pmd.lang.ast.SignedNode;
+ 
+ import apex.jorje.semantic.ast.member.Method;
+ 
++import static apex.jorje.semantic.symbol.type.ModifierTypeInfos.OVERRIDE;
++
+ public class ASTMethod extends AbstractApexNode<Method> implements ApexQualifiableNode,
+        SignedNode<ASTMethod>, CanSuppressWarnings {
+ 
+@@ -69,4 +72,8 @@ public class ASTMethod extends AbstractApexNode<Method> implements ApexQualifiab
+         }
+         return false;
+     }
++
++    public boolean isOverriddenMethod(MethodNamingConventionsRule methodNamingConventionsRule) {
++        return getNode().getModifiers().has(OVERRIDE);
++    }
+ }
+diff --git a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTMethodCallExpression.java b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTMethodCallExpression.java
+index b15ccfd..e465ddb 100644
+--- a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTMethodCallExpression.java
++++ b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTMethodCallExpression.java
+@@ -8,6 +8,7 @@ import java.util.Iterator;
+ 
+ import apex.jorje.data.Identifier;
+ import apex.jorje.semantic.ast.expression.MethodCallExpression;
++import net.sourceforge.pmd.lang.apex.rule.security.ApexCRUDViolationRule;
+ 
+ public class ASTMethodCallExpression extends AbstractApexNode<MethodCallExpression> {
+ 
+@@ -32,4 +33,13 @@ public class ASTMethodCallExpression extends AbstractApexNode<MethodCallExpressi
+         }
+         return typeName.toString() + methodName;
+     }
++
++    public String getType(ApexCRUDViolationRule apexCRUDViolationRule) {
++        final ASTReferenceExpression reference = getFirstChildOfType(ASTReferenceExpression.class);
++        if (reference.getNode().getNames().size() > 0) {
++            return new StringBuilder().append(reference.getNode().getDefiningType().getApexName()).append(":")
++                    .append(reference.getNode().getNames().get(0).getValue()).toString();
++        }
++        return "";
++    }
+ }
+diff --git a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTModifierNode.java b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTModifierNode.java
+index 811cd33..ee64946 100644
+--- a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTModifierNode.java
++++ b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTModifierNode.java
+@@ -5,6 +5,8 @@
+ package net.sourceforge.pmd.lang.apex.ast;
+ 
+ import apex.jorje.semantic.ast.modifier.ModifierNode;
++import apex.jorje.semantic.symbol.type.ModifierTypeInfos;
++import net.sourceforge.pmd.lang.apex.rule.bestpractices.AvoidGlobalModifierRule;
+ 
+ public class ASTModifierNode extends AbstractApexNode<ModifierNode> implements AccessNode {
+ 
+@@ -56,4 +58,8 @@ public class ASTModifierNode extends AbstractApexNode<ModifierNode> implements A
+     public boolean isTransient() {
+         return (node.getModifiers().getJavaModifiers() & TRANSIENT) == TRANSIENT;
+     }
++
++    public boolean isWebService(AvoidGlobalModifierRule avoidGlobalModifierRule) {
++        return this != null && getNode().getModifiers().has(ModifierTypeInfos.WEB_SERVICE);
++    }
+ }
+diff --git a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTReturnStatement.java b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTReturnStatement.java
+index dfe3454..1ccd114 100644
+--- a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTReturnStatement.java
++++ b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTReturnStatement.java
+@@ -5,6 +5,7 @@
+ package net.sourceforge.pmd.lang.apex.ast;
+ 
+ import apex.jorje.semantic.ast.statement.ReturnStatement;
++import net.sourceforge.pmd.lang.apex.rule.security.ApexXSSFromURLParamRule;
+ 
+ public class ASTReturnStatement extends AbstractApexNode<ReturnStatement> {
+ 
+@@ -16,4 +17,13 @@ public class ASTReturnStatement extends AbstractApexNode<ReturnStatement> {
+     public Object jjtAccept(ApexParserVisitor visitor, Object data) {
+         return visitor.visit(this, data);
+     }
++
++    public String getReturnType(ApexXSSFromURLParamRule apexXSSFromURLParamRule) {
++        ASTMethod method = getFirstParentOfType(ASTMethod.class);
++        if (method != null) {
++            return method.getNode().getMethodInfo().getReturnType().getApexName();
++        }
++
++        return "";
++    }
+ }
+diff --git a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTSoqlExpression.java b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTSoqlExpression.java
+index b05e5dc..b5aa287 100644
+--- a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTSoqlExpression.java
++++ b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTSoqlExpression.java
+@@ -5,6 +5,7 @@
+ package net.sourceforge.pmd.lang.apex.ast;
+ 
+ import apex.jorje.semantic.ast.expression.SoqlExpression;
++import net.sourceforge.pmd.lang.apex.rule.performance.AvoidSoqlInLoopsRule;
+ 
+ public class ASTSoqlExpression extends AbstractApexNode<SoqlExpression> {
+ 
+@@ -16,4 +17,8 @@ public class ASTSoqlExpression extends AbstractApexNode<SoqlExpression> {
+     public Object jjtAccept(ApexParserVisitor visitor, Object data) {
+         return visitor.visit(this, data);
+     }
++
++    public boolean parentNotReturn(AvoidSoqlInLoopsRule avoidSoqlInLoopsRule) {
++        return !(jjtGetParent() instanceof ASTReturnStatement);
++    }
+ }
+diff --git a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTSoslExpression.java b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTSoslExpression.java
+index b773d34..2148da7 100644
+--- a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTSoslExpression.java
++++ b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/ast/ASTSoslExpression.java
+@@ -5,6 +5,7 @@
+ package net.sourceforge.pmd.lang.apex.ast;
+ 
+ import apex.jorje.semantic.ast.expression.SoslExpression;
++import net.sourceforge.pmd.lang.apex.rule.performance.AvoidSoslInLoopsRule;
+ 
+ public class ASTSoslExpression extends AbstractApexNode<SoslExpression> {
+ 
+@@ -16,4 +17,8 @@ public class ASTSoslExpression extends AbstractApexNode<SoslExpression> {
+     public Object jjtAccept(ApexParserVisitor visitor, Object data) {
+         return visitor.visit(this, data);
+     }
++
++    public boolean parentNotReturn(AvoidSoslInLoopsRule avoidSoslInLoopsRule) {
++        return !(jjtGetParent() instanceof ASTReturnStatement);
++    }
+ }
+diff --git a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/bestpractices/AvoidGlobalModifierRule.java b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/bestpractices/AvoidGlobalModifierRule.java
+index 9d583e7..7e7a550 100644
+--- a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/bestpractices/AvoidGlobalModifierRule.java
++++ b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/bestpractices/AvoidGlobalModifierRule.java
+@@ -48,17 +48,13 @@ public class AvoidGlobalModifierRule extends AbstractApexRule {
+         List<ASTMethod> methods = node.findChildrenOfType(ASTMethod.class);
+         for (ASTMethod method : methods) {
+             ASTModifierNode methodModifier = method.getFirstChildOfType(ASTModifierNode.class);
+-            if (isWebService(methodModifier)) {
++            if (methodModifier.isWebService(this)) {
+                 return true;
+             }
+         }
+         return false;
+     }
+ 
+-    private boolean isWebService(ASTModifierNode modifierNode) {
+-        return modifierNode != null && modifierNode.getNode().getModifiers().has(ModifierTypeInfos.WEB_SERVICE);
+-    }
+-
+     private boolean isGlobal(ASTModifierNode modifierNode) {
+         return modifierNode != null && modifierNode.getNode().getModifiers().has(ModifierTypeInfos.GLOBAL);
+     }
+diff --git a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/codestyle/MethodNamingConventionsRule.java b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/codestyle/MethodNamingConventionsRule.java
+index 6041c07..2f7d4c2 100644
+--- a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/codestyle/MethodNamingConventionsRule.java
++++ b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/codestyle/MethodNamingConventionsRule.java
+@@ -4,7 +4,6 @@
+ 
+ package net.sourceforge.pmd.lang.apex.rule.codestyle;
+ 
+-import static apex.jorje.semantic.symbol.type.ModifierTypeInfos.OVERRIDE;
+ import static net.sourceforge.pmd.properties.PropertyFactory.booleanProperty;
+ 
+ import net.sourceforge.pmd.lang.apex.ast.ASTMethod;
+@@ -38,7 +37,7 @@ public class MethodNamingConventionsRule extends AbstractApexRule {
+ 
+     @Override
+     public Object visit(ASTMethod node, Object data) {
+-        if (isOverriddenMethod(node) || isPropertyAccessor(node) || isConstructor(node)) {
++        if (node.isOverriddenMethod(this) || isPropertyAccessor(node) || isConstructor(node)) {
+             return data;
+         }
+         if (isTestMethod(node) && getProperty(SKIP_TEST_METHOD_UNDERSCORES_DESCRIPTOR)) {
+@@ -56,10 +55,6 @@ public class MethodNamingConventionsRule extends AbstractApexRule {
+         return data;
+     }
+ 
+-    private boolean isOverriddenMethod(ASTMethod node) {
+-        return node.getNode().getModifiers().has(OVERRIDE);
+-    }
+-
+     private boolean isPropertyAccessor(ASTMethod node) {
+         return !node.getParentsOfType(ASTProperty.class).isEmpty();
+     }
+diff --git a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/performance/AvoidSoqlInLoopsRule.java b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/performance/AvoidSoqlInLoopsRule.java
+index e6dbb26..60f4a17 100644
+--- a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/performance/AvoidSoqlInLoopsRule.java
++++ b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/performance/AvoidSoqlInLoopsRule.java
+@@ -7,7 +7,6 @@ package net.sourceforge.pmd.lang.apex.rule.performance;
+ import net.sourceforge.pmd.lang.apex.ast.ASTDoLoopStatement;
+ import net.sourceforge.pmd.lang.apex.ast.ASTForEachStatement;
+ import net.sourceforge.pmd.lang.apex.ast.ASTForLoopStatement;
+-import net.sourceforge.pmd.lang.apex.ast.ASTReturnStatement;
+ import net.sourceforge.pmd.lang.apex.ast.ASTSoqlExpression;
+ import net.sourceforge.pmd.lang.apex.ast.ASTWhileLoopStatement;
+ import net.sourceforge.pmd.lang.apex.rule.AbstractApexRule;
+@@ -25,16 +24,12 @@ public class AvoidSoqlInLoopsRule extends AbstractApexRule {
+ 
+     @Override
+     public Object visit(ASTSoqlExpression node, Object data) {
+-        if (insideLoop(node) && parentNotReturn(node) && parentNotForEach(node)) {
++        if (insideLoop(node) && node.parentNotReturn(this) && parentNotForEach(node)) {
+             addViolation(data, node);
+         }
+         return data;
+     }
+ 
+-    private boolean parentNotReturn(ASTSoqlExpression node) {
+-        return !(node.jjtGetParent() instanceof ASTReturnStatement);
+-    }
+-
+     private boolean parentNotForEach(ASTSoqlExpression node) {
+         return !(node.jjtGetParent() instanceof ASTForEachStatement);
+     }
+diff --git a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/performance/AvoidSoslInLoopsRule.java b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/performance/AvoidSoslInLoopsRule.java
+index 3d16b18..dff63ed 100644
+--- a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/performance/AvoidSoslInLoopsRule.java
++++ b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/performance/AvoidSoslInLoopsRule.java
+@@ -7,7 +7,6 @@ package net.sourceforge.pmd.lang.apex.rule.performance;
+ import net.sourceforge.pmd.lang.apex.ast.ASTDoLoopStatement;
+ import net.sourceforge.pmd.lang.apex.ast.ASTForEachStatement;
+ import net.sourceforge.pmd.lang.apex.ast.ASTForLoopStatement;
+-import net.sourceforge.pmd.lang.apex.ast.ASTReturnStatement;
+ import net.sourceforge.pmd.lang.apex.ast.ASTSoslExpression;
+ import net.sourceforge.pmd.lang.apex.ast.ASTWhileLoopStatement;
+ import net.sourceforge.pmd.lang.apex.rule.AbstractApexRule;
+@@ -25,16 +24,12 @@ public class AvoidSoslInLoopsRule extends AbstractApexRule {
+ 
+     @Override
+     public Object visit(ASTSoslExpression node, Object data) {
+-        if (insideLoop(node) && parentNotReturn(node) && parentNotForEach(node)) {
++        if (insideLoop(node) && node.parentNotReturn(this) && parentNotForEach(node)) {
+             addViolation(data, node);
+         }
+         return data;
+     }
+ 
+-    private boolean parentNotReturn(ASTSoslExpression node) {
+-        return !(node.jjtGetParent() instanceof ASTReturnStatement);
+-    }
+-
+     private boolean parentNotForEach(ASTSoslExpression node) {
+         return !(node.jjtGetParent() instanceof ASTForEachStatement);
+     }
+diff --git a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/security/ApexCRUDViolationRule.java b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/security/ApexCRUDViolationRule.java
+index 7e208cd..f421032 100644
+--- a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/security/ApexCRUDViolationRule.java
++++ b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/security/ApexCRUDViolationRule.java
+@@ -313,7 +313,7 @@ public class ApexCRUDViolationRule extends AbstractApexRule {
+                     .getFirstChildOfType(ASTMethodCallExpression.class);
+             if (nestedMethodCall != null) {
+                 if (isLastMethodName(nestedMethodCall, S_OBJECT_TYPE, GET_DESCRIBE)) {
+-                    String resolvedType = getType(nestedMethodCall);
++                    String resolvedType = nestedMethodCall.getType(this);
+                     if (!typeToDMLOperationMapping.get(resolvedType).contains(method)) {
+                         typeToDMLOperationMapping.put(resolvedType, method);
+                     }
+@@ -336,15 +336,6 @@ public class ApexCRUDViolationRule extends AbstractApexRule {
+         return false;
+     }
+ 
+-    private String getType(final ASTMethodCallExpression methodNode) {
+-        final ASTReferenceExpression reference = methodNode.getFirstChildOfType(ASTReferenceExpression.class);
+-        if (reference.getNode().getNames().size() > 0) {
+-            return new StringBuilder().append(reference.getNode().getDefiningType().getApexName()).append(":")
+-                    .append(reference.getNode().getNames().get(0).getValue()).toString();
+-        }
+-        return "";
+-    }
+-
+     private void extractObjectAndFields(final List<Identifier> listIdentifiers, final String method,
+             final String definingType) {
+         final List<String> strings = listIdentifiers.stream().map(id -> id.getValue()).collect(Collectors.toList());
+diff --git a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/security/ApexXSSFromURLParamRule.java b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/security/ApexXSSFromURLParamRule.java
+index 1a2e588..794d821 100644
+--- a/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/security/ApexXSSFromURLParamRule.java
++++ b/pmd-apex/src/main/java/net/sourceforge/pmd/lang/apex/rule/security/ApexXSSFromURLParamRule.java
+@@ -11,7 +11,6 @@ import java.util.Set;
+ import net.sourceforge.pmd.lang.apex.ast.ASTAssignmentExpression;
+ import net.sourceforge.pmd.lang.apex.ast.ASTBinaryExpression;
+ import net.sourceforge.pmd.lang.apex.ast.ASTFieldDeclaration;
+-import net.sourceforge.pmd.lang.apex.ast.ASTMethod;
+ import net.sourceforge.pmd.lang.apex.ast.ASTMethodCallExpression;
+ import net.sourceforge.pmd.lang.apex.ast.ASTReturnStatement;
+ import net.sourceforge.pmd.lang.apex.ast.ASTUserClass;
+@@ -100,7 +99,7 @@ public class ApexXSSFromURLParamRule extends AbstractApexRule {
+ 
+         ASTMethodCallExpression methodCall = node.getFirstChildOfType(ASTMethodCallExpression.class);
+         if (methodCall != null) {
+-            String retType = getReturnType(node);
++            String retType = node.getReturnType(this);
+             if ("string".equalsIgnoreCase(retType)) {
+                 processInlineMethodCalls(methodCall, data, true);
+             }
+@@ -117,15 +116,6 @@ public class ApexXSSFromURLParamRule extends AbstractApexRule {
+         return data;
+     }
+ 
+-    private String getReturnType(ASTReturnStatement node) {
+-        ASTMethod method = node.getFirstParentOfType(ASTMethod.class);
+-        if (method != null) {
+-            return method.getNode().getMethodInfo().getReturnType().getApexName();
+-        }
+-
+-        return "";
+-    }
+-
+     private boolean isEscapingMethod(ASTMethodCallExpression methodNode) {
+         // escaping methods
+         return Helper.isMethodCallChain(methodNode, HTML_ESCAPING) || Helper.isMethodCallChain(methodNode, JS_ESCAPING)
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/Report.java b/pmd-core/src/main/java/net/sourceforge/pmd/Report.java
+index 04f7dd2..e2d2a8a 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/Report.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/Report.java
+@@ -17,6 +17,11 @@ import java.util.List;
+ import java.util.Map;
+ import java.util.Set;
+ 
++import net.sourceforge.pmd.benchmark.TimeTracker;
++import net.sourceforge.pmd.benchmark.TimedOperation;
++import net.sourceforge.pmd.benchmark.TimedOperationCategory;
++import net.sourceforge.pmd.processor.AbstractPMDProcessor;
++import net.sourceforge.pmd.renderers.Renderer;
+ import org.apache.commons.lang3.StringUtils;
+ 
+ import net.sourceforge.pmd.lang.dfa.report.ReportTree;
+@@ -74,6 +79,17 @@ public class Report implements Iterable<RuleViolation> {
+         return report;
+     }
+ 
++    public void renderReports(final List<Renderer> renderers, AbstractPMDProcessor abstractPMDProcessor) {
++
++        try (TimedOperation to = TimeTracker.startOperation(TimedOperationCategory.REPORTING)) {
++            for (Renderer r : renderers) {
++                r.renderFileReport(this);
++            }
++        } catch (IOException ioe) {
++            throw new RuntimeException(ioe);
++        }
++    }
++
+     /**
+      * Represents a duration. Useful for reporting processing time.
+      */
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/RuleContext.java b/pmd-core/src/main/java/net/sourceforge/pmd/RuleContext.java
+index b896922..4d6563a 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/RuleContext.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/RuleContext.java
+@@ -5,10 +5,16 @@
+ package net.sourceforge.pmd;
+ 
+ import java.io.File;
++import java.io.Reader;
+ import java.util.concurrent.ConcurrentHashMap;
+ import java.util.concurrent.ConcurrentMap;
+ 
++import net.sourceforge.pmd.benchmark.TimeTracker;
++import net.sourceforge.pmd.benchmark.TimedOperation;
++import net.sourceforge.pmd.benchmark.TimedOperationCategory;
+ import net.sourceforge.pmd.lang.LanguageVersion;
++import net.sourceforge.pmd.lang.Parser;
++import net.sourceforge.pmd.lang.ast.Node;
+ 
+ /**
+  * The RuleContext provides access to Rule processing state. This information
+@@ -236,4 +242,12 @@ public class RuleContext {
+     public boolean isIgnoreExceptions() {
+         return ignoreExceptions;
+     }
++
++    public Node parse(Reader sourceCode, Parser parser, SourceCodeProcessor sourceCodeProcessor) {
++        try (TimedOperation to = TimeTracker.startOperation(TimedOperationCategory.PARSER)) {
++            Node rootNode = parser.parse(getSourceCodeFilename(), sourceCode);
++            getReport().suppress(parser.getSuppressMap());
++            return rootNode;
++        }
++    }
+ }
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/RuleSet.java b/pmd-core/src/main/java/net/sourceforge/pmd/RuleSet.java
+index 47902e2..5f97f99 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/RuleSet.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/RuleSet.java
+@@ -92,6 +92,23 @@ public class RuleSet implements ChecksumAware {
+         filter = rs.filter; // filters are immutable, can be shared
+     }
+ 
++    /**
++     * Creates a copy of the given ruleset. All properties like name, description, fileName
++     * and exclude/include patterns are copied.
++     *
++     * <p><strong>Note:</strong> The rule instances are shared between the original
++     * and the new ruleset (copy-by-reference). This might lead to concurrency issues,
++     * if the original ruleset and the new ruleset are used in different threads.
++     * </p>
++     *
++     *
++     * @param ruleSetFactory@return the copy
++     */
++    public RuleSet createRuleSetCopy(RuleSetFactory ruleSetFactory) {
++        RuleSetBuilder builder = new RuleSetBuilder(this);
++        return builder.build();
++    }
++
+     /* package */ static class RuleSetBuilder {
+         public String description;
+         public String name;
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/RuleSetFactory.java b/pmd-core/src/main/java/net/sourceforge/pmd/RuleSetFactory.java
+index 691ced6..c5873a1 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/RuleSetFactory.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/RuleSetFactory.java
+@@ -215,23 +215,6 @@ public class RuleSetFactory {
+     }
+ 
+     /**
+-     * Creates a copy of the given ruleset. All properties like name, description, fileName
+-     * and exclude/include patterns are copied.
+-     *
+-     * <p><strong>Note:</strong> The rule instances are shared between the original
+-     * and the new ruleset (copy-by-reference). This might lead to concurrency issues,
+-     * if the original ruleset and the new ruleset are used in different threads.
+-     * </p>
+-     *
+-     * @param original the original rule set to copy from
+-     * @return the copy
+-     */
+-    public RuleSet createRuleSetCopy(RuleSet original) {
+-        RuleSetBuilder builder = new RuleSetBuilder(original);
+-        return builder.build();
+-    }
+-
+-    /**
+      * Creates a new ruleset with the given metadata such as name, description,
+      * fileName, exclude/include patterns are used. The rules are taken from the given
+      * collection.
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/SourceCodeProcessor.java b/pmd-core/src/main/java/net/sourceforge/pmd/SourceCodeProcessor.java
+index ddc0f20..aafb271 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/SourceCodeProcessor.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/SourceCodeProcessor.java
+@@ -106,14 +106,6 @@ public class SourceCodeProcessor {
+         }
+     }
+ 
+-    private Node parse(RuleContext ctx, Reader sourceCode, Parser parser) {
+-        try (TimedOperation to = TimeTracker.startOperation(TimedOperationCategory.PARSER)) {
+-            Node rootNode = parser.parse(ctx.getSourceCodeFilename(), sourceCode);
+-            ctx.getReport().suppress(parser.getSuppressMap());
+-            return rootNode;
+-        }
+-    }
+-
+     private void symbolFacade(Node rootNode, LanguageVersionHandler languageVersionHandler) {
+         try (TimedOperation to = TimeTracker.startOperation(TimedOperationCategory.SYMBOL_TABLE)) {
+             languageVersionHandler.getSymbolFacade(configuration.getClassLoader()).start(rootNode);
+@@ -172,7 +164,7 @@ public class SourceCodeProcessor {
+         LanguageVersionHandler languageVersionHandler = languageVersion.getLanguageVersionHandler();
+         Parser parser = PMD.parserFor(languageVersion, configuration);
+ 
+-        Node rootNode = parse(ctx, sourceCode, parser);
++        Node rootNode = ctx.parse(sourceCode, parser, this);
+         resolveQualifiedNames(rootNode, languageVersionHandler);
+         symbolFacade(rootNode, languageVersionHandler);
+         Language language = languageVersion.getLanguage();
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/cpd/AntlrTokenizer.java b/pmd-core/src/main/java/net/sourceforge/pmd/cpd/AntlrTokenizer.java
+index 46097b5..e77ef75 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/cpd/AntlrTokenizer.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/cpd/AntlrTokenizer.java
+@@ -35,7 +35,7 @@ public abstract class AntlrTokenizer implements Tokenizer {
+         try {
+             AntlrToken currentToken = tokenFilter.getNextToken();
+             while (currentToken != null) {
+-                processToken(tokenEntries, tokenManager.getFileName(), currentToken);
++                tokenEntries.processToken(tokenManager.getFileName(), currentToken, this);
+                 currentToken = tokenFilter.getNextToken();
+             }
+         } catch (final AntlrTokenManager.ANTLRSyntaxError err) {
+@@ -58,8 +58,4 @@ public abstract class AntlrTokenizer implements Tokenizer {
+         return CharStreams.fromString(buffer.toString());
+     }
+ 
+-    private void processToken(final Tokens tokenEntries, final String fileName, final AntlrToken token) {
+-        final TokenEntry tokenEntry = new TokenEntry(token.getImage(), fileName, token.getBeginLine());
+-        tokenEntries.add(tokenEntry);
+-    }
+ }
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/cpd/CPD.java b/pmd-core/src/main/java/net/sourceforge/pmd/cpd/CPD.java
+index b1ed3e7..2411b38 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/cpd/CPD.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/cpd/CPD.java
+@@ -176,4 +176,11 @@ public class CPD {
+     public static void main(String[] args) {
+         CPDCommandLineInterface.main(args);
+     }
++
++    public long analyzeCode(CPDTask cpdTask) {
++        long start = System.currentTimeMillis();
++        go();
++        long stop = System.currentTimeMillis();
++        return stop - start;
++    }
+ }
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/cpd/CPDTask.java b/pmd-core/src/main/java/net/sourceforge/pmd/cpd/CPDTask.java
+index 953cfd1..56e5881 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/cpd/CPDTask.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/cpd/CPDTask.java
+@@ -90,7 +90,7 @@ public class CPDTask extends Task {
+             tokenizeFiles(cpd);
+ 
+             log("Starting to analyze code", Project.MSG_INFO);
+-            long timeTaken = analyzeCode(cpd);
++            long timeTaken = cpd.analyzeCode(this);
+             log("Done analyzing code; that took " + timeTaken + " milliseconds");
+ 
+             log("Generating report", Project.MSG_INFO);
+@@ -167,13 +167,6 @@ public class CPDTask extends Task {
+         }
+     }
+ 
+-    private long analyzeCode(CPD cpd) {
+-        long start = System.currentTimeMillis();
+-        cpd.go();
+-        long stop = System.currentTimeMillis();
+-        return stop - start;
+-    }
+-
+     private CPDRenderer createRenderer() {
+         if (format.equals(TEXT_FORMAT)) {
+             return new SimpleRenderer();
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/cpd/GUI.java b/pmd-core/src/main/java/net/sourceforge/pmd/cpd/GUI.java
+index 9162765..47877b1 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/cpd/GUI.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/cpd/GUI.java
+@@ -26,12 +26,10 @@ import java.util.ArrayList;
+ import java.util.Collections;
+ import java.util.Comparator;
+ import java.util.HashMap;
+-import java.util.HashSet;
+ import java.util.Iterator;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.Properties;
+-import java.util.Set;
+ import javax.swing.AbstractButton;
+ import javax.swing.BorderFactory;
+ import javax.swing.JButton;
+@@ -618,26 +616,6 @@ public class GUI implements CPDListener {
+         return false;
+     }
+ 
+-    private String setLabelFor(Match match) {
+-
+-        Set<String> sourceIDs = new HashSet<>(match.getMarkCount());
+-        for (Iterator<Mark> occurrences = match.iterator(); occurrences.hasNext();) {
+-            sourceIDs.add(occurrences.next().getFilename());
+-        }
+-        String label;
+-
+-        if (sourceIDs.size() == 1) {
+-            String sourceId = sourceIDs.iterator().next();
+-            int separatorPos = sourceId.lastIndexOf(File.separatorChar);
+-            label = "..." + sourceId.substring(separatorPos);
+-        } else {
+-            label = String.format("(%d separate files)", sourceIDs.size());
+-        }
+-
+-        match.setLabel(label);
+-        return label;
+-    }
+-
+     private void setProgressControls(boolean isRunning) {
+         progressPanel.setVisible(isRunning);
+         goButton.setEnabled(!isRunning);
+@@ -694,7 +672,7 @@ public class GUI implements CPDListener {
+             matches = new ArrayList<>();
+             for (Iterator<Match> i = cpd.getMatches(); i.hasNext();) {
+                 Match match = i.next();
+-                setLabelFor(match);
++                match.setLabelFor(this);
+                 matches.add(match);
+             }
+ 
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/cpd/Match.java b/pmd-core/src/main/java/net/sourceforge/pmd/cpd/Match.java
+index 19f69b9..d5d5538 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/cpd/Match.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/cpd/Match.java
+@@ -4,10 +4,8 @@
+ 
+ package net.sourceforge.pmd.cpd;
+ 
+-import java.util.Comparator;
+-import java.util.Iterator;
+-import java.util.Set;
+-import java.util.TreeSet;
++import java.io.File;
++import java.util.*;
+ 
+ import net.sourceforge.pmd.PMD;
+ 
+@@ -137,4 +135,24 @@ public class Match implements Comparable<Match>, Iterable<Mark> {
+         }
+         return result;
+     }
++
++    public String setLabelFor(GUI gui) {
++
++        Set<String> sourceIDs = new HashSet<>(getMarkCount());
++        for (Iterator<Mark> occurrences = iterator(); occurrences.hasNext();) {
++            sourceIDs.add(occurrences.next().getFilename());
++        }
++        String label;
++
++        if (sourceIDs.size() == 1) {
++            String sourceId = sourceIDs.iterator().next();
++            int separatorPos = sourceId.lastIndexOf(File.separatorChar);
++            label = "..." + sourceId.substring(separatorPos);
++        } else {
++            label = String.format("(%d separate files)", sourceIDs.size());
++        }
++
++        setLabel(label);
++        return label;
++    }
+ }
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/cpd/MatchCollector.java b/pmd-core/src/main/java/net/sourceforge/pmd/cpd/MatchCollector.java
+index 7d75d32..19227ef 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/cpd/MatchCollector.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/cpd/MatchCollector.java
+@@ -86,18 +86,15 @@ public class MatchCollector {
+         if (mark1.getIndex() == 0) {
+             return false;
+         }
+-        return !matchEnded(ma.tokenAt(-1, mark1), ma.tokenAt(-1, mark2));
++        return !ma.tokenAt(-1, mark1).matchEnded(ma.tokenAt(-1, mark2), this);
+     }
+ 
+     private int countDuplicateTokens(TokenEntry mark1, TokenEntry mark2) {
+         int index = 0;
+-        while (!matchEnded(ma.tokenAt(index, mark1), ma.tokenAt(index, mark2))) {
++        while (!ma.tokenAt(index, mark1).matchEnded(ma.tokenAt(index, mark2), this)) {
+             index++;
+         }
+         return index;
+     }
+ 
+-    private boolean matchEnded(TokenEntry token1, TokenEntry token2) {
+-        return token1.getIdentifier() != token2.getIdentifier() || token1 == TokenEntry.EOF || token2 == TokenEntry.EOF;
+-    }
+ }
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/cpd/TokenEntry.java b/pmd-core/src/main/java/net/sourceforge/pmd/cpd/TokenEntry.java
+index 178f0e3..c3ab662 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/cpd/TokenEntry.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/cpd/TokenEntry.java
+@@ -62,6 +62,10 @@ public class TokenEntry implements Comparable<TokenEntry> {
+         TOKEN_COUNT.remove();
+     }
+ 
++    public boolean matchEnded(TokenEntry token2, MatchCollector matchCollector) {
++        return getIdentifier() != token2.getIdentifier() || this == EOF || token2 == EOF;
++    }
++
+     /**
+      * Helper class to preserve and restore the current state of the token
+      * entries.
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/cpd/Tokens.java b/pmd-core/src/main/java/net/sourceforge/pmd/cpd/Tokens.java
+index 95b2be8..dd9e262 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/cpd/Tokens.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/cpd/Tokens.java
+@@ -4,6 +4,8 @@
+ 
+ package net.sourceforge.pmd.cpd;
+ 
++import net.sourceforge.pmd.cpd.token.AntlrToken;
++
+ import java.util.ArrayList;
+ import java.util.Iterator;
+ import java.util.List;
+@@ -40,4 +42,8 @@ public class Tokens {
+         return tokens;
+     }
+ 
++    public void processToken(final String fileName, final AntlrToken token, AntlrTokenizer antlrTokenizer) {
++        final TokenEntry tokenEntry = new TokenEntry(token.getImage(), fileName, token.getBeginLine());
++        add(tokenEntry);
++    }
+ }
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/dcd/UsageNodeVisitor.java b/pmd-core/src/main/java/net/sourceforge/pmd/dcd/UsageNodeVisitor.java
+index 98a8b17..5dd0be0 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/dcd/UsageNodeVisitor.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/dcd/UsageNodeVisitor.java
+@@ -122,7 +122,7 @@ public class UsageNodeVisitor extends NodeVisitorAdapter {
+     public Object visit(ClassNode classNode, Object data) {
+         boolean log = true;
+         if (options.isIgnoreClassAnonymous() && classNode.getType().isAnonymousClass()) {
+-            ignore("class anonymous", classNode);
++            classNode.ignore("class anonymous", this);
+             log = false;
+         }
+         if (log) {
+@@ -223,10 +223,6 @@ public class UsageNodeVisitor extends NodeVisitorAdapter {
+         return super.visit(methodNode, data);
+     }
+ 
+-    private void ignore(String description, ClassNode classNode) {
+-        System.out.println("Ignoring " + description + ": " + classNode.getName());
+-    }
+-
+     private void ignore(String description, MemberNode memberNode) {
+         System.out.println("Ignoring " + description + ": " + memberNode.toStringLong());
+     }
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/dcd/graph/ClassNode.java b/pmd-core/src/main/java/net/sourceforge/pmd/dcd/graph/ClassNode.java
+index 39059fa..89dcab4 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/dcd/graph/ClassNode.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/dcd/graph/ClassNode.java
+@@ -10,6 +10,7 @@ import java.util.Collections;
+ import java.util.List;
+ 
+ import net.sourceforge.pmd.dcd.ClassLoaderUtil;
++import net.sourceforge.pmd.dcd.UsageNodeVisitor;
+ 
+ /**
+  * Represents a Class in a UsageGraph. Contains lists of FieldNodes,
+@@ -125,4 +126,8 @@ public class ClassNode implements NodeVisitorAcceptor, Comparable<ClassNode> {
+     public int hashCode() {
+         return name.hashCode();
+     }
++
++    public void ignore(String description, UsageNodeVisitor usageNodeVisitor) {
++        System.out.println("Ignoring " + description + ": " + getName());
++    }
+ }
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/pathfinder/DAAPathFinder.java b/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/pathfinder/DAAPathFinder.java
+index ae12cc0..3f04081 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/pathfinder/DAAPathFinder.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/pathfinder/DAAPathFinder.java
+@@ -201,7 +201,7 @@ public class DAAPathFinder {
+                 }
+                 PathElement ref = this.getDoBranchNodeInLevel(level);
+                 if (ref != null) {
+-                    addNode(level, ref);
++                    ref.addNode(level, this);
+                 } else {
+                     this.addNewPathElement(level);
+                 }
+@@ -211,7 +211,7 @@ public class DAAPathFinder {
+                     if (level.getChildCount() != 0) {
+                         PathElement ref = this.isNodeInLevel(level);
+                         if (ref != null) {
+-                            addNode(level, ref);
++                            ref.addNode(level, this);
+                             break;
+                         } else {
+                             level = this.getLastChildNode(level);
+@@ -249,21 +249,21 @@ public class DAAPathFinder {
+     }
+ 
+     private void addNewPathElement(DefaultMutableTreeNode level) {
+-        addNode(level, new PathElement(currentPath.getLast()));
++        new PathElement(currentPath.getLast()).addNode(level, this);
+     }
+ 
+     /*
+      * Needed for do loops
+      */
+     private void addNewPseudoPathElement(DefaultMutableTreeNode level, DataFlowNode ref) {
+-        addNode(level, new PathElement(currentPath.getLast(), ref));
++        new PathElement(currentPath.getLast(), ref).addNode(level, this);
+     }
+ 
+     /*
+      * Needed for do loops
+      */
+     private void addRefPseudoPathElement(DefaultMutableTreeNode level, PathElement ref) {
+-        addNode(level, ref);
++        ref.addNode(level, this);
+     }
+ 
+     private boolean equalsPseudoPathElementWithDoBranchNodeInLevel(DefaultMutableTreeNode level) {
+@@ -305,12 +305,6 @@ public class DAAPathFinder {
+         return null;
+     }
+ 
+-    private void addNode(DefaultMutableTreeNode level, PathElement element) {
+-        DefaultMutableTreeNode node = new DefaultMutableTreeNode();
+-        node.setUserObject(element);
+-        level.add(node);
+-    }
+-
+     private PathElement isNodeInLevel(DefaultMutableTreeNode level) {
+         DataFlowNode inode = currentPath.getLast();
+         DefaultMutableTreeNode child = (DefaultMutableTreeNode) level.getFirstChild();
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/pathfinder/PathElement.java b/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/pathfinder/PathElement.java
+index 0bd6ebf..f4c82fb 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/pathfinder/PathElement.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/pathfinder/PathElement.java
+@@ -6,6 +6,8 @@ package net.sourceforge.pmd.lang.dfa.pathfinder;
+ 
+ import net.sourceforge.pmd.lang.dfa.DataFlowNode;
+ 
++import javax.swing.tree.DefaultMutableTreeNode;
++
+ public class PathElement {
+ 
+     public int currentChild;
+@@ -24,4 +26,10 @@ public class PathElement {
+     public boolean isPseudoPathElement() {
+         return pseudoRef != null;
+     }
++
++    public void addNode(DefaultMutableTreeNode level, DAAPathFinder daaPathFinder) {
++        DefaultMutableTreeNode node = new DefaultMutableTreeNode();
++        node.setUserObject(this);
++        level.add(node);
++    }
+ }
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/report/AbstractReportNode.java b/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/report/AbstractReportNode.java
+index bcf8866..5c557b3 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/report/AbstractReportNode.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/report/AbstractReportNode.java
+@@ -121,4 +121,17 @@ public abstract class AbstractReportNode {
+         return childNodes.isEmpty();
+     }
+ 
++    /**
++     * Checks if node is a child of the level node.
++     * @param node
++     * @param ruleViolations
++     */
++    public boolean equalsNodeInLevel(AbstractReportNode node, ReportTree ruleViolations) {
++        for (int i = 0; i < getChildCount(); i++) {
++            if (getChildAt(i).equalsNode(node)) {
++                return true;
++            }
++        }
++        return false;
++    }
+ }
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/report/ReportTree.java b/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/report/ReportTree.java
+index 988a29e..f642794 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/report/ReportTree.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/lang/dfa/report/ReportTree.java
+@@ -162,24 +162,12 @@ public class ReportTree implements Iterable<RuleViolation> {
+          * RuleViolation if he already exists.
+          */
+         ViolationNode tmp = new ViolationNode(violation);
+-        if (!equalsNodeInLevel(level, tmp)) {
++        if (!level.equalsNodeInLevel(tmp, this)) {
+             level.add(tmp);
+         }
+     }
+ 
+     /**
+-     * Checks if node is a child of the level node.
+-     */
+-    private boolean equalsNodeInLevel(AbstractReportNode level, AbstractReportNode node) {
+-        for (int i = 0; i < level.getChildCount(); i++) {
+-            if (level.getChildAt(i).equalsNode(node)) {
+-                return true;
+-            }
+-        }
+-        return false;
+-    }
+-
+-    /**
+      * Checks if the packageName or the className is a child of the current
+      * (this.level) node. If it's true, the current node changes to the child
+      * node.
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/processor/AbstractPMDProcessor.java b/pmd-core/src/main/java/net/sourceforge/pmd/processor/AbstractPMDProcessor.java
+index 412b8e0..874f0ca 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/processor/AbstractPMDProcessor.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/processor/AbstractPMDProcessor.java
+@@ -4,7 +4,6 @@
+ 
+ package net.sourceforge.pmd.processor;
+ 
+-import java.io.IOException;
+ import java.util.HashSet;
+ import java.util.List;
+ import java.util.Set;
+@@ -19,9 +18,6 @@ import net.sourceforge.pmd.RuleSetFactory;
+ import net.sourceforge.pmd.RuleSets;
+ import net.sourceforge.pmd.RulesetsFactoryUtils;
+ import net.sourceforge.pmd.SourceCodeProcessor;
+-import net.sourceforge.pmd.benchmark.TimeTracker;
+-import net.sourceforge.pmd.benchmark.TimedOperation;
+-import net.sourceforge.pmd.benchmark.TimedOperationCategory;
+ import net.sourceforge.pmd.renderers.Renderer;
+ import net.sourceforge.pmd.util.datasource.DataSource;
+ 
+@@ -39,17 +35,6 @@ public abstract class AbstractPMDProcessor {
+         this.configuration = configuration;
+     }
+ 
+-    public void renderReports(final List<Renderer> renderers, final Report report) {
+-
+-        try (TimedOperation to = TimeTracker.startOperation(TimedOperationCategory.REPORTING)) {
+-            for (Renderer r : renderers) {
+-                r.renderFileReport(report);
+-            }
+-        } catch (IOException ioe) {
+-            throw new RuntimeException(ioe);
+-        }
+-    }
+-
+     protected String filenameFrom(DataSource dataSource) {
+         return dataSource.getNiceFileName(configuration.isReportShortNames(), configuration.getInputPaths());
+     }
+@@ -109,7 +94,7 @@ public abstract class AbstractPMDProcessor {
+         }
+ 
+         // render base report first - general errors
+-        renderReports(renderers, ctx.getReport());
++        ctx.getReport().renderReports(renderers, this);
+         
+         // then add analysis results per file
+         collectReports(renderers);
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/processor/MonoThreadProcessor.java b/pmd-core/src/main/java/net/sourceforge/pmd/processor/MonoThreadProcessor.java
+index 1adb114..3dd6c15 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/processor/MonoThreadProcessor.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/processor/MonoThreadProcessor.java
+@@ -32,7 +32,7 @@ public final class MonoThreadProcessor extends AbstractPMDProcessor {
+     @Override
+     protected void collectReports(List<Renderer> renderers) {
+         for (Report r : reports) {
+-            super.renderReports(renderers, r);
++            r.renderReports(renderers, super);
+         }
+ 
+         // Since this thread may run PMD again, clean up the runnable
+diff --git a/pmd-core/src/main/java/net/sourceforge/pmd/processor/MultiThreadProcessor.java b/pmd-core/src/main/java/net/sourceforge/pmd/processor/MultiThreadProcessor.java
+index f398a90..012eeec 100644
+--- a/pmd-core/src/main/java/net/sourceforge/pmd/processor/MultiThreadProcessor.java
++++ b/pmd-core/src/main/java/net/sourceforge/pmd/processor/MultiThreadProcessor.java
+@@ -43,7 +43,7 @@ public class MultiThreadProcessor extends AbstractPMDProcessor {
+         try {
+             for (int i = 0; i < submittedTasks; i++) {
+                 final Report report = completionService.take().get();
+-                super.renderReports(renderers, report);
++                report.renderReports(renderers, super);
+             }
+         } catch (final InterruptedException ie) {
+             Thread.currentThread().interrupt();
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTAdditiveExpression.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTAdditiveExpression.java
+index 2e7d65b..724d1df 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTAdditiveExpression.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTAdditiveExpression.java
+@@ -5,6 +5,9 @@
+ 
+ package net.sourceforge.pmd.lang.java.ast;
+ 
++import net.sourceforge.pmd.lang.java.rule.performance.InefficientStringBufferingRule;
++import net.sourceforge.pmd.lang.java.typeresolution.TypeHelper;
++
+ /**
+  * Represents an addition operation on two or more values, or string concatenation.
+  * This has a precedence greater than {@link ASTShiftExpression}, and lower
+@@ -40,4 +43,15 @@ public class ASTAdditiveExpression extends AbstractJavaTypeNode {
+     public String getOperator() {
+         return getImage();
+     }
++
++    public boolean isAllocatedStringBuffer(InefficientStringBufferingRule inefficientStringBufferingRule) {
++        ASTAllocationExpression ao = getFirstParentOfType(ASTAllocationExpression.class);
++        if (ao == null) {
++            return false;
++        }
++        // note that the child can be an ArrayDimsAndInits, for example, from
++        // java.lang.FloatingDecimal: t = new int[ nWords+wordcount+1 ];
++        ASTClassOrInterfaceType an = ao.getFirstChildOfType(ASTClassOrInterfaceType.class);
++        return an != null && TypeHelper.isEither(an, StringBuffer.class, StringBuilder.class);
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTAllocationExpression.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTAllocationExpression.java
+index 3ea7ef0..a28933e 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTAllocationExpression.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTAllocationExpression.java
+@@ -6,6 +6,7 @@
+ package net.sourceforge.pmd.lang.java.ast;
+ 
+ import net.sourceforge.pmd.lang.java.qname.JavaTypeQualifiedName;
++import net.sourceforge.pmd.lang.java.rule.performance.AvoidInstantiatingObjectsInLoopsRule;
+ 
+ 
+ public class ASTAllocationExpression extends AbstractJavaTypeNode implements JavaQualifiableNode {
+@@ -58,4 +59,7 @@ public class ASTAllocationExpression extends AbstractJavaTypeNode implements Jav
+         this.qualifiedName = qname;
+     }
+ 
++    public boolean fourthParentNotThrow(AvoidInstantiatingObjectsInLoopsRule avoidInstantiatingObjectsInLoopsRule) {
++        return !(jjtGetParent().jjtGetParent().jjtGetParent().jjtGetParent() instanceof ASTThrowStatement);
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTArguments.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTArguments.java
+index a2edc50..83f44b6 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTArguments.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTArguments.java
+@@ -5,6 +5,8 @@
+ 
+ package net.sourceforge.pmd.lang.java.ast;
+ 
++import net.sourceforge.pmd.lang.java.typeresolution.ClassTypeResolver;
++
+ public class ASTArguments extends AbstractJavaNode {
+     public ASTArguments(int id) {
+         super(id);
+@@ -28,4 +30,12 @@ public class ASTArguments extends AbstractJavaNode {
+     public Object jjtAccept(JavaParserVisitor visitor, Object data) {
+         return visitor.visit(this, data);
+     }
++
++    public ASTArgumentList getArgumentList(ClassTypeResolver classTypeResolver) {
++        if (this != null) {
++            return getFirstChildOfType(ASTArgumentList.class);
++        }
++
++        return null;
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTCatchStatement.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTCatchStatement.java
+index 200a2bb..c561bb8 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTCatchStatement.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTCatchStatement.java
+@@ -5,6 +5,8 @@
+ 
+ package net.sourceforge.pmd.lang.java.ast;
+ 
++import net.sourceforge.pmd.lang.java.rule.codestyle.IdenticalCatchBranchesRule;
++
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+@@ -84,4 +86,10 @@ public class ASTCatchStatement extends AbstractJavaNode {
+         return getFirstDescendantOfType(ASTVariableDeclaratorId.class).getImage();
+     }
+ 
++    public List<ASTCatchStatement> newEquivClass(IdenticalCatchBranchesRule identicalCatchBranchesRule) {
++        // Each equivalence class is sorted by document order
++        List<ASTCatchStatement> result = new ArrayList<>(2);
++        result.add(this);
++        return result;
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTClassOrInterfaceDeclaration.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTClassOrInterfaceDeclaration.java
+index 9f1ed15..5589293 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTClassOrInterfaceDeclaration.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTClassOrInterfaceDeclaration.java
+@@ -9,6 +9,7 @@ import java.util.Collections;
+ import java.util.List;
+ 
+ import net.sourceforge.pmd.lang.ast.Node;
++import net.sourceforge.pmd.lang.java.rule.design.UseUtilityClassRule;
+ import net.sourceforge.pmd.util.CollectionUtil;
+ 
+ 
+@@ -134,4 +135,30 @@ public class ASTClassOrInterfaceDeclaration extends AbstractAnyTypeDeclaration {
+         return it == null ? Collections.<ASTClassOrInterfaceType>emptyList() : CollectionUtil.toList(it.iterator());
+     }
+ 
++    public boolean isOkUsingLombok(UseUtilityClassRule useUtilityClassRule) {
++        // check if there's a lombok no arg private constructor, if so skip the rest of the rules
++        ASTAnnotation annotation = getAnnotation("lombok.NoArgsConstructor");
++
++        if (annotation != null) {
++
++            List<ASTMemberValuePair> memberValuePairs = annotation.findDescendantsOfType(ASTMemberValuePair.class);
++
++            for (ASTMemberValuePair memberValuePair : memberValuePairs) {
++                // to set the access level of a constructor in lombok, you set the access property on the annotation
++                if ("access".equals(memberValuePair.getImage())) {
++                    List<ASTName> names = memberValuePair.findDescendantsOfType(ASTName.class);
++
++                    for (ASTName name : names) {
++                        // check to see if the value of the member value pair ends PRIVATE.  This is from the AccessLevel enum in Lombok
++                        if (name.getImage().endsWith("PRIVATE")) {
++                            // if the constructor is found and the accesslevel is private no need to check anything else
++                            return true;
++                        }
++                    }
++                }
++            }
++        }
++
++        return false;
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTCompilationUnit.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTCompilationUnit.java
+index cd9dc45..c47465b 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTCompilationUnit.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTCompilationUnit.java
+@@ -9,6 +9,7 @@ import java.util.List;
+ 
+ import net.sourceforge.pmd.lang.ast.Node;
+ import net.sourceforge.pmd.lang.ast.RootNode;
++import net.sourceforge.pmd.lang.java.rule.AbstractJUnitRule;
+ import net.sourceforge.pmd.lang.java.typeresolution.ClassTypeResolver;
+ 
+ // FUTURE Change this class to extend from SimpleJavaNode, as TypeNode is not appropriate (unless I'm wrong)
+@@ -60,4 +61,14 @@ public class ASTCompilationUnit extends AbstractJavaTypeNode implements RootNode
+     public void setClassTypeResolver(ClassTypeResolver classTypeResolver) {
+         this.classTypeResolver = classTypeResolver;
+     }
++
++    public boolean isTestNgClass(AbstractJUnitRule abstractJUnitRule) {
++        List<ASTImportDeclaration> imports = findDescendantsOfType(ASTImportDeclaration.class);
++        for (ASTImportDeclaration i : imports) {
++            if (i.getImportedName() != null && i.getImportedName().startsWith("org.testng")) {
++                return true;
++            }
++        }
++        return false;
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTConstructorDeclaration.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTConstructorDeclaration.java
+index 5ab9b36..8735317 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTConstructorDeclaration.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTConstructorDeclaration.java
+@@ -6,6 +6,8 @@
+ package net.sourceforge.pmd.lang.java.ast;
+ 
+ 
++import net.sourceforge.pmd.lang.java.rule.codestyle.UnnecessaryConstructorRule;
++
+ public class ASTConstructorDeclaration extends AbstractMethodOrConstructorDeclaration {
+ 
+     private boolean containsComment;
+@@ -56,4 +58,15 @@ public class ASTConstructorDeclaration extends AbstractMethodOrConstructorDeclar
+     public ASTFormalParameters getFormalParameters() {
+         return getFirstChildOfType(ASTFormalParameters.class);
+     }
++
++    /**
++     * Returns {@code true} if the constructor simply invokes superclass constructor
++     * with no arguments or doesn't invoke any constructor, otherwise {@code false}.
++     *
++     * @param unnecessaryConstructorRule
++     */
++    public boolean hasDefaultConstructorInvocation(UnnecessaryConstructorRule unnecessaryConstructorRule) {
++        ASTExplicitConstructorInvocation inv = getFirstChildOfType(ASTExplicitConstructorInvocation.class);
++        return inv == null || inv.isSuper() && inv.getArgumentCount() == 0;
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTEqualityExpression.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTEqualityExpression.java
+index b1bfead..299f401 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTEqualityExpression.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTEqualityExpression.java
+@@ -5,6 +5,10 @@
+ 
+ package net.sourceforge.pmd.lang.java.ast;
+ 
++import net.sourceforge.pmd.lang.java.rule.errorprone.BrokenNullCheckRule;
++
++import java.util.List;
++
+ /**
+  * Represents an identity test between two values or more values.
+  * This has a precedence greater than {@link ASTAndExpression},
+@@ -42,4 +46,17 @@ public class ASTEqualityExpression extends AbstractJavaTypeNode {
+         return getImage();
+     }
+ 
++    public ASTPrimaryExpression findNullCompareExpression(BrokenNullCheckRule brokenNullCheckRule) {
++        List<ASTPrimaryExpression> primaryExpressions = findDescendantsOfType(ASTPrimaryExpression.class);
++        for (ASTPrimaryExpression primaryExpression : primaryExpressions) {
++            List<ASTPrimaryPrefix> primaryPrefixes = primaryExpression.findDescendantsOfType(ASTPrimaryPrefix.class);
++            for (ASTPrimaryPrefix primaryPrefix : primaryPrefixes) {
++                if (primaryPrefix.hasDescendantOfType(ASTName.class)) {
++                    // We found the variable that is compared to null
++                    return primaryExpression;
++                }
++            }
++        }
++        return null; // Nothing found
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTExpression.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTExpression.java
+index eb2e539..c5263f2 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTExpression.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTExpression.java
+@@ -5,6 +5,12 @@
+ 
+ package net.sourceforge.pmd.lang.java.ast;
+ 
++import net.sourceforge.pmd.lang.ast.Node;
++import net.sourceforge.pmd.lang.java.rule.bestpractices.ForLoopCanBeForeachRule;
++import org.jaxen.JaxenException;
++
++import java.util.List;
++
+ /**
+  * Represents an expression, in the most general sense.
+  * This corresponds roughly to the <a href="https://docs.oracle.com/javase/specs/jls/se9/html/jls-15.html#jls-AssignmentExpression">AssignmentExpression</a>
+@@ -58,4 +64,50 @@ public class ASTExpression extends AbstractJavaTypeNode {
+         return literal != null && !literal.isStringLiteral()
+                 && (literal.jjtGetNumChildren() == 0 || !(literal.jjtGetChild(0) instanceof ASTNullLiteral));
+     }
++
++    /**
++     * Gets the name of the iterable array or list.
++     *
++     * @param itName The name of the iterator variable
++     *
++     * @param forLoopCanBeForeachRule
++     * @return The name, or null if it couldn't be found or the guard condition is not safe to refactor (then abort)
++     */
++    public String getIterableNameOrNullToAbort(String itName, ForLoopCanBeForeachRule forLoopCanBeForeachRule) {
++
++
++        if (jjtGetNumChildren() > 0
++            && jjtGetChild(0) instanceof ASTRelationalExpression) {
++
++            ASTRelationalExpression relationalExpression = (ASTRelationalExpression) jjtGetChild(0);
++
++            if (relationalExpression.hasImageEqualTo("<") || relationalExpression.hasImageEqualTo("<=")) {
++
++                try {
++                    List<Node> left = findChildNodesWithXPath(
++                        "./RelationalExpression/PrimaryExpression/PrimaryPrefix/Name[@Image='" + itName + "']");
++
++                    List<Node> right = findChildNodesWithXPath(
++                        "./RelationalExpression[@Image='<']/PrimaryExpression/PrimaryPrefix"
++                            + "/Name[matches(@Image,'\\w+\\.(size|length)')]"
++                            + "|"
++                            + "./RelationalExpression[@Image='<=']/AdditiveExpression[count(*)=2 and "
++                            + "@Image='-' and PrimaryExpression/PrimaryPrefix/Literal[@Image='1']]"
++                            + "/PrimaryExpression/PrimaryPrefix/Name[matches(@Image,'\\w+\\.(size|length)')]");
++
++                    if (left.isEmpty()) {
++                        return null;
++                    } else if (!right.isEmpty()) {
++                        return right.get(0).getImage().split("\\.")[0];
++                    } else {
++                        return null;
++                    }
++
++                } catch (JaxenException je) {
++                    throw new RuntimeException(je);
++                }
++            }
++        }
++        return null;
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTFieldDeclaration.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTFieldDeclaration.java
+index 8df2589..1b3359d 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTFieldDeclaration.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTFieldDeclaration.java
+@@ -9,6 +9,7 @@ import java.util.Iterator;
+ 
+ import net.sourceforge.pmd.lang.ast.SignedNode;
+ import net.sourceforge.pmd.lang.java.multifile.signature.JavaFieldSignature;
++import net.sourceforge.pmd.lang.java.rule.documentation.CommentRequiredRule;
+ import net.sourceforge.pmd.lang.java.typeresolution.typedefinition.JavaTypeDefinition;
+ 
+ 
+@@ -227,4 +228,11 @@ public class ASTFieldDeclaration extends AbstractJavaAccessTypeNode implements D
+     public JavaTypeDefinition getTypeDefinition() {
+         return super.getTypeDefinition();
+     }
++
++    public boolean isSerialVersionUID(CommentRequiredRule commentRequiredRule) {
++        return "serialVersionUID".equals(getVariableName())
++               && isStatic()
++               && isFinal()
++               && getType() == long.class;
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTFormalParameters.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTFormalParameters.java
+index 57cc052..98ec308 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTFormalParameters.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTFormalParameters.java
+@@ -5,6 +5,9 @@
+ 
+ package net.sourceforge.pmd.lang.java.ast;
+ 
++import net.sourceforge.pmd.lang.java.rule.bestpractices.ArrayIsStoredDirectlyRule;
++
++import java.util.ArrayList;
+ import java.util.Iterator;
+ import java.util.List;
+ 
+@@ -37,4 +40,18 @@ public class ASTFormalParameters extends AbstractJavaNode implements Iterable<AS
+     public Iterator<ASTFormalParameter> iterator() {
+         return new NodeChildrenIterator<>(this, ASTFormalParameter.class);
+     }
++
++    public ASTFormalParameter[] getArrays(ArrayIsStoredDirectlyRule arrayIsStoredDirectlyRule) {
++        final List<ASTFormalParameter> l = findChildrenOfType(ASTFormalParameter.class);
++        if (l != null && !l.isEmpty()) {
++            List<ASTFormalParameter> l2 = new ArrayList<>();
++            for (ASTFormalParameter fp : l) {
++                if (fp.isArray() || fp.isVarargs()) {
++                    l2.add(fp);
++                }
++            }
++            return l2.toArray(new ASTFormalParameter[0]);
++        }
++        return new ASTFormalParameter[0];
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTImportDeclaration.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTImportDeclaration.java
+index 326105a..9bc61cd 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTImportDeclaration.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTImportDeclaration.java
+@@ -5,6 +5,8 @@
+ 
+ package net.sourceforge.pmd.lang.java.ast;
+ 
++import net.sourceforge.pmd.lang.java.rule.design.LoosePackageCouplingRule;
++
+ /**
+  * Represents an import declaration in a Java file.
+  *
+@@ -151,4 +153,15 @@ public class ASTImportDeclaration extends AbstractJavaTypeNode {
+     public Package getPackage() {
+         return this.pkg;
+     }
++
++    public boolean isAllowedClass(LoosePackageCouplingRule loosePackageCouplingRule) {
++        String importedName = getImportedName();
++        for (String clazz : loosePackageCouplingRule.getProperty(LoosePackageCouplingRule.CLASSES_DESCRIPTOR)) {
++            if (importedName.equals(clazz)) {
++                return true;
++            }
++
++        }
++        return false;
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTLocalVariableDeclaration.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTLocalVariableDeclaration.java
+index 2c4fb06..32f7111 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTLocalVariableDeclaration.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTLocalVariableDeclaration.java
+@@ -6,8 +6,11 @@
+ package net.sourceforge.pmd.lang.java.ast;
+ 
+ import java.util.Iterator;
++import java.util.List;
+ 
+ import net.sourceforge.pmd.Rule;
++import net.sourceforge.pmd.lang.java.rule.errorprone.CloseResourceRule;
++import org.jaxen.JaxenException;
+ 
+ 
+ /**
+@@ -132,4 +135,18 @@ public class ASTLocalVariableDeclaration extends AbstractJavaAccessNode implemen
+     public Iterator<ASTVariableDeclaratorId> iterator() {
+         return ASTVariableDeclarator.iterateIds(this);
+     }
++
++    public boolean hasNullInitializer(CloseResourceRule closeResourceRule) {
++        ASTVariableInitializer init = getFirstDescendantOfType(ASTVariableInitializer.class);
++        if (init != null) {
++            try {
++                List<?> nulls = init
++                        .findChildNodesWithXPath("Expression/PrimaryExpression/PrimaryPrefix/Literal/NullLiteral");
++                return !nulls.isEmpty();
++            } catch (JaxenException e) {
++                return false;
++            }
++        }
++        return false;
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTMethodDeclaration.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTMethodDeclaration.java
+index b50255c..f0e1608 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTMethodDeclaration.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTMethodDeclaration.java
+@@ -7,6 +7,7 @@ package net.sourceforge.pmd.lang.java.ast;
+ 
+ import net.sourceforge.pmd.lang.ast.Node;
+ import net.sourceforge.pmd.lang.dfa.DFAGraphMethod;
++import net.sourceforge.pmd.lang.java.rule.design.UselessOverridingMethodRule;
+ 
+ 
+ /**
+@@ -156,4 +157,15 @@ public class ASTMethodDeclaration extends AbstractMethodOrConstructorDeclaration
+     public ASTMethodDeclarator getMethodDeclarator() {
+         return getFirstChildOfType(ASTMethodDeclarator.class);
+     }
++
++    // TODO: this method should be externalize into an utility class, shouldn't it ?
++    public boolean isMethodType(String methodType, UselessOverridingMethodRule uselessOverridingMethodRule) {
++        boolean result = false;
++        ASTResultType type = getResultType();
++        if (type != null) {
++            result = type.hasDescendantMatchingXPath(
++                    "./Type/ReferenceType/ClassOrInterfaceType[@Image = '" + methodType + "']");
++        }
++        return result;
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTMethodDeclarator.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTMethodDeclarator.java
+index 61459b2..b85834e 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTMethodDeclarator.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTMethodDeclarator.java
+@@ -5,6 +5,10 @@
+ 
+ package net.sourceforge.pmd.lang.java.ast;
+ 
++import net.sourceforge.pmd.lang.java.rule.errorprone.BeanMembersShouldSerializeRule;
++
++import java.util.List;
++
+ public class ASTMethodDeclarator extends AbstractJavaNode {
+     public ASTMethodDeclarator(int id) {
+         super(id);
+@@ -25,4 +29,21 @@ public class ASTMethodDeclarator extends AbstractJavaNode {
+     public Object jjtAccept(JavaParserVisitor visitor, Object data) {
+         return visitor.visit(this, data);
+     }
++
++    public boolean isBeanAccessor(BeanMembersShouldSerializeRule beanMembersShouldSerializeRule) {
++
++        String methodName = getImage();
++
++        if (methodName.startsWith("get") || methodName.startsWith("set")) {
++            return true;
++        }
++        if (methodName.startsWith("is")) {
++            ASTResultType ret = ((ASTMethodDeclaration) jjtGetParent()).getResultType();
++            List<ASTPrimitiveType> primitives = ret.findDescendantsOfType(ASTPrimitiveType.class);
++            if (!primitives.isEmpty() && primitives.get(0).isBoolean()) {
++                return true;
++            }
++        }
++        return false;
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTName.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTName.java
+index b269799..053e51a 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTName.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTName.java
+@@ -5,6 +5,8 @@
+ 
+ package net.sourceforge.pmd.lang.java.ast;
+ 
++import net.sourceforge.pmd.lang.ast.Node;
++import net.sourceforge.pmd.lang.java.rule.design.SignatureDeclareThrowsExceptionRule;
+ import net.sourceforge.pmd.lang.symboltable.NameDeclaration;
+ 
+ public class ASTName extends AbstractJavaTypeNode {
+@@ -34,4 +36,16 @@ public class ASTName extends AbstractJavaTypeNode {
+     public Object jjtAccept(JavaParserVisitor visitor, Object data) {
+         return visitor.visit(this, data);
+     }
++
++    /**
++     * Checks if the given exception is declared in the method or constructor
++     * signature.
++     *
++     *
++     * @param signatureDeclareThrowsExceptionRule@return true if parent node is either a method or constructor declaration
++     */
++    public boolean isParentSignatureDeclaration(SignatureDeclareThrowsExceptionRule signatureDeclareThrowsExceptionRule) {
++        Node parent = jjtGetParent().jjtGetParent();
++        return parent instanceof ASTMethodDeclaration || parent instanceof ASTConstructorDeclaration;
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTPrimaryExpression.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTPrimaryExpression.java
+index 92d645f..76acf84 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTPrimaryExpression.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTPrimaryExpression.java
+@@ -5,6 +5,9 @@
+ 
+ package net.sourceforge.pmd.lang.java.ast;
+ 
++import net.sourceforge.pmd.lang.ast.Node;
++import net.sourceforge.pmd.lang.java.rule.errorprone.UnnecessaryCaseChangeRule;
++
+ public class ASTPrimaryExpression extends AbstractJavaTypeNode {
+     public ASTPrimaryExpression(int id) {
+         super(id);
+@@ -22,4 +25,30 @@ public class ASTPrimaryExpression extends AbstractJavaTypeNode {
+         return visitor.visit(this, data);
+     }
+ 
++    public int getBadPrefixOrNull(int childrenCount, UnnecessaryCaseChangeRule unnecessaryCaseChangeRule) {
++        // verify PrimaryPrefix/Name[ends-with(@Image, 'toUpperCase']
++        for (int i = 0; i < childrenCount - 3; i++) {
++            Node child = jjtGetChild(i);
++            String image;
++            if (child instanceof ASTPrimaryPrefix) {
++                if (child.jjtGetNumChildren() != 1 || !(child.jjtGetChild(0) instanceof ASTName)) {
++                    continue;
++                }
++
++                ASTName name = (ASTName) child.jjtGetChild(0);
++                image = name.getImage();
++            } else if (child instanceof ASTPrimarySuffix) {
++                image = ((ASTPrimarySuffix) child).getImage();
++            } else {
++                continue;
++            }
++
++            if (image == null || !(image.endsWith("toUpperCase") || image.endsWith("toLowerCase"))) {
++                continue;
++            } else {
++                return i;
++            }
++        }
++        return -1;
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTPrimaryPrefix.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTPrimaryPrefix.java
+index b25e6c7..e413131 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTPrimaryPrefix.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTPrimaryPrefix.java
+@@ -5,6 +5,8 @@
+ 
+ package net.sourceforge.pmd.lang.java.ast;
+ 
++import net.sourceforge.pmd.lang.java.rule.errorprone.SingletonClassReturningNewInstanceRule;
++
+ public class ASTPrimaryPrefix extends AbstractJavaTypeNode {
+ 
+     private boolean usesThisModifier;
+@@ -41,4 +43,11 @@ public class ASTPrimaryPrefix extends AbstractJavaTypeNode {
+     public Object jjtAccept(JavaParserVisitor visitor, Object data) {
+         return visitor.visit(this, data);
+     }
++
++    public String getNameFromPrimaryPrefix(SingletonClassReturningNewInstanceRule singletonClassReturningNewInstanceRule) {
++        if (jjtGetNumChildren() == 1 && jjtGetChild(0) instanceof ASTName) {
++            return ((ASTName) jjtGetChild(0)).getImage();
++        }
++        return null;
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTPrimarySuffix.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTPrimarySuffix.java
+index dda473d..0fce30c 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTPrimarySuffix.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTPrimarySuffix.java
+@@ -5,6 +5,14 @@
+ 
+ package net.sourceforge.pmd.lang.java.ast;
+ 
++import net.sourceforge.pmd.lang.java.rule.bestpractices.UseCollectionIsEmptyRule;
++import net.sourceforge.pmd.lang.java.symboltable.ClassScope;
++import net.sourceforge.pmd.lang.java.symboltable.MethodNameDeclaration;
++import net.sourceforge.pmd.lang.symboltable.NameOccurrence;
++
++import java.util.List;
++import java.util.Map;
++
+ public class ASTPrimarySuffix extends AbstractJavaTypeNode {
+ 
+     private boolean isArguments;
+@@ -56,4 +64,23 @@ public class ASTPrimarySuffix extends AbstractJavaTypeNode {
+     public Object jjtAccept(JavaParserVisitor visitor, Object data) {
+         return visitor.visit(this, data);
+     }
++
++    public ASTClassOrInterfaceType getTypeOfMethodCall(UseCollectionIsEmptyRule useCollectionIsEmptyRule) {
++        ASTClassOrInterfaceType type = null;
++        ASTName methodName = jjtGetParent().getFirstChildOfType(ASTPrimaryPrefix.class)
++                .getFirstChildOfType(ASTName.class);
++        if (methodName != null) {
++            ClassScope classScope = getScope().getEnclosingScope(ClassScope.class);
++            Map<MethodNameDeclaration, List<NameOccurrence>> methods = classScope.getMethodDeclarations();
++            for (Map.Entry<MethodNameDeclaration, List<NameOccurrence>> e : methods.entrySet()) {
++                if (e.getKey().getName().equals(methodName.getImage())) {
++                    type = e.getKey().getNode().getFirstParentOfType(ASTMethodDeclaration.class)
++                            .getFirstChildOfType(ASTResultType.class)
++                            .getFirstDescendantOfType(ASTClassOrInterfaceType.class);
++                    break;
++                }
++            }
++        }
++        return type;
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTReturnStatement.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTReturnStatement.java
+index 9ee9af2..3755c2a 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTReturnStatement.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTReturnStatement.java
+@@ -5,6 +5,10 @@
+ 
+ package net.sourceforge.pmd.lang.java.ast;
+ 
++import net.sourceforge.pmd.lang.java.rule.codestyle.UnnecessaryLocalBeforeReturnRule;
++
++import java.util.List;
++
+ public class ASTReturnStatement extends AbstractJavaNode {
+     public ASTReturnStatement(int id) {
+         super(id);
+@@ -21,4 +25,20 @@ public class ASTReturnStatement extends AbstractJavaNode {
+     public Object jjtAccept(JavaParserVisitor visitor, Object data) {
+         return visitor.visit(this, data);
+     }
++
++    /**
++     * Determine if the given return statement has any embedded method calls.
++     *
++     *
++     * @param unnecessaryLocalBeforeReturnRule@return true if any method calls are made within the given return
++     */
++    public boolean isMethodCall(UnnecessaryLocalBeforeReturnRule unnecessaryLocalBeforeReturnRule) {
++        List<ASTPrimarySuffix> suffix = findDescendantsOfType(ASTPrimarySuffix.class);
++        for (ASTPrimarySuffix element : suffix) {
++            if (element.isArguments()) {
++                return true;
++            }
++        }
++        return false;
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTStatement.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTStatement.java
+index e48b71d..f791cf6 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTStatement.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTStatement.java
+@@ -5,6 +5,9 @@
+ 
+ package net.sourceforge.pmd.lang.java.ast;
+ 
++import net.sourceforge.pmd.lang.ast.Node;
++import net.sourceforge.pmd.lang.java.rule.bestpractices.AvoidReassigningLoopVariablesRule;
++
+ public class ASTStatement extends AbstractJavaNode {
+     public ASTStatement(int id) {
+         super(id);
+@@ -21,4 +24,22 @@ public class ASTStatement extends AbstractJavaNode {
+     public Object jjtAccept(JavaParserVisitor visitor, Object data) {
+         return visitor.visit(this, data);
+     }
++
++    /**
++     * Check if the given node is the first statement in the block.
++     * @param node
++     * @param avoidReassigningLoopVariablesRule
++     */
++    public boolean isFirstStatementInBlock(Node node, AvoidReassigningLoopVariablesRule avoidReassigningLoopVariablesRule) {
++        // find the statement of the operation and the loop body block statement
++        final ASTBlockStatement statement = node.getFirstParentOfType(ASTBlockStatement.class);
++        final ASTBlock block = getFirstDescendantOfType(ASTBlock.class);
++
++        if (statement == null || block == null) {
++            return false;
++        }
++
++        // is the first statement in the loop body?
++        return block.equals(statement.jjtGetParent()) && statement.jjtGetChildIndex() == 0;
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTStatementExpression.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTStatementExpression.java
+index a656219..06f9e1f 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTStatementExpression.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTStatementExpression.java
+@@ -5,6 +5,9 @@
+ 
+ package net.sourceforge.pmd.lang.java.ast;
+ 
++import net.sourceforge.pmd.lang.java.rule.errorprone.NullAssignmentRule;
++import net.sourceforge.pmd.lang.java.symboltable.VariableNameDeclaration;
++
+ public class ASTStatementExpression extends AbstractJavaTypeNode {
+     public ASTStatementExpression(int id) {
+         super(id);
+@@ -21,4 +24,10 @@ public class ASTStatementExpression extends AbstractJavaTypeNode {
+     public Object jjtAccept(JavaParserVisitor visitor, Object data) {
+         return visitor.visit(this, data);
+     }
++
++    public boolean isAssignmentToFinalField(NullAssignmentRule nullAssignmentRule) {
++        ASTName name = getFirstDescendantOfType(ASTName.class);
++        return name != null && name.getNameDeclaration() instanceof VariableNameDeclaration
++                && ((AccessNode) ((VariableNameDeclaration) name.getNameDeclaration()).getAccessNodeParent()).isFinal();
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTType.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTType.java
+index 74192f1..4cddd7a 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTType.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTType.java
+@@ -5,6 +5,9 @@
+ 
+ package net.sourceforge.pmd.lang.java.ast;
+ 
++import net.sourceforge.pmd.lang.java.rule.codestyle.LinguisticNamingRule;
++import net.sourceforge.pmd.lang.java.typeresolution.TypeHelper;
++
+ /**
+  * Represents a type reference.
+  *
+@@ -69,4 +72,8 @@ public class ASTType extends AbstractJavaTypeNode {
+     public boolean isArrayType() {
+         return getArrayDepth() > 0;
+     }
++
++    public boolean isBooleanType(LinguisticNamingRule linguisticNamingRule) {
++        return "boolean".equalsIgnoreCase(getTypeImage()) || TypeHelper.isA(this, "java.util.concurrent.atomic.AtomicBoolean");
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTTypeDeclaration.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTTypeDeclaration.java
+index 2db090f..4540727 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTTypeDeclaration.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTTypeDeclaration.java
+@@ -6,6 +6,9 @@
+ package net.sourceforge.pmd.lang.java.ast;
+ 
+ import net.sourceforge.pmd.Rule;
++import net.sourceforge.pmd.lang.java.rule.bestpractices.AbstractSunSecureRule;
++
++import java.util.List;
+ 
+ public class ASTTypeDeclaration extends AbstractJavaTypeNode implements CanSuppressWarnings {
+     public ASTTypeDeclaration(int id) {
+@@ -36,4 +39,26 @@ public class ASTTypeDeclaration extends AbstractJavaTypeNode implements CanSuppr
+     public Object jjtAccept(JavaParserVisitor visitor, Object data) {
+         return visitor.visit(this, data);
+     }
++
++    /**
++     * Tells if the type declaration has a field with varName.
++     *
++     * @param varName
++     *            the name of the field to search
++     * @param abstractSunSecureRule
++     * @return <code>true</code> if there is a field in the type declaration
++     *         named varName, <code>false</code> in other case
++     */
++    public final boolean isField(String varName, AbstractSunSecureRule abstractSunSecureRule) {
++        final List<ASTFieldDeclaration> fds = findDescendantsOfType(ASTFieldDeclaration.class);
++        if (fds != null) {
++            for (ASTFieldDeclaration fd : fds) {
++                final ASTVariableDeclaratorId vid = fd.getFirstDescendantOfType(ASTVariableDeclaratorId.class);
++                if (vid != null && vid.hasImageEqualTo(varName)) {
++                    return true;
++                }
++            }
++        }
++        return false;
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTVariableDeclarator.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTVariableDeclarator.java
+index 7d28205..0f0b892 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTVariableDeclarator.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTVariableDeclarator.java
+@@ -8,6 +8,7 @@ package net.sourceforge.pmd.lang.java.ast;
+ import java.util.Iterator;
+ 
+ import net.sourceforge.pmd.lang.ast.Node;
++import net.sourceforge.pmd.lang.java.rule.performance.RedundantFieldInitializerRule;
+ 
+ 
+ /**
+@@ -97,4 +98,36 @@ public class ASTVariableDeclarator extends AbstractJavaTypeNode {
+         };
+     }
+ 
++    /**
++     * Checks if a FieldDeclaration is a reference type (includes arrays). The
++     * reference information is in the FieldDeclaration for this example:
++     *
++     * <pre>
++     * int[] ia1
++     * </pre>
++     *
++     * and in the VariableDeclarator for this example:
++     *
++     * <pre>
++     * int ia2[];
++     * </pre>
++     *
++     * .
++     *
++     * @param fieldDeclaration
++     *            the field to check.
++     * @param redundantFieldInitializerRule
++     * @return <code>true</code> if the field is a reference. <code>false</code>
++     *         otherwise.
++     */
++    public boolean isRef(ASTFieldDeclaration fieldDeclaration, RedundantFieldInitializerRule redundantFieldInitializerRule) {
++        Node type = fieldDeclaration.jjtGetChild(0).jjtGetChild(0);
++        if (type instanceof ASTReferenceType) {
++            // Reference type, array or otherwise
++            return true;
++        } else {
++            // Primitive array?
++            return ((ASTVariableDeclaratorId) jjtGetChild(0)).isArray();
++        }
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTVariableDeclaratorId.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTVariableDeclaratorId.java
+index e110ce0..f22c20a 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTVariableDeclaratorId.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/ASTVariableDeclaratorId.java
+@@ -5,9 +5,12 @@
+ 
+ package net.sourceforge.pmd.lang.java.ast;
+ 
++import java.util.Collections;
+ import java.util.List;
++import java.util.Map;
+ 
+ import net.sourceforge.pmd.lang.ast.Node;
++import net.sourceforge.pmd.lang.java.rule.performance.ConsecutiveLiteralAppendsRule;
+ import net.sourceforge.pmd.lang.java.symboltable.VariableNameDeclaration;
+ import net.sourceforge.pmd.lang.symboltable.NameOccurrence;
+ 
+@@ -317,4 +320,17 @@ public class ASTVariableDeclaratorId extends AbstractJavaTypeNode implements Dim
+     public Class<?> getType() {
+         return super.getType();
+     }
++
++    public List<NameOccurrence> determineUsages(ConsecutiveLiteralAppendsRule consecutiveLiteralAppendsRule) {
++        Map<VariableNameDeclaration, List<NameOccurrence>> decls = getScope()
++                .getDeclarations(VariableNameDeclaration.class);
++        for (Map.Entry<VariableNameDeclaration, List<NameOccurrence>> entry : decls.entrySet()) {
++            // find the first variable that matches
++            if (hasImageEqualTo(entry.getKey().getName())) {
++                return entry.getValue();
++            }
++        }
++
++        return Collections.emptyList();
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/AbstractJavaNode.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/AbstractJavaNode.java
+index acf4106..e614df5 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/AbstractJavaNode.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/AbstractJavaNode.java
+@@ -5,8 +5,15 @@
+ package net.sourceforge.pmd.lang.java.ast;
+ 
+ import net.sourceforge.pmd.lang.ast.AbstractNode;
++import net.sourceforge.pmd.lang.java.rule.performance.ConsecutiveAppendsShouldReuseRule;
++import net.sourceforge.pmd.lang.java.symboltable.VariableNameDeclaration;
++import net.sourceforge.pmd.lang.java.typeresolution.TypeHelper;
++import net.sourceforge.pmd.lang.symboltable.NameOccurrence;
+ import net.sourceforge.pmd.lang.symboltable.Scope;
+ 
++import java.util.List;
++import java.util.Map;
++
+ public abstract class AbstractJavaNode extends AbstractNode implements JavaNode {
+ 
+     protected JavaParser parser;
+@@ -90,4 +97,15 @@ public abstract class AbstractJavaNode extends AbstractNode implements JavaNode
+     public final String getXPathNodeName() {
+         return JavaParserTreeConstants.jjtNodeName[id];
+     }
++
++    public boolean isAStringBuilderBuffer(String name, ConsecutiveAppendsShouldReuseRule consecutiveAppendsShouldReuseRule) {
++        Map<VariableNameDeclaration, List<NameOccurrence>> declarations = getScope()
++                .getDeclarations(VariableNameDeclaration.class);
++        for (VariableNameDeclaration decl : declarations.keySet()) {
++            if (decl.getName().equals(name) && TypeHelper.isExactlyAny(decl, StringBuilder.class, StringBuffer.class)) {
++                return true;
++            }
++        }
++        return false;
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/AbstractJavaTypeNode.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/AbstractJavaTypeNode.java
+index 8ade168..d0dfa5a 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/AbstractJavaTypeNode.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/AbstractJavaTypeNode.java
+@@ -4,7 +4,9 @@
+ 
+ package net.sourceforge.pmd.lang.java.ast;
+ 
++import net.sourceforge.pmd.lang.java.rule.codestyle.UnnecessaryFullyQualifiedNameRule;
+ import net.sourceforge.pmd.lang.java.typeresolution.typedefinition.JavaTypeDefinition;
++import org.apache.commons.lang3.StringUtils;
+ 
+ /**
+  * An extension of the SimpleJavaNode which implements the TypeNode interface.
+@@ -42,4 +44,20 @@ public abstract class AbstractJavaTypeNode extends AbstractJavaNode implements T
+     public void setTypeDefinition(JavaTypeDefinition typeDefinition) {
+         this.typeDefinition = typeDefinition;
+     }
++
++    public boolean isJavaLangImplicit(UnnecessaryFullyQualifiedNameRule unnecessaryFullyQualifiedNameRule) {
++        String name = getImage();
++        boolean isJavaLang = name != null && name.startsWith("java.lang.");
++
++        if (isJavaLang && getType() != null && getType().getPackage() != null) {
++            // valid would be ProcessBuilder.Redirect.PIPE but not java.lang.ProcessBuilder.Redirect.PIPE
++            String packageName = getType().getPackage() // package might be null, if type is an array type...
++                    .getName();
++            return "java.lang".equals(packageName);
++        } else if (isJavaLang) {
++            // only java.lang.* is implicitly imported, but not e.g. java.lang.reflection.*
++            return StringUtils.countMatches(name, '.') == 2;
++        }
++        return false;
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/FormalComment.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/FormalComment.java
+index 57ae282..8b06dd1 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/FormalComment.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/ast/FormalComment.java
+@@ -11,6 +11,7 @@ import java.util.regex.Pattern;
+ 
+ import net.sourceforge.pmd.lang.ast.Node;
+ import net.sourceforge.pmd.lang.java.javadoc.JavadocTag;
++import net.sourceforge.pmd.lang.java.rule.documentation.AbstractCommentRule;
+ 
+ public class FormalComment extends Comment {
+ 
+@@ -43,4 +44,17 @@ public class FormalComment extends Comment {
+ 
+         children = kids.toArray(new Node[0]);
+     }
++
++    public boolean isCommentNotWithin(Node n2, Node node, AbstractCommentRule abstractCommentRule) {
++        if (this == null || n2 == null || node == null) {
++            return true;
++        }
++        boolean isNotWithinNode2 = !(getEndLine() < n2.getEndLine()
++                || getEndLine() == n2.getEndLine() && getEndColumn() < n2.getEndColumn());
++        boolean isNotSameClass = node.getFirstParentOfType(ASTClassOrInterfaceBody.class) != n2
++                .getFirstParentOfType(ASTClassOrInterfaceBody.class);
++        boolean isNodeWithinNode2 = node.getEndLine() < n2.getEndLine()
++                || node.getEndLine() == n2.getEndLine() && node.getEndColumn() < n2.getEndColumn();
++        return isNotWithinNode2 || isNotSameClass || isNodeWithinNode2;
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/AbstractJUnitRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/AbstractJUnitRule.java
+index 4f729a2..3857c94 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/AbstractJUnitRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/AbstractJUnitRule.java
+@@ -44,22 +44,12 @@ public abstract class AbstractJUnitRule extends AbstractJavaRule {
+             isJUnit5Class &= hasImports(node, JUNIT5_CLASS_NAME);
+         }
+ 
+-        if (!isTestNgClass(node) && (isJUnit3Class || isJUnit4Class || isJUnit5Class)) {
++        if (!node.isTestNgClass(this) && (isJUnit3Class || isJUnit4Class || isJUnit5Class)) {
+             return super.visit(node, data);
+         }
+         return data;
+     }
+ 
+-    private boolean isTestNgClass(ASTCompilationUnit node) {
+-        List<ASTImportDeclaration> imports = node.findDescendantsOfType(ASTImportDeclaration.class);
+-        for (ASTImportDeclaration i : imports) {
+-            if (i.getImportedName() != null && i.getImportedName().startsWith("org.testng")) {
+-                return true;
+-            }
+-        }
+-        return false;
+-    }
+-
+     public boolean isJUnitMethod(ASTMethodDeclaration method, Object data) {
+         if (method.isAbstract() || method.isNative() || method.isStatic()) {
+             return false; // skip various inapplicable method variations
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/AbstractSunSecureRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/AbstractSunSecureRule.java
+index 1e44a39..4ae3613 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/AbstractSunSecureRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/AbstractSunSecureRule.java
+@@ -9,13 +9,11 @@ import java.util.List;
+ import net.sourceforge.pmd.lang.ast.Node;
+ import net.sourceforge.pmd.lang.java.ast.ASTConditionalExpression;
+ import net.sourceforge.pmd.lang.java.ast.ASTEqualityExpression;
+-import net.sourceforge.pmd.lang.java.ast.ASTFieldDeclaration;
+ import net.sourceforge.pmd.lang.java.ast.ASTLocalVariableDeclaration;
+ import net.sourceforge.pmd.lang.java.ast.ASTName;
+ import net.sourceforge.pmd.lang.java.ast.ASTNullLiteral;
+ import net.sourceforge.pmd.lang.java.ast.ASTPrimarySuffix;
+ import net.sourceforge.pmd.lang.java.ast.ASTReturnStatement;
+-import net.sourceforge.pmd.lang.java.ast.ASTTypeDeclaration;
+ import net.sourceforge.pmd.lang.java.ast.ASTVariableDeclaratorId;
+ import net.sourceforge.pmd.lang.java.rule.AbstractJavaRule;
+ 
+@@ -29,29 +27,6 @@ import net.sourceforge.pmd.lang.java.rule.AbstractJavaRule;
+ public abstract class AbstractSunSecureRule extends AbstractJavaRule {
+ 
+     /**
+-     * Tells if the type declaration has a field with varName.
+-     *
+-     * @param varName
+-     *            the name of the field to search
+-     * @param typeDeclaration
+-     *            the type declaration
+-     * @return <code>true</code> if there is a field in the type declaration
+-     *         named varName, <code>false</code> in other case
+-     */
+-    protected final boolean isField(String varName, ASTTypeDeclaration typeDeclaration) {
+-        final List<ASTFieldDeclaration> fds = typeDeclaration.findDescendantsOfType(ASTFieldDeclaration.class);
+-        if (fds != null) {
+-            for (ASTFieldDeclaration fd : fds) {
+-                final ASTVariableDeclaratorId vid = fd.getFirstDescendantOfType(ASTVariableDeclaratorId.class);
+-                if (vid != null && vid.hasImageEqualTo(varName)) {
+-                    return true;
+-                }
+-            }
+-        }
+-        return false;
+-    }
+-
+-    /**
+      * Gets the name of the variable returned. Some examples: <br>
+      * for this.foo returns foo <br>
+      * for foo returns foo <br>
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/ArrayIsStoredDirectlyRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/ArrayIsStoredDirectlyRule.java
+index cccdf3a..70bb0e1 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/ArrayIsStoredDirectlyRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/ArrayIsStoredDirectlyRule.java
+@@ -4,7 +4,6 @@
+ 
+ package net.sourceforge.pmd.lang.java.rule.bestpractices;
+ 
+-import java.util.ArrayList;
+ import java.util.List;
+ 
+ import net.sourceforge.pmd.lang.ast.Node;
+@@ -43,7 +42,7 @@ public class ArrayIsStoredDirectlyRule extends AbstractSunSecureRule {
+ 
+     @Override
+     public Object visit(ASTConstructorDeclaration node, Object data) {
+-        ASTFormalParameter[] arrs = getArrays(node.getParameters());
++        ASTFormalParameter[] arrs = node.getParameters().getArrays(this);
+         // TODO check if one of these arrays is stored in a non local
+         // variable
+         List<ASTBlockStatement> bs = node.findDescendantsOfType(ASTBlockStatement.class);
+@@ -54,7 +53,7 @@ public class ArrayIsStoredDirectlyRule extends AbstractSunSecureRule {
+     @Override
+     public Object visit(ASTMethodDeclaration node, Object data) {
+         final ASTFormalParameters params = node.getFirstDescendantOfType(ASTFormalParameters.class);
+-        ASTFormalParameter[] arrs = getArrays(params);
++        ASTFormalParameter[] arrs = params.getArrays(this);
+         checkAll(data, arrs, node.findDescendantsOfType(ASTBlockStatement.class));
+         return data;
+     }
+@@ -147,18 +146,4 @@ public class ArrayIsStoredDirectlyRule extends AbstractSunSecureRule {
+         return false;
+     }
+ 
+-    private ASTFormalParameter[] getArrays(ASTFormalParameters params) {
+-        final List<ASTFormalParameter> l = params.findChildrenOfType(ASTFormalParameter.class);
+-        if (l != null && !l.isEmpty()) {
+-            List<ASTFormalParameter> l2 = new ArrayList<>();
+-            for (ASTFormalParameter fp : l) {
+-                if (fp.isArray() || fp.isVarargs()) {
+-                    l2.add(fp);
+-                }
+-            }
+-            return l2.toArray(new ASTFormalParameter[0]);
+-        }
+-        return new ASTFormalParameter[0];
+-    }
+-
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/AvoidReassigningLoopVariablesRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/AvoidReassigningLoopVariablesRule.java
+index 4f0d6d6..8be8cd3 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/AvoidReassigningLoopVariablesRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/AvoidReassigningLoopVariablesRule.java
+@@ -18,7 +18,6 @@ import net.sourceforge.pmd.lang.ast.AbstractNode;
+ import net.sourceforge.pmd.lang.ast.Node;
+ import net.sourceforge.pmd.lang.java.ast.ASTAssignmentOperator;
+ import net.sourceforge.pmd.lang.java.ast.ASTBlock;
+-import net.sourceforge.pmd.lang.java.ast.ASTBlockStatement;
+ import net.sourceforge.pmd.lang.java.ast.ASTContinueStatement;
+ import net.sourceforge.pmd.lang.java.ast.ASTDoStatement;
+ import net.sourceforge.pmd.lang.java.ast.ASTExpression;
+@@ -208,7 +207,7 @@ public class AvoidReassigningLoopVariablesRule extends AbstractOptimizationRule
+         final List<IgnoreFlags> ignoreFlagsList = Arrays.asList(ignoreFlags);
+ 
+         // ignore the first statement
+-        final boolean ignoredFirstStatement = ignoreFlagsList.contains(IgnoreFlags.IGNORE_FIRST) && isFirstStatementInBlock(node, loopBody);
++        final boolean ignoredFirstStatement = ignoreFlagsList.contains(IgnoreFlags.IGNORE_FIRST) && loopBody.isFirstStatementInBlock(node, this);
+ 
+         // ignore conditionally executed statement
+         final boolean ignoredConditional = ignoreFlagsList.contains(IgnoreFlags.IGNORE_CONDITIONAL) && isConditionallyExecuted(node, loopBody);
+@@ -234,22 +233,6 @@ public class AvoidReassigningLoopVariablesRule extends AbstractOptimizationRule
+     }
+ 
+     /**
+-     * Check if the given node is the first statement in the block.
+-     */
+-    private boolean isFirstStatementInBlock(Node node, ASTStatement loopBody) {
+-        // find the statement of the operation and the loop body block statement
+-        final ASTBlockStatement statement = node.getFirstParentOfType(ASTBlockStatement.class);
+-        final ASTBlock block = loopBody.getFirstDescendantOfType(ASTBlock.class);
+-
+-        if (statement == null || block == null) {
+-            return false;
+-        }
+-
+-        // is the first statement in the loop body?
+-        return block.equals(statement.jjtGetParent()) && statement.jjtGetChildIndex() == 0;
+-    }
+-
+-    /**
+      * Check if the node will only be executed conditionally by checking,
+      * if the node is inside any kind of control flow statement or
+      * if any prior statement contains a {@code continue} statement.
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/ForLoopCanBeForeachRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/ForLoopCanBeForeachRule.java
+index aa722b2..8de40b0 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/ForLoopCanBeForeachRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/ForLoopCanBeForeachRule.java
+@@ -21,7 +21,6 @@ import net.sourceforge.pmd.lang.java.ast.ASTLocalVariableDeclaration;
+ import net.sourceforge.pmd.lang.java.ast.ASTName;
+ import net.sourceforge.pmd.lang.java.ast.ASTPrimaryPrefix;
+ import net.sourceforge.pmd.lang.java.ast.ASTPrimarySuffix;
+-import net.sourceforge.pmd.lang.java.ast.ASTRelationalExpression;
+ import net.sourceforge.pmd.lang.java.ast.ASTVariableDeclarator;
+ import net.sourceforge.pmd.lang.java.ast.ASTVariableDeclaratorId;
+ import net.sourceforge.pmd.lang.java.ast.ASTVariableInitializer;
+@@ -79,7 +78,7 @@ public class ForLoopCanBeForeachRule extends AbstractJavaRule {
+ 
+ 
+         String itName = index.getName();
+-        String iterableName = getIterableNameOrNullToAbort(guardCondition, itName);
++        String iterableName = guardCondition.getIterableNameOrNullToAbort(itName, this);
+ 
+ 
+         if (!isForUpdateSimpleEnough(update, itName) || iterableName == null) {
+@@ -203,52 +202,6 @@ public class ForLoopCanBeForeachRule extends AbstractJavaRule {
+     }
+ 
+ 
+-    /**
+-     * Gets the name of the iterable array or list.
+-     *
+-     * @param itName The name of the iterator variable
+-     *
+-     * @return The name, or null if it couldn't be found or the guard condition is not safe to refactor (then abort)
+-     */
+-    private String getIterableNameOrNullToAbort(ASTExpression guardCondition, String itName) {
+-
+-
+-        if (guardCondition.jjtGetNumChildren() > 0
+-            && guardCondition.jjtGetChild(0) instanceof ASTRelationalExpression) {
+-
+-            ASTRelationalExpression relationalExpression = (ASTRelationalExpression) guardCondition.jjtGetChild(0);
+-
+-            if (relationalExpression.hasImageEqualTo("<") || relationalExpression.hasImageEqualTo("<=")) {
+-
+-                try {
+-                    List<Node> left = guardCondition.findChildNodesWithXPath(
+-                        "./RelationalExpression/PrimaryExpression/PrimaryPrefix/Name[@Image='" + itName + "']");
+-
+-                    List<Node> right = guardCondition.findChildNodesWithXPath(
+-                        "./RelationalExpression[@Image='<']/PrimaryExpression/PrimaryPrefix"
+-                            + "/Name[matches(@Image,'\\w+\\.(size|length)')]"
+-                            + "|"
+-                            + "./RelationalExpression[@Image='<=']/AdditiveExpression[count(*)=2 and "
+-                            + "@Image='-' and PrimaryExpression/PrimaryPrefix/Literal[@Image='1']]"
+-                            + "/PrimaryExpression/PrimaryPrefix/Name[matches(@Image,'\\w+\\.(size|length)')]");
+-
+-                    if (left.isEmpty()) {
+-                        return null;
+-                    } else if (!right.isEmpty()) {
+-                        return right.get(0).getImage().split("\\.")[0];
+-                    } else {
+-                        return null;
+-                    }
+-
+-                } catch (JaxenException je) {
+-                    throw new RuntimeException(je);
+-                }
+-            }
+-        }
+-        return null;
+-    }
+-
+-
+     private Entry<VariableNameDeclaration, List<NameOccurrence>> getIterableDeclOfIteratorLoop(VariableNameDeclaration indexDecl, Scope scope) {
+         Node initializer = indexDecl.getNode().getFirstParentOfType(ASTVariableDeclarator.class)
+                                     .getFirstChildOfType(ASTVariableInitializer.class);
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/MethodReturnsInternalArrayRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/MethodReturnsInternalArrayRule.java
+index 7117072..9595b62 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/MethodReturnsInternalArrayRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/MethodReturnsInternalArrayRule.java
+@@ -49,7 +49,7 @@ public class MethodReturnsInternalArrayRule extends AbstractSunSecureRule {
+         ASTTypeDeclaration td = method.getFirstParentOfType(ASTTypeDeclaration.class);
+         for (ASTReturnStatement ret : returns) {
+             final String vn = getReturnedVariableName(ret);
+-            if (!isField(vn, td)) {
++            if (!td.isField(vn, MethodReturnsInternalArrayRule.this)) {
+                 continue;
+             }
+             if (ret.findDescendantsOfType(ASTPrimarySuffix.class).size() > 2) {
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/UseCollectionIsEmptyRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/UseCollectionIsEmptyRule.java
+index 923bc2c..29d4172 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/UseCollectionIsEmptyRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/bestpractices/UseCollectionIsEmptyRule.java
+@@ -11,16 +11,10 @@ import java.util.Map;
+ 
+ import net.sourceforge.pmd.lang.ast.Node;
+ import net.sourceforge.pmd.lang.java.ast.ASTClassOrInterfaceType;
+-import net.sourceforge.pmd.lang.java.ast.ASTMethodDeclaration;
+-import net.sourceforge.pmd.lang.java.ast.ASTName;
+ import net.sourceforge.pmd.lang.java.ast.ASTPrimaryPrefix;
+ import net.sourceforge.pmd.lang.java.ast.ASTPrimarySuffix;
+-import net.sourceforge.pmd.lang.java.ast.ASTResultType;
+ import net.sourceforge.pmd.lang.java.rule.AbstractInefficientZeroCheck;
+-import net.sourceforge.pmd.lang.java.symboltable.ClassScope;
+ import net.sourceforge.pmd.lang.java.symboltable.JavaNameOccurrence;
+-import net.sourceforge.pmd.lang.java.symboltable.MethodNameDeclaration;
+-import net.sourceforge.pmd.lang.symboltable.NameOccurrence;
+ import net.sourceforge.pmd.util.CollectionUtil;
+ 
+ /**
+@@ -71,7 +65,7 @@ public class UseCollectionIsEmptyRule extends AbstractInefficientZeroCheck {
+ 
+             ASTClassOrInterfaceType type = getTypeOfPrimaryPrefix(node);
+             if (type == null) {
+-                type = getTypeOfMethodCall(node);
++                type = node.getTypeOfMethodCall(this);
+             }
+ 
+             if (type != null && CollectionUtil.isCollectionType(type.getType(), true)) {
+@@ -82,25 +76,6 @@ public class UseCollectionIsEmptyRule extends AbstractInefficientZeroCheck {
+         return data;
+     }
+ 
+-    private ASTClassOrInterfaceType getTypeOfMethodCall(ASTPrimarySuffix node) {
+-        ASTClassOrInterfaceType type = null;
+-        ASTName methodName = node.jjtGetParent().getFirstChildOfType(ASTPrimaryPrefix.class)
+-                .getFirstChildOfType(ASTName.class);
+-        if (methodName != null) {
+-            ClassScope classScope = node.getScope().getEnclosingScope(ClassScope.class);
+-            Map<MethodNameDeclaration, List<NameOccurrence>> methods = classScope.getMethodDeclarations();
+-            for (Map.Entry<MethodNameDeclaration, List<NameOccurrence>> e : methods.entrySet()) {
+-                if (e.getKey().getName().equals(methodName.getImage())) {
+-                    type = e.getKey().getNode().getFirstParentOfType(ASTMethodDeclaration.class)
+-                            .getFirstChildOfType(ASTResultType.class)
+-                            .getFirstDescendantOfType(ASTClassOrInterfaceType.class);
+-                    break;
+-                }
+-            }
+-        }
+-        return type;
+-    }
+-
+     private ASTClassOrInterfaceType getTypeOfPrimaryPrefix(ASTPrimarySuffix node) {
+         return node.jjtGetParent().getFirstChildOfType(ASTPrimaryPrefix.class)
+                 .getFirstDescendantOfType(ASTClassOrInterfaceType.class);
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/codestyle/IdenticalCatchBranchesRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/codestyle/IdenticalCatchBranchesRule.java
+index ba10b3f..755cfac 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/codestyle/IdenticalCatchBranchesRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/codestyle/IdenticalCatchBranchesRule.java
+@@ -4,7 +4,6 @@
+ 
+ package net.sourceforge.pmd.lang.java.rule.codestyle;
+ 
+-import java.util.ArrayList;
+ import java.util.HashSet;
+ import java.util.List;
+ import java.util.Objects;
+@@ -39,7 +38,7 @@ public class IdenticalCatchBranchesRule extends AbstractJavaRule {
+         Set<List<ASTCatchStatement>> result = new HashSet<>(catches.size());
+         for (ASTCatchStatement stmt : catches) {
+             if (result.isEmpty()) {
+-                result.add(newEquivClass(stmt));
++                result.add(stmt.newEquivClass(this));
+                 continue;
+             }
+ 
+@@ -53,7 +52,7 @@ public class IdenticalCatchBranchesRule extends AbstractJavaRule {
+             }
+ 
+             if (isNewClass) {
+-                result.add(newEquivClass(stmt));
++                result.add(stmt.newEquivClass(this));
+             }
+         }
+ 
+@@ -61,14 +60,6 @@ public class IdenticalCatchBranchesRule extends AbstractJavaRule {
+     }
+ 
+ 
+-    private List<ASTCatchStatement> newEquivClass(ASTCatchStatement stmt) {
+-        // Each equivalence class is sorted by document order
+-        List<ASTCatchStatement> result = new ArrayList<>(2);
+-        result.add(stmt);
+-        return result;
+-    }
+-
+-
+     // Gets the representation of the set of catch statements as a single multicatch
+     private String getCaughtExceptionsAsString(ASTCatchStatement stmt) {
+ 
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/codestyle/LinguisticNamingRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/codestyle/LinguisticNamingRule.java
+index e0e1cfa..071fd6f 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/codestyle/LinguisticNamingRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/codestyle/LinguisticNamingRule.java
+@@ -22,7 +22,6 @@ import net.sourceforge.pmd.lang.java.ast.ASTResultType;
+ import net.sourceforge.pmd.lang.java.ast.ASTType;
+ import net.sourceforge.pmd.lang.java.ast.ASTVariableDeclarator;
+ import net.sourceforge.pmd.lang.java.rule.AbstractIgnoredAnnotationRule;
+-import net.sourceforge.pmd.lang.java.typeresolution.TypeHelper;
+ import net.sourceforge.pmd.properties.PropertyDescriptor;
+ 
+ public class LinguisticNamingRule extends AbstractIgnoredAnnotationRule {
+@@ -149,16 +148,12 @@ public class LinguisticNamingRule extends AbstractIgnoredAnnotationRule {
+         }
+     }
+ 
+-    private boolean isBooleanType(ASTType node) {
+-        return "boolean".equalsIgnoreCase(node.getTypeImage()) || TypeHelper.isA(node, "java.util.concurrent.atomic.AtomicBoolean");
+-    }
+-
+     private void checkBooleanMethods(ASTMethodDeclaration node, Object data, String nameOfMethod) {
+         ASTResultType resultType = node.getResultType();
+         ASTType t = node.getResultType().getFirstChildOfType(ASTType.class);
+         if (!resultType.isVoid() && t != null) {
+             for (String prefix : getProperty(BOOLEAN_METHOD_PREFIXES_PROPERTY)) {
+-                if (hasPrefix(nameOfMethod, prefix) && !isBooleanType(t)) {
++                if (hasPrefix(nameOfMethod, prefix) && !t.isBooleanType(this)) {
+                     addViolationWithMessage(data, node, "Linguistics Antipattern - The method ''{0}'' indicates linguistically it returns a boolean, but it returns ''{1}''",
+                             new Object[] { nameOfMethod, t.getTypeImage() });
+                 }
+@@ -168,7 +163,7 @@ public class LinguisticNamingRule extends AbstractIgnoredAnnotationRule {
+ 
+     private void checkField(ASTType typeNode, ASTVariableDeclarator node, Object data) {
+         for (String prefix : getProperty(BOOLEAN_FIELD_PREFIXES_PROPERTY)) {
+-            if (hasPrefix(node.getName(), prefix) && !isBooleanType(typeNode)) {
++            if (hasPrefix(node.getName(), prefix) && !typeNode.isBooleanType(this)) {
+                 addViolationWithMessage(data, node, "Linguistics Antipattern - The field ''{0}'' indicates linguistically it is a boolean, but it is ''{1}''",
+                         new Object[] { node.getName(), typeNode.getTypeImage() });
+             }
+@@ -177,7 +172,7 @@ public class LinguisticNamingRule extends AbstractIgnoredAnnotationRule {
+ 
+     private void checkVariable(ASTType typeNode, ASTVariableDeclarator node, Object data) {
+         for (String prefix : getProperty(BOOLEAN_FIELD_PREFIXES_PROPERTY)) {
+-            if (hasPrefix(node.getName(), prefix) && !isBooleanType(typeNode)) {
++            if (hasPrefix(node.getName(), prefix) && !typeNode.isBooleanType(this)) {
+                 addViolationWithMessage(data, node, "Linguistics Antipattern - The variable ''{0}'' indicates linguistically it is a boolean, but it is ''{1}''",
+                         new Object[] { node.getName(), typeNode.getTypeImage() });
+             }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/codestyle/UnnecessaryConstructorRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/codestyle/UnnecessaryConstructorRule.java
+index c9c8ad1..9ef4cd1 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/codestyle/UnnecessaryConstructorRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/codestyle/UnnecessaryConstructorRule.java
+@@ -13,7 +13,6 @@ import net.sourceforge.pmd.lang.java.ast.ASTBlockStatement;
+ import net.sourceforge.pmd.lang.java.ast.ASTClassOrInterfaceDeclaration;
+ import net.sourceforge.pmd.lang.java.ast.ASTConstructorDeclaration;
+ import net.sourceforge.pmd.lang.java.ast.ASTEnumDeclaration;
+-import net.sourceforge.pmd.lang.java.ast.ASTExplicitConstructorInvocation;
+ import net.sourceforge.pmd.lang.java.ast.ASTNameList;
+ import net.sourceforge.pmd.lang.java.rule.AbstractIgnoredAnnotationRule;
+ 
+@@ -72,18 +71,7 @@ public class UnnecessaryConstructorRule extends AbstractIgnoredAnnotationRule {
+ 
+         return cdnode.getParameterCount() == 0 && !hasIgnoredAnnotation(cdnode)
+             && !cdnode.hasDescendantOfType(ASTBlockStatement.class) && !cdnode.hasDescendantOfType(ASTNameList.class)
+-            && hasDefaultConstructorInvocation(cdnode);
+-    }
+-
+-    /**
+-     * Returns {@code true} if the constructor simply invokes superclass constructor
+-     * with no arguments or doesn't invoke any constructor, otherwise {@code false}.
+-     *
+-     * @param cons the node to check
+-     */
+-    private boolean hasDefaultConstructorInvocation(ASTConstructorDeclaration cons) {
+-        ASTExplicitConstructorInvocation inv = cons.getFirstChildOfType(ASTExplicitConstructorInvocation.class);
+-        return inv == null || inv.isSuper() && inv.getArgumentCount() == 0;
++            && cdnode.hasDefaultConstructorInvocation(this);
+     }
+ 
+     /**
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/codestyle/UnnecessaryFullyQualifiedNameRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/codestyle/UnnecessaryFullyQualifiedNameRule.java
+index 9353548..d8bcaed 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/codestyle/UnnecessaryFullyQualifiedNameRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/codestyle/UnnecessaryFullyQualifiedNameRule.java
+@@ -10,8 +10,6 @@ import java.util.List;
+ import java.util.Objects;
+ import java.util.Set;
+ 
+-import org.apache.commons.lang3.StringUtils;
+-
+ import net.sourceforge.pmd.lang.java.ast.ASTClassOrInterfaceType;
+ import net.sourceforge.pmd.lang.java.ast.ASTCompilationUnit;
+ import net.sourceforge.pmd.lang.java.ast.ASTImportDeclaration;
+@@ -170,7 +168,7 @@ public class UnnecessaryFullyQualifiedNameRule extends AbstractJavaRule {
+         }
+ 
+         if (matches.isEmpty()) {
+-            if (isJavaLangImplicit(node)) {
++            if (node.isJavaLangImplicit(this)) {
+                 addViolation(data, node, new Object[] { node.getImage(), "java.lang.*", "implicit "});
+             } else if (isSamePackage(node)) {
+                 addViolation(data, node, new Object[] { node.getImage(), currentPackage + ".*", "same package "});
+@@ -215,22 +213,6 @@ public class UnnecessaryFullyQualifiedNameRule extends AbstractJavaRule {
+         String name = node.getImage();
+         return name.substring(0, name.lastIndexOf('.')).equals(currentPackage);
+     }
+-    
+-    private boolean isJavaLangImplicit(AbstractJavaTypeNode node) {
+-        String name = node.getImage();
+-        boolean isJavaLang = name != null && name.startsWith("java.lang.");
+-
+-        if (isJavaLang && node.getType() != null && node.getType().getPackage() != null) {
+-            // valid would be ProcessBuilder.Redirect.PIPE but not java.lang.ProcessBuilder.Redirect.PIPE
+-            String packageName = node.getType().getPackage() // package might be null, if type is an array type...
+-                    .getName();
+-            return "java.lang".equals(packageName);
+-        } else if (isJavaLang) {
+-            // only java.lang.* is implicitly imported, but not e.g. java.lang.reflection.*
+-            return StringUtils.countMatches(name, '.') == 2;
+-        }
+-        return false;
+-    }
+ 
+     private boolean isAvoidingConflict(final AbstractJavaTypeNode node, final String name,
+             final ASTImportDeclaration firstMatch) {
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/codestyle/UnnecessaryLocalBeforeReturnRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/codestyle/UnnecessaryLocalBeforeReturnRule.java
+index 2890b96..d994f7c 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/codestyle/UnnecessaryLocalBeforeReturnRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/codestyle/UnnecessaryLocalBeforeReturnRule.java
+@@ -16,7 +16,6 @@ import net.sourceforge.pmd.lang.java.ast.ASTExpression;
+ import net.sourceforge.pmd.lang.java.ast.ASTMethodDeclaration;
+ import net.sourceforge.pmd.lang.java.ast.ASTName;
+ import net.sourceforge.pmd.lang.java.ast.ASTPrimaryExpression;
+-import net.sourceforge.pmd.lang.java.ast.ASTPrimarySuffix;
+ import net.sourceforge.pmd.lang.java.ast.ASTReturnStatement;
+ import net.sourceforge.pmd.lang.java.ast.ASTVariableInitializer;
+ import net.sourceforge.pmd.lang.java.ast.AccessNode;
+@@ -56,7 +55,7 @@ public class UnnecessaryLocalBeforeReturnRule extends AbstractJavaRule {
+ 
+         // skip 'complicated' expressions
+         if (rtn.findDescendantsOfType(ASTExpression.class).size() > 1
+-                || rtn.findDescendantsOfType(ASTPrimaryExpression.class).size() > 1 || isMethodCall(rtn)) {
++                || rtn.findDescendantsOfType(ASTPrimaryExpression.class).size() > 1 || rtn.isMethodCall(this)) {
+             return data;
+         }
+ 
+@@ -151,20 +150,4 @@ public class UnnecessaryLocalBeforeReturnRule extends AbstractJavaRule {
+         return !accessNodeParent.hasDescendantOfType(ASTAnnotation.class);
+     }
+ 
+-    /**
+-     * Determine if the given return statement has any embedded method calls.
+-     *
+-     * @param rtn
+-     *            return statement to analyze
+-     * @return true if any method calls are made within the given return
+-     */
+-    private boolean isMethodCall(ASTReturnStatement rtn) {
+-        List<ASTPrimarySuffix> suffix = rtn.findDescendantsOfType(ASTPrimarySuffix.class);
+-        for (ASTPrimarySuffix element : suffix) {
+-            if (element.isArguments()) {
+-                return true;
+-            }
+-        }
+-        return false;
+-    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/design/ImmutableFieldRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/design/ImmutableFieldRule.java
+index a4385b6..37b7f39 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/design/ImmutableFieldRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/design/ImmutableFieldRule.java
+@@ -20,7 +20,6 @@ import net.sourceforge.pmd.lang.java.ast.ASTIfStatement;
+ import net.sourceforge.pmd.lang.java.ast.ASTLambdaExpression;
+ import net.sourceforge.pmd.lang.java.ast.ASTMethodDeclaration;
+ import net.sourceforge.pmd.lang.java.ast.ASTTryStatement;
+-import net.sourceforge.pmd.lang.java.ast.ASTVariableInitializer;
+ import net.sourceforge.pmd.lang.java.ast.ASTWhileStatement;
+ import net.sourceforge.pmd.lang.java.ast.AccessNode;
+ import net.sourceforge.pmd.lang.java.ast.Annotatable;
+@@ -64,17 +63,13 @@ public class ImmutableFieldRule extends AbstractLombokAwareRule {
+             if (type == FieldImmutabilityType.MUTABLE) {
+                 continue;
+             }
+-            if (type == FieldImmutabilityType.IMMUTABLE || type == FieldImmutabilityType.CHECKDECL && initializedWhenDeclared(field)) {
++            if (type == FieldImmutabilityType.IMMUTABLE || type == FieldImmutabilityType.CHECKDECL && field.initializedWhenDeclared(this)) {
+                 addViolation(data, field.getNode(), field.getImage());
+             }
+         }
+         return result;
+     }
+ 
+-    private boolean initializedWhenDeclared(VariableNameDeclaration field) {
+-        return field.getAccessNodeParent().hasDescendantOfType(ASTVariableInitializer.class);
+-    }
+-
+     private FieldImmutabilityType initializedInConstructor(List<NameOccurrence> usages, Set<ASTConstructorDeclaration> allConstructors) {
+         FieldImmutabilityType result = FieldImmutabilityType.MUTABLE;
+         int methodInitCount = 0;
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/design/LoosePackageCouplingRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/design/LoosePackageCouplingRule.java
+index 6c0c271..331bd62 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/design/LoosePackageCouplingRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/design/LoosePackageCouplingRule.java
+@@ -98,7 +98,7 @@ public class LoosePackageCouplingRule extends AbstractJavaRule {
+                         addViolation(data, node, new Object[] { node.getImportedName(), pkg });
+                         break;
+                     } else {
+-                        if (!isAllowedClass(node)) {
++                        if (!node.isAllowedClass(this)) {
+                             addViolation(data, node, new Object[] { node.getImportedName(), pkg });
+                             break;
+                         }
+@@ -119,17 +119,6 @@ public class LoosePackageCouplingRule extends AbstractJavaRule {
+                 || pkg1.length() < pkg2.length() && pkg2.startsWith(pkg1) && pkg2.charAt(pkg1.length()) == '.';
+     }
+ 
+-    protected boolean isAllowedClass(ASTImportDeclaration node) {
+-        String importedName = node.getImportedName();
+-        for (String clazz : getProperty(CLASSES_DESCRIPTOR)) {
+-            if (importedName.equals(clazz)) {
+-                return true;
+-            }
+-
+-        }
+-        return false;
+-    }
+-
+     public boolean checksNothing() {
+ 
+         return getProperty(PACKAGES_DESCRIPTOR).isEmpty() && getProperty(CLASSES_DESCRIPTOR).isEmpty();
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/design/SignatureDeclareThrowsExceptionRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/design/SignatureDeclareThrowsExceptionRule.java
+index 0492e96..6ba3b32 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/design/SignatureDeclareThrowsExceptionRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/design/SignatureDeclareThrowsExceptionRule.java
+@@ -191,20 +191,7 @@ public class SignatureDeclareThrowsExceptionRule extends AbstractJavaRule {
+      * @return true if <code>Exception</code> is declared and has proper parents
+      */
+     private boolean hasDeclaredExceptionInSignature(ASTName exception) {
+-        return exception.hasImageEqualTo("Exception") && isParentSignatureDeclaration(exception);
+-    }
+-
+-    /**
+-     * Checks if the given exception is declared in the method or constructor
+-     * signature.
+-     * 
+-     * @param exception
+-     *            to evaluate
+-     * @return true if parent node is either a method or constructor declaration
+-     */
+-    private boolean isParentSignatureDeclaration(ASTName exception) {
+-        Node parent = exception.jjtGetParent().jjtGetParent();
+-        return parent instanceof ASTMethodDeclaration || parent instanceof ASTConstructorDeclaration;
++        return exception.hasImageEqualTo("Exception") && exception.isParentSignatureDeclaration(this);
+     }
+ 
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/design/UseUtilityClassRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/design/UseUtilityClassRule.java
+index 6273d61..fb8c2f1 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/design/UseUtilityClassRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/design/UseUtilityClassRule.java
+@@ -4,8 +4,6 @@
+ 
+ package net.sourceforge.pmd.lang.java.rule.design;
+ 
+-import java.util.List;
+-
+ import net.sourceforge.pmd.lang.ast.Node;
+ import net.sourceforge.pmd.lang.java.ast.ASTAnnotation;
+ import net.sourceforge.pmd.lang.java.ast.ASTClassOrInterfaceBody;
+@@ -13,9 +11,7 @@ import net.sourceforge.pmd.lang.java.ast.ASTClassOrInterfaceDeclaration;
+ import net.sourceforge.pmd.lang.java.ast.ASTClassOrInterfaceType;
+ import net.sourceforge.pmd.lang.java.ast.ASTConstructorDeclaration;
+ import net.sourceforge.pmd.lang.java.ast.ASTFieldDeclaration;
+-import net.sourceforge.pmd.lang.java.ast.ASTMemberValuePair;
+ import net.sourceforge.pmd.lang.java.ast.ASTMethodDeclaration;
+-import net.sourceforge.pmd.lang.java.ast.ASTName;
+ import net.sourceforge.pmd.lang.java.ast.ASTResultType;
+ import net.sourceforge.pmd.lang.java.rule.AbstractJavaRule;
+ 
+@@ -33,7 +29,7 @@ public class UseUtilityClassRule extends AbstractJavaRule {
+                 return data;
+             }
+ 
+-            if (isOkUsingLombok(parent)) {
++            if (parent.isOkUsingLombok(this)) {
+                 return data;
+             }
+ 
+@@ -84,33 +80,6 @@ public class UseUtilityClassRule extends AbstractJavaRule {
+         return data;
+     }
+ 
+-    private boolean isOkUsingLombok(ASTClassOrInterfaceDeclaration parent) {
+-        // check if there's a lombok no arg private constructor, if so skip the rest of the rules
+-        ASTAnnotation annotation = parent.getAnnotation("lombok.NoArgsConstructor");
+-
+-        if (annotation != null) {
+-
+-            List<ASTMemberValuePair> memberValuePairs = annotation.findDescendantsOfType(ASTMemberValuePair.class);
+-
+-            for (ASTMemberValuePair memberValuePair : memberValuePairs) {
+-                // to set the access level of a constructor in lombok, you set the access property on the annotation
+-                if ("access".equals(memberValuePair.getImage())) {
+-                    List<ASTName> names = memberValuePair.findDescendantsOfType(ASTName.class);
+-
+-                    for (ASTName name : names) {
+-                        // check to see if the value of the member value pair ends PRIVATE.  This is from the AccessLevel enum in Lombok
+-                        if (name.getImage().endsWith("PRIVATE")) {
+-                            // if the constructor is found and the accesslevel is private no need to check anything else
+-                            return true;
+-                        }
+-                    }
+-                }
+-            }
+-        }
+-
+-        return false;
+-    }
+-
+     private Node skipAnnotations(Node p) {
+         int index = 0;
+         Node n = p.jjtGetChild(index++);
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/design/UselessOverridingMethodRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/design/UselessOverridingMethodRule.java
+index 6759404..1aab463 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/design/UselessOverridingMethodRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/design/UselessOverridingMethodRule.java
+@@ -27,7 +27,6 @@ import net.sourceforge.pmd.lang.java.ast.ASTNameList;
+ import net.sourceforge.pmd.lang.java.ast.ASTPrimaryExpression;
+ import net.sourceforge.pmd.lang.java.ast.ASTPrimaryPrefix;
+ import net.sourceforge.pmd.lang.java.ast.ASTPrimarySuffix;
+-import net.sourceforge.pmd.lang.java.ast.ASTResultType;
+ import net.sourceforge.pmd.lang.java.ast.ASTStatement;
+ import net.sourceforge.pmd.lang.java.ast.ASTVariableDeclaratorId;
+ import net.sourceforge.pmd.lang.java.rule.AbstractJavaRule;
+@@ -75,17 +74,6 @@ public class UselessOverridingMethodRule extends AbstractJavaRule {
+     }
+ 
+     // TODO: this method should be externalize into an utility class, shouldn't it ?
+-    private boolean isMethodType(ASTMethodDeclaration node, String methodType) {
+-        boolean result = false;
+-        ASTResultType type = node.getResultType();
+-        if (type != null) {
+-            result = type.hasDescendantMatchingXPath(
+-                    "./Type/ReferenceType/ClassOrInterfaceType[@Image = '" + methodType + "']");
+-        }
+-        return result;
+-    }
+-
+-    // TODO: this method should be externalize into an utility class, shouldn't it ?
+     private boolean isMethodThrowingType(ASTMethodDeclaration node, List<String> exceptedExceptions) {
+         boolean result = false;
+         ASTNameList thrownsExceptions = node.getFirstChildOfType(ASTNameList.class);
+@@ -118,7 +106,7 @@ public class UselessOverridingMethodRule extends AbstractJavaRule {
+         // 'useless' but as it is considered a 'good practice' to
+         // implement them anyway ( see bug 1522517)
+         if (CLONE.equals(node.getMethodName()) && node.isPublic() && !this.hasArguments(node)
+-                && this.isMethodType(node, OBJECT) && this.isMethodThrowingType(node, exceptions)) {
++                && node.isMethodType(OBJECT, this) && this.isMethodThrowingType(node, exceptions)) {
+             return super.visit(node, data);
+         }
+ 
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/documentation/AbstractCommentRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/documentation/AbstractCommentRule.java
+index b93c080..d9afc67 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/documentation/AbstractCommentRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/documentation/AbstractCommentRule.java
+@@ -12,7 +12,6 @@ import java.util.SortedMap;
+ import java.util.TreeMap;
+ 
+ import net.sourceforge.pmd.lang.ast.Node;
+-import net.sourceforge.pmd.lang.java.ast.ASTClassOrInterfaceBody;
+ import net.sourceforge.pmd.lang.java.ast.ASTClassOrInterfaceDeclaration;
+ import net.sourceforge.pmd.lang.java.ast.ASTCompilationUnit;
+ import net.sourceforge.pmd.lang.java.ast.ASTConstructorDeclaration;
+@@ -73,7 +72,7 @@ public abstract class AbstractCommentRule extends AbstractJavaRule {
+                 AbstractJavaAccessNode node = (AbstractJavaAccessNode) value;
+ 
+                 // maybe the last comment is within the last node
+-                if (lastComment != null && isCommentNotWithin(lastComment, lastNode, node)
++                if (lastComment != null && lastComment.isCommentNotWithin(lastNode, node, this)
+                         && isCommentBefore(lastComment, node)) {
+                     node.comment(lastComment);
+                     lastComment = null;
+@@ -87,19 +86,6 @@ public abstract class AbstractCommentRule extends AbstractJavaRule {
+         }
+     }
+ 
+-    private boolean isCommentNotWithin(FormalComment n1, Node n2, Node node) {
+-        if (n1 == null || n2 == null || node == null) {
+-            return true;
+-        }
+-        boolean isNotWithinNode2 = !(n1.getEndLine() < n2.getEndLine()
+-                || n1.getEndLine() == n2.getEndLine() && n1.getEndColumn() < n2.getEndColumn());
+-        boolean isNotSameClass = node.getFirstParentOfType(ASTClassOrInterfaceBody.class) != n2
+-                .getFirstParentOfType(ASTClassOrInterfaceBody.class);
+-        boolean isNodeWithinNode2 = node.getEndLine() < n2.getEndLine()
+-                || node.getEndLine() == n2.getEndLine() && node.getEndColumn() < n2.getEndColumn();
+-        return isNotWithinNode2 || isNotSameClass || isNodeWithinNode2;
+-    }
+-
+     private boolean isCommentBefore(FormalComment n1, Node n2) {
+         return n1.getEndLine() < n2.getBeginLine()
+                 || n1.getEndLine() == n2.getBeginLine() && n1.getEndColumn() < n2.getBeginColumn();
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/documentation/CommentRequiredRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/documentation/CommentRequiredRule.java
+index 56ab5c1..72c0964 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/documentation/CommentRequiredRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/documentation/CommentRequiredRule.java
+@@ -152,7 +152,7 @@ public class CommentRequiredRule extends AbstractCommentRule {
+ 
+     @Override
+     public Object visit(ASTFieldDeclaration decl, Object data) {
+-        if (isSerialVersionUID(decl)) {
++        if (decl.isSerialVersionUID(this)) {
+             checkCommentMeetsRequirement(data, decl, SERIAL_VERSION_UID_CMT_REQUIREMENT_DESCRIPTOR);
+         } else {
+             checkCommentMeetsRequirement(data, decl, FIELD_CMT_REQUIREMENT_DESCRIPTOR);
+@@ -162,14 +162,6 @@ public class CommentRequiredRule extends AbstractCommentRule {
+     }
+ 
+ 
+-    private boolean isSerialVersionUID(ASTFieldDeclaration field) {
+-        return "serialVersionUID".equals(field.getVariableName())
+-               && field.isStatic()
+-               && field.isFinal()
+-               && field.getType() == long.class;
+-    }
+-
+-
+     @Override
+     public Object visit(ASTEnumDeclaration decl, Object data) {
+         checkCommentMeetsRequirement(data, decl, ENUM_CMT_REQUIREMENT_DESCRIPTOR);
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/BeanMembersShouldSerializeRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/BeanMembersShouldSerializeRule.java
+index 910101c..48f25bd 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/BeanMembersShouldSerializeRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/BeanMembersShouldSerializeRule.java
+@@ -17,10 +17,7 @@ import org.apache.commons.lang3.StringUtils;
+ import net.sourceforge.pmd.lang.ast.Node;
+ import net.sourceforge.pmd.lang.java.ast.ASTClassOrInterfaceDeclaration;
+ import net.sourceforge.pmd.lang.java.ast.ASTCompilationUnit;
+-import net.sourceforge.pmd.lang.java.ast.ASTMethodDeclaration;
+ import net.sourceforge.pmd.lang.java.ast.ASTMethodDeclarator;
+-import net.sourceforge.pmd.lang.java.ast.ASTPrimitiveType;
+-import net.sourceforge.pmd.lang.java.ast.ASTResultType;
+ import net.sourceforge.pmd.lang.java.ast.AccessNode;
+ import net.sourceforge.pmd.lang.java.ast.Annotatable;
+ import net.sourceforge.pmd.lang.java.rule.AbstractLombokAwareRule;
+@@ -81,7 +78,7 @@ public class BeanMembersShouldSerializeRule extends AbstractLombokAwareRule {
+         List<ASTMethodDeclarator> getSetMethList = new ArrayList<>(methods.size());
+         for (MethodNameDeclaration d : methods.keySet()) {
+             ASTMethodDeclarator mnd = d.getMethodNameDeclaratorNode();
+-            if (isBeanAccessor(mnd)) {
++            if (mnd.isBeanAccessor(this)) {
+                 getSetMethList.add(mnd);
+             }
+         }
+@@ -119,20 +116,4 @@ public class BeanMembersShouldSerializeRule extends AbstractLombokAwareRule {
+         return img;
+     }
+ 
+-    private boolean isBeanAccessor(ASTMethodDeclarator meth) {
+-
+-        String methodName = meth.getImage();
+-
+-        if (methodName.startsWith("get") || methodName.startsWith("set")) {
+-            return true;
+-        }
+-        if (methodName.startsWith("is")) {
+-            ASTResultType ret = ((ASTMethodDeclaration) meth.jjtGetParent()).getResultType();
+-            List<ASTPrimitiveType> primitives = ret.findDescendantsOfType(ASTPrimitiveType.class);
+-            if (!primitives.isEmpty() && primitives.get(0).isBoolean()) {
+-                return true;
+-            }
+-        }
+-        return false;
+-    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/BrokenNullCheckRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/BrokenNullCheckRule.java
+index c38d246..eb20e92 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/BrokenNullCheckRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/BrokenNullCheckRule.java
+@@ -21,7 +21,6 @@ import net.sourceforge.pmd.lang.java.ast.ASTLiteral;
+ import net.sourceforge.pmd.lang.java.ast.ASTName;
+ import net.sourceforge.pmd.lang.java.ast.ASTNullLiteral;
+ import net.sourceforge.pmd.lang.java.ast.ASTPrimaryExpression;
+-import net.sourceforge.pmd.lang.java.ast.ASTPrimaryPrefix;
+ import net.sourceforge.pmd.lang.java.ast.ASTPrimarySuffix;
+ import net.sourceforge.pmd.lang.java.rule.AbstractJavaRule;
+ 
+@@ -71,7 +70,7 @@ public class BrokenNullCheckRule extends AbstractJavaRule {
+         }
+ 
+         // Find the expression used in the null compare
+-        ASTPrimaryExpression nullCompareExpression = findNullCompareExpression(equalityExpression);
++        ASTPrimaryExpression nullCompareExpression = equalityExpression.findNullCompareExpression(this);
+         if (nullCompareExpression == null) {
+             return; // No good null check
+         }
+@@ -168,19 +167,4 @@ public class BrokenNullCheckRule extends AbstractJavaRule {
+         }
+     }
+ 
+-    private ASTPrimaryExpression findNullCompareExpression(ASTEqualityExpression equalityExpression) {
+-        List<ASTPrimaryExpression> primaryExpressions = equalityExpression
+-                .findDescendantsOfType(ASTPrimaryExpression.class);
+-        for (ASTPrimaryExpression primaryExpression : primaryExpressions) {
+-            List<ASTPrimaryPrefix> primaryPrefixes = primaryExpression.findDescendantsOfType(ASTPrimaryPrefix.class);
+-            for (ASTPrimaryPrefix primaryPrefix : primaryPrefixes) {
+-                if (primaryPrefix.hasDescendantOfType(ASTName.class)) {
+-                    // We found the variable that is compared to null
+-                    return primaryExpression;
+-                }
+-            }
+-        }
+-        return null; // Nothing found
+-    }
+-
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/CloseResourceRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/CloseResourceRule.java
+index 2febbcd..80f0af8 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/CloseResourceRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/CloseResourceRule.java
+@@ -34,7 +34,6 @@ import net.sourceforge.pmd.lang.java.ast.ASTStatementExpression;
+ import net.sourceforge.pmd.lang.java.ast.ASTTryStatement;
+ import net.sourceforge.pmd.lang.java.ast.ASTType;
+ import net.sourceforge.pmd.lang.java.ast.ASTVariableDeclaratorId;
+-import net.sourceforge.pmd.lang.java.ast.ASTVariableInitializer;
+ import net.sourceforge.pmd.lang.java.rule.AbstractJavaRule;
+ import net.sourceforge.pmd.properties.PropertyDescriptor;
+ 
+@@ -154,20 +153,6 @@ public class CloseResourceRule extends AbstractJavaRule {
+         }
+     }
+ 
+-    private boolean hasNullInitializer(ASTLocalVariableDeclaration var) {
+-        ASTVariableInitializer init = var.getFirstDescendantOfType(ASTVariableInitializer.class);
+-        if (init != null) {
+-            try {
+-                List<?> nulls = init
+-                        .findChildNodesWithXPath("Expression/PrimaryExpression/PrimaryPrefix/Literal/NullLiteral");
+-                return !nulls.isEmpty();
+-            } catch (JaxenException e) {
+-                return false;
+-            }
+-        }
+-        return false;
+-    }
+-
+     private void ensureClosed(ASTLocalVariableDeclaration var, ASTVariableDeclaratorId id, Object data) {
+         // What are the chances of a Connection being instantiated in a
+         // for-loop init block? Anyway, I'm lazy!
+@@ -197,7 +182,7 @@ public class CloseResourceRule extends AbstractJavaRule {
+             ASTBlockStatement tryBlock = t.getFirstParentOfType(ASTBlockStatement.class);
+             // no need to check for critical statements, if
+             // the variable has been initialized with null
+-            if (!hasNullInitializer(var) && parentBlock.jjtGetParent() == tryBlock.jjtGetParent()) {
++            if (!var.hasNullInitializer(this) && parentBlock.jjtGetParent() == tryBlock.jjtGetParent()) {
+ 
+                 List<ASTBlockStatement> blocks = parentBlock.jjtGetParent().findChildrenOfType(ASTBlockStatement.class);
+                 int parentBlockIndex = blocks.indexOf(parentBlock);
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/NullAssignmentRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/NullAssignmentRule.java
+index fefd1ff..60b28b2 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/NullAssignmentRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/NullAssignmentRule.java
+@@ -10,14 +10,11 @@ import net.sourceforge.pmd.lang.java.ast.ASTConditionalExpression;
+ import net.sourceforge.pmd.lang.java.ast.ASTEqualityExpression;
+ import net.sourceforge.pmd.lang.java.ast.ASTExpression;
+ import net.sourceforge.pmd.lang.java.ast.ASTLambdaExpression;
+-import net.sourceforge.pmd.lang.java.ast.ASTName;
+ import net.sourceforge.pmd.lang.java.ast.ASTNullLiteral;
+ import net.sourceforge.pmd.lang.java.ast.ASTReturnStatement;
+ import net.sourceforge.pmd.lang.java.ast.ASTStatementExpression;
+ import net.sourceforge.pmd.lang.java.ast.ASTVariableInitializer;
+-import net.sourceforge.pmd.lang.java.ast.AccessNode;
+ import net.sourceforge.pmd.lang.java.rule.AbstractJavaRule;
+-import net.sourceforge.pmd.lang.java.symboltable.VariableNameDeclaration;
+ 
+ public class NullAssignmentRule extends AbstractJavaRule {
+ 
+@@ -31,7 +28,7 @@ public class NullAssignmentRule extends AbstractJavaRule {
+         if (node.getNthParent(5) instanceof ASTStatementExpression) {
+             ASTStatementExpression n = (ASTStatementExpression) node.getNthParent(5);
+ 
+-            if (isAssignmentToFinalField(n)) {
++            if (n.isAssignmentToFinalField(this)) {
+                 return data;
+             }
+ 
+@@ -54,12 +51,6 @@ public class NullAssignmentRule extends AbstractJavaRule {
+         return data;
+     }
+ 
+-    private boolean isAssignmentToFinalField(ASTStatementExpression n) {
+-        ASTName name = n.getFirstDescendantOfType(ASTName.class);
+-        return name != null && name.getNameDeclaration() instanceof VariableNameDeclaration
+-                && ((AccessNode) ((VariableNameDeclaration) name.getNameDeclaration()).getAccessNodeParent()).isFinal();
+-    }
+-
+     private boolean isBadTernary(ASTConditionalExpression ternary) {
+         boolean isInitializer = false;
+ 
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/SingletonClassReturningNewInstanceRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/SingletonClassReturningNewInstanceRule.java
+index 8efd0be..a9e738c 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/SingletonClassReturningNewInstanceRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/SingletonClassReturningNewInstanceRule.java
+@@ -11,7 +11,6 @@ import net.sourceforge.pmd.lang.java.ast.ASTAllocationExpression;
+ import net.sourceforge.pmd.lang.java.ast.ASTBlockStatement;
+ import net.sourceforge.pmd.lang.java.ast.ASTLocalVariableDeclaration;
+ import net.sourceforge.pmd.lang.java.ast.ASTMethodDeclaration;
+-import net.sourceforge.pmd.lang.java.ast.ASTName;
+ import net.sourceforge.pmd.lang.java.ast.ASTPrimaryExpression;
+ import net.sourceforge.pmd.lang.java.ast.ASTPrimaryPrefix;
+ import net.sourceforge.pmd.lang.java.ast.ASTReturnStatement;
+@@ -98,7 +97,7 @@ public class SingletonClassReturningNewInstanceRule extends AbstractJavaRule {
+         Node lastChild = ape.jjtGetChild(0);
+         String returnVariableName = null;
+         if (lastChild instanceof ASTPrimaryPrefix) {
+-            returnVariableName = getNameFromPrimaryPrefix((ASTPrimaryPrefix) lastChild);
++            returnVariableName = ((ASTPrimaryPrefix) lastChild).getNameFromPrimaryPrefix(this);
+         }
+         /*
+          * if(lastChild instanceof ASTPrimarySuffix){ returnVariableName =
+@@ -108,10 +107,4 @@ public class SingletonClassReturningNewInstanceRule extends AbstractJavaRule {
+ 
+     }
+ 
+-    private String getNameFromPrimaryPrefix(ASTPrimaryPrefix pp) {
+-        if (pp.jjtGetNumChildren() == 1 && pp.jjtGetChild(0) instanceof ASTName) {
+-            return ((ASTName) pp.jjtGetChild(0)).getImage();
+-        }
+-        return null;
+-    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/UnnecessaryCaseChangeRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/UnnecessaryCaseChangeRule.java
+index 0ad72b5..be3a62a 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/UnnecessaryCaseChangeRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/errorprone/UnnecessaryCaseChangeRule.java
+@@ -4,10 +4,7 @@
+ 
+ package net.sourceforge.pmd.lang.java.rule.errorprone;
+ 
+-import net.sourceforge.pmd.lang.ast.Node;
+-import net.sourceforge.pmd.lang.java.ast.ASTName;
+ import net.sourceforge.pmd.lang.java.ast.ASTPrimaryExpression;
+-import net.sourceforge.pmd.lang.java.ast.ASTPrimaryPrefix;
+ import net.sourceforge.pmd.lang.java.ast.ASTPrimarySuffix;
+ import net.sourceforge.pmd.lang.java.rule.AbstractJavaRule;
+ 
+@@ -20,7 +17,7 @@ public class UnnecessaryCaseChangeRule extends AbstractJavaRule {
+             return data;
+         }
+ 
+-        int first = getBadPrefixOrNull(exp, n);
++        int first = exp.getBadPrefixOrNull(n, this);
+         if (first == -1) {
+             return data;
+         }
+@@ -42,33 +39,6 @@ public class UnnecessaryCaseChangeRule extends AbstractJavaRule {
+         return data;
+     }
+ 
+-    private int getBadPrefixOrNull(ASTPrimaryExpression exp, int childrenCount) {
+-        // verify PrimaryPrefix/Name[ends-with(@Image, 'toUpperCase']
+-        for (int i = 0; i < childrenCount - 3; i++) {
+-            Node child = exp.jjtGetChild(i);
+-            String image;
+-            if (child instanceof ASTPrimaryPrefix) {
+-                if (child.jjtGetNumChildren() != 1 || !(child.jjtGetChild(0) instanceof ASTName)) {
+-                    continue;
+-                }
+-
+-                ASTName name = (ASTName) child.jjtGetChild(0);
+-                image = name.getImage();
+-            } else if (child instanceof ASTPrimarySuffix) {
+-                image = ((ASTPrimarySuffix) child).getImage();
+-            } else {
+-                continue;
+-            }
+-
+-            if (image == null || !(image.endsWith("toUpperCase") || image.endsWith("toLowerCase"))) {
+-                continue;
+-            } else {
+-                return i;
+-            }
+-        }
+-        return -1;
+-    }
+-
+     private String getBadSuffixOrNull(ASTPrimaryExpression exp, int equalsPosition) {
+         // verify PrimarySuffix[@Image='equals']
+         if (!(exp.jjtGetChild(equalsPosition) instanceof ASTPrimarySuffix)) {
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/AvoidInstantiatingObjectsInLoopsRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/AvoidInstantiatingObjectsInLoopsRule.java
+index af7045b..4af65f6 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/AvoidInstantiatingObjectsInLoopsRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/AvoidInstantiatingObjectsInLoopsRule.java
+@@ -10,23 +10,18 @@ import net.sourceforge.pmd.lang.java.ast.ASTDoStatement;
+ import net.sourceforge.pmd.lang.java.ast.ASTForInit;
+ import net.sourceforge.pmd.lang.java.ast.ASTForStatement;
+ import net.sourceforge.pmd.lang.java.ast.ASTReturnStatement;
+-import net.sourceforge.pmd.lang.java.ast.ASTThrowStatement;
+ import net.sourceforge.pmd.lang.java.ast.ASTWhileStatement;
+ 
+ public class AvoidInstantiatingObjectsInLoopsRule extends AbstractOptimizationRule {
+ 
+     @Override
+     public Object visit(ASTAllocationExpression node, Object data) {
+-        if (insideLoop(node) && fourthParentNotThrow(node) && fourthParentNotReturn(node)) {
++        if (insideLoop(node) && node.fourthParentNotThrow(this) && fourthParentNotReturn(node)) {
+             addViolation(data, node);
+         }
+         return data;
+     }
+ 
+-    private boolean fourthParentNotThrow(ASTAllocationExpression node) {
+-        return !(node.jjtGetParent().jjtGetParent().jjtGetParent().jjtGetParent() instanceof ASTThrowStatement);
+-    }
+-
+     private boolean fourthParentNotReturn(ASTAllocationExpression node) {
+         return !(node.jjtGetParent().jjtGetParent().jjtGetParent().jjtGetParent() instanceof ASTReturnStatement);
+     }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/ConsecutiveAppendsShouldReuseRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/ConsecutiveAppendsShouldReuseRule.java
+index db3626e..11539e0 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/ConsecutiveAppendsShouldReuseRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/ConsecutiveAppendsShouldReuseRule.java
+@@ -4,9 +4,6 @@
+ 
+ package net.sourceforge.pmd.lang.java.rule.performance;
+ 
+-import java.util.List;
+-import java.util.Map;
+-
+ import net.sourceforge.pmd.lang.ast.Node;
+ import net.sourceforge.pmd.lang.java.ast.ASTBlockStatement;
+ import net.sourceforge.pmd.lang.java.ast.ASTExpression;
+@@ -18,11 +15,7 @@ import net.sourceforge.pmd.lang.java.ast.ASTPrimarySuffix;
+ import net.sourceforge.pmd.lang.java.ast.ASTStatement;
+ import net.sourceforge.pmd.lang.java.ast.ASTStatementExpression;
+ import net.sourceforge.pmd.lang.java.ast.ASTVariableDeclaratorId;
+-import net.sourceforge.pmd.lang.java.ast.AbstractJavaNode;
+ import net.sourceforge.pmd.lang.java.rule.AbstractJavaRule;
+-import net.sourceforge.pmd.lang.java.symboltable.VariableNameDeclaration;
+-import net.sourceforge.pmd.lang.java.typeresolution.TypeHelper;
+-import net.sourceforge.pmd.lang.symboltable.NameOccurrence;
+ 
+ public class ConsecutiveAppendsShouldReuseRule extends AbstractJavaRule {
+ 
+@@ -72,7 +65,7 @@ public class ConsecutiveAppendsShouldReuseRule extends AbstractJavaRule {
+                             String image = name.getImage();
+                             if (image.endsWith(".append")) {
+                                 String variable = image.substring(0, image.indexOf('.'));
+-                                if (isAStringBuilderBuffer(primaryPrefix, variable)) {
++                                if (primaryPrefix.isAStringBuilderBuffer(variable, this)) {
+                                     return variable;
+                                 }
+                             }
+@@ -92,7 +85,7 @@ public class ConsecutiveAppendsShouldReuseRule extends AbstractJavaRule {
+                                     final ASTName astName = stmtExp.getFirstDescendantOfType(ASTName.class);
+                                     if (astName != null) {
+                                         final String variable = astName.getImage();
+-                                        if (isAStringBuilderBuffer(primarySuffix, variable)) {
++                                        if (primarySuffix.isAStringBuilderBuffer(variable, this)) {
+                                             return variable;
+                                         }
+                                     }
+@@ -114,7 +107,7 @@ public class ConsecutiveAppendsShouldReuseRule extends AbstractJavaRule {
+                     final String name = primarySuffix.getImage();
+                     if ("append".equals(name)) {
+                         String variable = vdId.getImage();
+-                        if (isAStringBuilderBuffer(primarySuffix, variable)) {
++                        if (primarySuffix.isAStringBuilderBuffer(variable, this)) {
+                             return variable;
+                         }
+                     }
+@@ -125,17 +118,6 @@ public class ConsecutiveAppendsShouldReuseRule extends AbstractJavaRule {
+         return null;
+     }
+ 
+-    private boolean isAStringBuilderBuffer(AbstractJavaNode node, String name) {
+-        Map<VariableNameDeclaration, List<NameOccurrence>> declarations = node.getScope()
+-                .getDeclarations(VariableNameDeclaration.class);
+-        for (VariableNameDeclaration decl : declarations.keySet()) {
+-            if (decl.getName().equals(name) && TypeHelper.isExactlyAny(decl, StringBuilder.class, StringBuffer.class)) {
+-                return true;
+-            }
+-        }
+-        return false;
+-    }
+-
+     private boolean isFirstChild(Node node, Class<?> clazz) {
+         return node.jjtGetNumChildren() == 1 && clazz.isAssignableFrom(node.jjtGetChild(0).getClass());
+     }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/ConsecutiveLiteralAppendsRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/ConsecutiveLiteralAppendsRule.java
+index 67644ba..6509d98 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/ConsecutiveLiteralAppendsRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/ConsecutiveLiteralAppendsRule.java
+@@ -6,10 +6,8 @@ package net.sourceforge.pmd.lang.java.rule.performance;
+ 
+ import static net.sourceforge.pmd.properties.constraints.NumericConstraints.inRange;
+ 
+-import java.util.Collections;
+ import java.util.HashSet;
+ import java.util.List;
+-import java.util.Map;
+ import java.util.Set;
+ 
+ import net.sourceforge.pmd.lang.ast.Node;
+@@ -34,7 +32,6 @@ import net.sourceforge.pmd.lang.java.ast.ASTWhileStatement;
+ import net.sourceforge.pmd.lang.java.ast.TypeNode;
+ import net.sourceforge.pmd.lang.java.rule.AbstractJavaRule;
+ import net.sourceforge.pmd.lang.java.symboltable.JavaNameOccurrence;
+-import net.sourceforge.pmd.lang.java.symboltable.VariableNameDeclaration;
+ import net.sourceforge.pmd.lang.java.typeresolution.TypeHelper;
+ import net.sourceforge.pmd.lang.symboltable.NameOccurrence;
+ import net.sourceforge.pmd.properties.PropertyDescriptor;
+@@ -111,7 +108,7 @@ public class ConsecutiveLiteralAppendsRule extends AbstractJavaRule {
+             rootNode = node;
+         }
+ 
+-        List<NameOccurrence> usages = determineUsages(node);
++        List<NameOccurrence> usages = node.determineUsages(this);
+ 
+         for (NameOccurrence no : usages) {
+             JavaNameOccurrence jno = (JavaNameOccurrence) no;
+@@ -167,19 +164,6 @@ public class ConsecutiveLiteralAppendsRule extends AbstractJavaRule {
+         return data;
+     }
+ 
+-    private List<NameOccurrence> determineUsages(ASTVariableDeclaratorId node) {
+-        Map<VariableNameDeclaration, List<NameOccurrence>> decls = node.getScope()
+-                .getDeclarations(VariableNameDeclaration.class);
+-        for (Map.Entry<VariableNameDeclaration, List<NameOccurrence>> entry : decls.entrySet()) {
+-            // find the first variable that matches
+-            if (node.hasImageEqualTo(entry.getKey().getName())) {
+-                return entry.getValue();
+-            }
+-        }
+-
+-        return Collections.emptyList();
+-    }
+-
+     /**
+      * Determine if the constructor contains (or ends with) a String Literal
+      *
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/InefficientStringBufferingRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/InefficientStringBufferingRule.java
+index ad00b76..fab3366 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/InefficientStringBufferingRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/InefficientStringBufferingRule.java
+@@ -9,7 +9,6 @@ import java.util.List;
+ 
+ import net.sourceforge.pmd.lang.ast.Node;
+ import net.sourceforge.pmd.lang.java.ast.ASTAdditiveExpression;
+-import net.sourceforge.pmd.lang.java.ast.ASTAllocationExpression;
+ import net.sourceforge.pmd.lang.java.ast.ASTArgumentList;
+ import net.sourceforge.pmd.lang.java.ast.ASTBlockStatement;
+ import net.sourceforge.pmd.lang.java.ast.ASTClassOrInterfaceType;
+@@ -96,7 +95,7 @@ public class InefficientStringBufferingRule extends AbstractJavaRule {
+                 }
+             }
+ 
+-            if (isAllocatedStringBuffer(node)) {
++            if (node.isAllocatedStringBuffer(this)) {
+                 addViolation(data, node);
+             }
+         } else if (isInStringBufferOperation(node, 6, "append")) {
+@@ -164,14 +163,4 @@ public class InefficientStringBufferingRule extends AbstractJavaRule {
+                 StringBuilder.class);
+     }
+ 
+-    private boolean isAllocatedStringBuffer(ASTAdditiveExpression node) {
+-        ASTAllocationExpression ao = node.getFirstParentOfType(ASTAllocationExpression.class);
+-        if (ao == null) {
+-            return false;
+-        }
+-        // note that the child can be an ArrayDimsAndInits, for example, from
+-        // java.lang.FloatingDecimal: t = new int[ nWords+wordcount+1 ];
+-        ASTClassOrInterfaceType an = ao.getFirstChildOfType(ASTClassOrInterfaceType.class);
+-        return an != null && TypeHelper.isEither(an, StringBuffer.class, StringBuilder.class);
+-    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/RedundantFieldInitializerRule.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/RedundantFieldInitializerRule.java
+index 0ed7e19..f12d135 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/RedundantFieldInitializerRule.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/rule/performance/RedundantFieldInitializerRule.java
+@@ -12,9 +12,7 @@ import net.sourceforge.pmd.lang.java.ast.ASTFieldDeclaration;
+ import net.sourceforge.pmd.lang.java.ast.ASTLiteral;
+ import net.sourceforge.pmd.lang.java.ast.ASTNullLiteral;
+ import net.sourceforge.pmd.lang.java.ast.ASTPrimaryExpression;
+-import net.sourceforge.pmd.lang.java.ast.ASTReferenceType;
+ import net.sourceforge.pmd.lang.java.ast.ASTVariableDeclarator;
+-import net.sourceforge.pmd.lang.java.ast.ASTVariableDeclaratorId;
+ import net.sourceforge.pmd.lang.java.rule.AbstractJavaRule;
+ 
+ /**
+@@ -61,7 +59,7 @@ public class RedundantFieldInitializerRule extends AbstractJavaRule {
+                     final Node primaryPrefix = primaryExpression.jjtGetChild(0);
+                     if (primaryPrefix.jjtGetNumChildren() == 1 && primaryPrefix.jjtGetChild(0) instanceof ASTLiteral) {
+                         final ASTLiteral literal = (ASTLiteral) primaryPrefix.jjtGetChild(0);
+-                        if (isRef(fieldDeclaration, variableDeclarator)) {
++                        if (variableDeclarator.isRef(fieldDeclaration, this)) {
+                             // Reference type
+                             if (literal.jjtGetNumChildren() == 1 && literal.jjtGetChild(0) instanceof ASTNullLiteral) {
+                                 addViolation(data, variableDeclarator);
+@@ -106,40 +104,6 @@ public class RedundantFieldInitializerRule extends AbstractJavaRule {
+         return data;
+     }
+ 
+-    /**
+-     * Checks if a FieldDeclaration is a reference type (includes arrays). The
+-     * reference information is in the FieldDeclaration for this example:
+-     *
+-     * <pre>
+-     * int[] ia1
+-     * </pre>
+-     *
+-     * and in the VariableDeclarator for this example:
+-     *
+-     * <pre>
+-     * int ia2[];
+-     * </pre>
+-     *
+-     * .
+-     *
+-     * @param fieldDeclaration
+-     *            the field to check.
+-     * @param variableDeclarator
+-     *            the variable declarator to check.
+-     * @return <code>true</code> if the field is a reference. <code>false</code>
+-     *         otherwise.
+-     */
+-    private boolean isRef(ASTFieldDeclaration fieldDeclaration, ASTVariableDeclarator variableDeclarator) {
+-        Node type = fieldDeclaration.jjtGetChild(0).jjtGetChild(0);
+-        if (type instanceof ASTReferenceType) {
+-            // Reference type, array or otherwise
+-            return true;
+-        } else {
+-            // Primitive array?
+-            return ((ASTVariableDeclaratorId) variableDeclarator.jjtGetChild(0)).isArray();
+-        }
+-    }
+-
+     private void addViolation(Object data, ASTVariableDeclarator variableDeclarator) {
+         super.addViolation(data, variableDeclarator, variableDeclarator.jjtGetChild(0).getImage());
+     }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/symboltable/JavaNameOccurrence.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/symboltable/JavaNameOccurrence.java
+index 7dcc57f..5168309 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/symboltable/JavaNameOccurrence.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/symboltable/JavaNameOccurrence.java
+@@ -237,4 +237,12 @@ public class JavaNameOccurrence implements NameOccurrence {
+         return getImage() + ":" + location.getBeginLine() + ":" + location.getClass()
+                 + (this.isMethodOrConstructorInvocation() ? "(method call)" : "");
+     }
++
++    public void add(NameFinder nameFinder) {
++        nameFinder.getNames().add(this);
++        if (nameFinder.getNames().size() > 1) {
++            JavaNameOccurrence qualifiedName = nameFinder.getNames().get(nameFinder.getNames().size() - 2);
++            qualifiedName.setNameWhichThisQualifies(this);
++        }
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/symboltable/NameFinder.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/symboltable/NameFinder.java
+index e45ab2c..fc0c8ee 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/symboltable/NameFinder.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/symboltable/NameFinder.java
+@@ -26,9 +26,9 @@ public class NameFinder {
+     public NameFinder(ASTPrimaryExpression node) {
+         ASTPrimaryPrefix prefix = (ASTPrimaryPrefix) node.jjtGetChild(0);
+         if (prefix.usesSuperModifier()) {
+-            add(new JavaNameOccurrence(prefix, "super"));
++            new JavaNameOccurrence(prefix, "super").add(this);
+         } else if (prefix.usesThisModifier()) {
+-            add(new JavaNameOccurrence(prefix, "this"));
++            new JavaNameOccurrence(prefix, "this").add(this);
+         }
+         for (int i = 0; i < node.jjtGetNumChildren(); i++) {
+             checkForNameChild((JavaNode) node.jjtGetChild(i));
+@@ -41,17 +41,17 @@ public class NameFinder {
+ 
+     private void checkForNameChild(JavaNode node) {
+         if (node.getImage() != null) {
+-            add(new JavaNameOccurrence(node, node.getImage()));
++            new JavaNameOccurrence(node, node.getImage()).add(this);
+         }
+         if (node.jjtGetNumChildren() > 0 && node.jjtGetChild(0) instanceof ASTName) {
+             ASTName grandchild = (ASTName) node.jjtGetChild(0);
+             for (StringTokenizer st = new StringTokenizer(grandchild.getImage(), "."); st.hasMoreTokens();) {
+-                add(new JavaNameOccurrence(grandchild, st.nextToken()));
++                new JavaNameOccurrence(grandchild, st.nextToken()).add(this);
+             }
+         }
+         if (node.jjtGetNumChildren() > 1 && node.jjtGetChild(1) instanceof ASTMethodReference) {
+             ASTMethodReference methodRef = (ASTMethodReference) node.jjtGetChild(1);
+-            add(new JavaNameOccurrence(methodRef, methodRef.getImage()));
++            new JavaNameOccurrence(methodRef, methodRef.getImage()).add(this);
+         }
+         if (node instanceof ASTPrimarySuffix) {
+             ASTPrimarySuffix suffix = (ASTPrimarySuffix) node;
+@@ -64,22 +64,14 @@ public class NameFinder {
+                 ASTMemberSelector member = (ASTMemberSelector) suffix.jjtGetChild(0);
+                 if (member.jjtGetNumChildren() == 1 && member.jjtGetChild(0) instanceof ASTMethodReference) {
+                     ASTMethodReference methodRef = (ASTMethodReference) member.jjtGetChild(0);
+-                    add(new JavaNameOccurrence(methodRef, methodRef.getImage()));
++                    new JavaNameOccurrence(methodRef, methodRef.getImage()).add(this);
+                 } else {
+-                    add(new JavaNameOccurrence(member, member.getImage()));
++                    new JavaNameOccurrence(member, member.getImage()).add(this);
+                 }
+             }
+         }
+     }
+ 
+-    private void add(JavaNameOccurrence name) {
+-        names.add(name);
+-        if (names.size() > 1) {
+-            JavaNameOccurrence qualifiedName = names.get(names.size() - 2);
+-            qualifiedName.setNameWhichThisQualifies(name);
+-        }
+-    }
+-
+     @Override
+     public String toString() {
+         StringBuilder result = new StringBuilder();
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/symboltable/VariableNameDeclaration.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/symboltable/VariableNameDeclaration.java
+index d6c2492..9838cff 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/symboltable/VariableNameDeclaration.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/symboltable/VariableNameDeclaration.java
+@@ -4,15 +4,8 @@
+ 
+ package net.sourceforge.pmd.lang.java.symboltable;
+ 
+-import net.sourceforge.pmd.lang.java.ast.ASTFormalParameter;
+-import net.sourceforge.pmd.lang.java.ast.ASTLambdaExpression;
+-import net.sourceforge.pmd.lang.java.ast.ASTPrimitiveType;
+-import net.sourceforge.pmd.lang.java.ast.ASTReferenceType;
+-import net.sourceforge.pmd.lang.java.ast.ASTType;
+-import net.sourceforge.pmd.lang.java.ast.ASTVariableDeclaratorId;
+-import net.sourceforge.pmd.lang.java.ast.AccessNode;
+-import net.sourceforge.pmd.lang.java.ast.Dimensionable;
+-import net.sourceforge.pmd.lang.java.ast.TypeNode;
++import net.sourceforge.pmd.lang.java.ast.*;
++import net.sourceforge.pmd.lang.java.rule.design.ImmutableFieldRule;
+ import net.sourceforge.pmd.lang.symboltable.AbstractNameDeclaration;
+ import net.sourceforge.pmd.lang.symboltable.Scope;
+ 
+@@ -141,4 +134,8 @@ public class VariableNameDeclaration extends AbstractNameDeclaration implements
+     public String toString() {
+         return "Variable: image = '" + node.getImage() + "', line = " + node.getBeginLine();
+     }
++
++    public boolean initializedWhenDeclared(ImmutableFieldRule immutableFieldRule) {
++        return getAccessNodeParent().hasDescendantOfType(ASTVariableInitializer.class);
++    }
+ }
+diff --git a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/typeresolution/ClassTypeResolver.java b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/typeresolution/ClassTypeResolver.java
+index 7f3c9fb..701331f 100644
+--- a/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/typeresolution/ClassTypeResolver.java
++++ b/pmd-java/src/main/java/net/sourceforge/pmd/lang/java/typeresolution/ClassTypeResolver.java
+@@ -312,14 +312,6 @@ public class ClassTypeResolver extends JavaParserVisitorAdapter {
+         return startIndex;
+     }
+ 
+-    private ASTArgumentList getArgumentList(ASTArguments args) {
+-        if (args != null) {
+-            return args.getFirstChildOfType(ASTArgumentList.class);
+-        }
+-
+-        return null;
+-    }
+-
+     private int getArgumentListArity(ASTArgumentList argList) {
+         if (argList != null) {
+             return argList.jjtGetNumChildren();
+@@ -336,7 +328,7 @@ public class ClassTypeResolver extends JavaParserVisitorAdapter {
+         int startIndex = searchNodeNameForClass(node);
+ 
+         ASTArguments astArguments = getSuffixMethodArgs(node);
+-        ASTArgumentList astArgumentList = getArgumentList(astArguments);
++        ASTArgumentList astArgumentList = astArguments.getArgumentList(this);
+         int methodArgsArity = getArgumentListArity(astArgumentList);
+ 
+         JavaTypeDefinition previousType;
+@@ -921,7 +913,7 @@ public class ClassTypeResolver extends JavaParserVisitorAdapter {
+                             ? nextChild.getFirstChildOfType(ASTArguments.class) : null;
+ 
+                     if (astArguments != null) { // method
+-                        ASTArgumentList astArgumentList = getArgumentList(astArguments);
++                        ASTArgumentList astArgumentList = astArguments.getArgumentList(this);
+                         int methodArgsArity = getArgumentListArity(astArgumentList);
+                         List<JavaTypeDefinition> typeArguments = getMethodExplicitTypeArugments(currentChild);
+ 
+diff --git a/pmd-jsp/src/main/java/net/sourceforge/pmd/lang/jsp/ast/ASTElExpression.java b/pmd-jsp/src/main/java/net/sourceforge/pmd/lang/jsp/ast/ASTElExpression.java
+index 9b41130..5f7528a 100644
+--- a/pmd-jsp/src/main/java/net/sourceforge/pmd/lang/jsp/ast/ASTElExpression.java
++++ b/pmd-jsp/src/main/java/net/sourceforge/pmd/lang/jsp/ast/ASTElExpression.java
+@@ -5,6 +5,8 @@
+ 
+ package net.sourceforge.pmd.lang.jsp.ast;
+ 
++import net.sourceforge.pmd.lang.jsp.rule.security.NoUnsanitizedJSPExpressionRule;
++
+ public class ASTElExpression extends AbstractJspNode {
+     public ASTElExpression(int id) {
+         super(id);
+@@ -21,4 +23,15 @@ public class ASTElExpression extends AbstractJspNode {
+     public Object jjtAccept(JspParserVisitor visitor, Object data) {
+         return visitor.visit(this, data);
+     }
++
++    public boolean elOutsideTaglib(NoUnsanitizedJSPExpressionRule noUnsanitizedJSPExpressionRule) {
++        ASTElement parentASTElement = getFirstParentOfType(ASTElement.class);
++
++        boolean elInTaglib = parentASTElement != null && parentASTElement.getName() != null
++                && parentASTElement.getName().contains(":");
++
++        boolean elWithFnEscapeXml = getImage() != null && getImage().matches("^fn:escapeXml\\(.+\\)$");
++
++        return !elInTaglib && !elWithFnEscapeXml;
++    }
+ }
+diff --git a/pmd-jsp/src/main/java/net/sourceforge/pmd/lang/jsp/rule/security/NoUnsanitizedJSPExpressionRule.java b/pmd-jsp/src/main/java/net/sourceforge/pmd/lang/jsp/rule/security/NoUnsanitizedJSPExpressionRule.java
+index a1b995d..964a303 100644
+--- a/pmd-jsp/src/main/java/net/sourceforge/pmd/lang/jsp/rule/security/NoUnsanitizedJSPExpressionRule.java
++++ b/pmd-jsp/src/main/java/net/sourceforge/pmd/lang/jsp/rule/security/NoUnsanitizedJSPExpressionRule.java
+@@ -5,7 +5,6 @@
+ package net.sourceforge.pmd.lang.jsp.rule.security;
+ 
+ import net.sourceforge.pmd.lang.jsp.ast.ASTElExpression;
+-import net.sourceforge.pmd.lang.jsp.ast.ASTElement;
+ import net.sourceforge.pmd.lang.jsp.rule.AbstractJspRule;
+ 
+ /**
+@@ -17,22 +16,11 @@ import net.sourceforge.pmd.lang.jsp.rule.AbstractJspRule;
+ public class NoUnsanitizedJSPExpressionRule extends AbstractJspRule {
+     @Override
+     public Object visit(ASTElExpression node, Object data) {
+-        if (elOutsideTaglib(node)) {
++        if (node.elOutsideTaglib(this)) {
+             addViolation(data, node);
+         }
+ 
+         return super.visit(node, data);
+     }
+ 
+-    private boolean elOutsideTaglib(ASTElExpression node) {
+-        ASTElement parentASTElement = node.getFirstParentOfType(ASTElement.class);
+-
+-        boolean elInTaglib = parentASTElement != null && parentASTElement.getName() != null
+-                && parentASTElement.getName().contains(":");
+-
+-        boolean elWithFnEscapeXml = node.getImage() != null && node.getImage().matches("^fn:escapeXml\\(.+\\)$");
+-
+-        return !elInTaglib && !elWithFnEscapeXml;
+-    }
+-
+ }
+diff --git a/pmd-plsql/src/main/java/net/sourceforge/pmd/lang/plsql/symboltable/LocalScope.java b/pmd-plsql/src/main/java/net/sourceforge/pmd/lang/plsql/symboltable/LocalScope.java
+index c9bf64a..b62168a 100644
+--- a/pmd-plsql/src/main/java/net/sourceforge/pmd/lang/plsql/symboltable/LocalScope.java
++++ b/pmd-plsql/src/main/java/net/sourceforge/pmd/lang/plsql/symboltable/LocalScope.java
+@@ -4,7 +4,6 @@
+ 
+ package net.sourceforge.pmd.lang.plsql.symboltable;
+ 
+-import java.util.HashSet;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.Set;
+@@ -12,8 +11,6 @@ import java.util.Set;
+ import net.sourceforge.pmd.lang.ast.Node;
+ import net.sourceforge.pmd.lang.plsql.ast.ASTName;
+ import net.sourceforge.pmd.lang.symboltable.AbstractScope;
+-import net.sourceforge.pmd.lang.symboltable.Applier;
+-import net.sourceforge.pmd.lang.symboltable.ImageFinderFunction;
+ import net.sourceforge.pmd.lang.symboltable.NameDeclaration;
+ import net.sourceforge.pmd.lang.symboltable.NameOccurrence;
+ 
+@@ -22,7 +19,7 @@ public class LocalScope extends AbstractScope {
+     @Override
+     public Set<NameDeclaration> addNameOccurrence(NameOccurrence occ) {
+         PLSQLNameOccurrence occurrence = (PLSQLNameOccurrence) occ;
+-        Set<NameDeclaration> declarations = findVariableHere(occurrence);
++        Set<NameDeclaration> declarations = occurrence.findVariableHere(this);
+         if (!declarations.isEmpty() && !occurrence.isThisOrSuper()) {
+             for (NameDeclaration decl : declarations) {
+                 List<NameOccurrence> nameOccurrences = getVariableDeclarations().get(decl);
+@@ -48,19 +45,6 @@ public class LocalScope extends AbstractScope {
+         super.addDeclaration(declaration);
+     }
+ 
+-    public Set<NameDeclaration> findVariableHere(PLSQLNameOccurrence occurrence) {
+-        Set<NameDeclaration> result = new HashSet<>();
+-        if (occurrence.isThisOrSuper() || occurrence.isMethodOrConstructorInvocation()) {
+-            return result;
+-        }
+-        ImageFinderFunction finder = new ImageFinderFunction(occurrence.getImage());
+-        Applier.apply(finder, getVariableDeclarations().keySet().iterator());
+-        if (finder.getDecl() != null) {
+-            result.add(finder.getDecl());
+-        }
+-        return result;
+-    }
+-
+     @Override
+     public String toString() {
+         return "LocalScope:" + getVariableDeclarations().keySet();
+diff --git a/pmd-plsql/src/main/java/net/sourceforge/pmd/lang/plsql/symboltable/PLSQLNameOccurrence.java b/pmd-plsql/src/main/java/net/sourceforge/pmd/lang/plsql/symboltable/PLSQLNameOccurrence.java
+index fca9e59..7538d2f 100644
+--- a/pmd-plsql/src/main/java/net/sourceforge/pmd/lang/plsql/symboltable/PLSQLNameOccurrence.java
++++ b/pmd-plsql/src/main/java/net/sourceforge/pmd/lang/plsql/symboltable/PLSQLNameOccurrence.java
+@@ -8,8 +8,14 @@ import net.sourceforge.pmd.lang.ast.Node;
+ import net.sourceforge.pmd.lang.plsql.ast.ASTExpression;
+ import net.sourceforge.pmd.lang.plsql.ast.ASTPrimaryExpression;
+ import net.sourceforge.pmd.lang.plsql.ast.PLSQLNode;
++import net.sourceforge.pmd.lang.symboltable.Applier;
++import net.sourceforge.pmd.lang.symboltable.ImageFinderFunction;
++import net.sourceforge.pmd.lang.symboltable.NameDeclaration;
+ import net.sourceforge.pmd.lang.symboltable.NameOccurrence;
+ 
++import java.util.HashSet;
++import java.util.Set;
++
+ public class PLSQLNameOccurrence implements NameOccurrence {
+ 
+     private PLSQLNode location;
+@@ -210,4 +216,17 @@ public class PLSQLNameOccurrence implements NameOccurrence {
+         return getImage() + ":" + location.getBeginLine() + ":" + location.getClass()
+                 + (this.isMethodOrConstructorInvocation() ? "(method call)" : "");
+     }
++
++    public Set<NameDeclaration> findVariableHere(LocalScope localScope) {
++        Set<NameDeclaration> result = new HashSet<>();
++        if (isThisOrSuper() || isMethodOrConstructorInvocation()) {
++            return result;
++        }
++        ImageFinderFunction finder = new ImageFinderFunction(getImage());
++        Applier.apply(finder, localScope.getVariableDeclarations().keySet().iterator());
++        if (finder.getDecl() != null) {
++            result.add(finder.getDecl());
++        }
++        return result;
++    }
+ }
+diff --git a/pmd-test/src/main/java/net/sourceforge/pmd/testframework/RuleTst.java b/pmd-test/src/main/java/net/sourceforge/pmd/testframework/RuleTst.java
+index e5fe568..4a66d95 100644
+--- a/pmd-test/src/main/java/net/sourceforge/pmd/testframework/RuleTst.java
++++ b/pmd-test/src/main/java/net/sourceforge/pmd/testframework/RuleTst.java
+@@ -10,7 +10,6 @@ import static org.junit.Assert.fail;
+ import java.io.IOException;
+ import java.io.InputStream;
+ import java.io.StringReader;
+-import java.io.StringWriter;
+ import java.util.ArrayList;
+ import java.util.Collections;
+ import java.util.Iterator;
+@@ -46,7 +45,6 @@ import net.sourceforge.pmd.RuleViolation;
+ import net.sourceforge.pmd.lang.LanguageRegistry;
+ import net.sourceforge.pmd.lang.LanguageVersion;
+ import net.sourceforge.pmd.properties.PropertyDescriptor;
+-import net.sourceforge.pmd.renderers.TextRenderer;
+ 
+ /**
+  * Advanced methods for test cases
+@@ -151,7 +149,7 @@ public abstract class RuleTst {
+                 throw new RuntimeException('"' + test.getDescription() + "\" failed", e);
+             }
+             if (test.getNumberOfProblemsExpected() != res) {
+-                printReport(test, report);
++                test.printReport(report, this);
+             }
+             assertEquals('"' + test.getDescription() + "\" resulted in wrong number of failures,",
+                     test.getNumberOfProblemsExpected(), res);
+@@ -195,7 +193,7 @@ public abstract class RuleTst {
+             RuleViolation violation = it.next();
+             String actual = violation.getDescription();
+             if (!expectedMessages.get(index).equals(actual)) {
+-                printReport(test, report);
++                test.printReport(report, this);
+             }
+             assertEquals(
+                     '"' + test.getDescription() + "\" produced wrong message on violation number " + (index + 1) + ".",
+@@ -221,7 +219,7 @@ public abstract class RuleTst {
+             RuleViolation violation = it.next();
+             Integer actual = violation.getBeginLine();
+             if (expected.get(index) != actual.intValue()) {
+-                printReport(test, report);
++                test.printReport(report, this);
+             }
+             assertEquals('"' + test.getDescription() + "\" violation on wrong line number: violation number "
+                     + (index + 1) + ".", expected.get(index), actual);
+@@ -229,27 +227,6 @@ public abstract class RuleTst {
+         }
+     }
+ 
+-    private void printReport(TestDescriptor test, Report report) {
+-        System.out.println("--------------------------------------------------------------");
+-        System.out.println("Test Failure: " + test.getDescription());
+-        System.out.println(" -> Expected " + test.getNumberOfProblemsExpected() + " problem(s), " + report.size()
+-                + " problem(s) found.");
+-        System.out.println(" -> Expected messages: " + test.getExpectedMessages());
+-        System.out.println(" -> Expected line numbers: " + test.getExpectedLineNumbers());
+-        System.out.println();
+-        TextRenderer renderer = new TextRenderer();
+-        renderer.setWriter(new StringWriter());
+-        try {
+-            renderer.start();
+-            renderer.renderFileReport(report);
+-            renderer.end();
+-        } catch (IOException e) {
+-            throw new RuntimeException(e);
+-        }
+-        System.out.println(renderer.getWriter().toString());
+-        System.out.println("--------------------------------------------------------------");
+-    }
+-
+     private Report processUsingStringReader(TestDescriptor test, Rule rule) throws PMDException {
+         Report report = new Report();
+         runTestFromString(test, rule, report);
+diff --git a/pmd-test/src/main/java/net/sourceforge/pmd/testframework/TestDescriptor.java b/pmd-test/src/main/java/net/sourceforge/pmd/testframework/TestDescriptor.java
+index dcb4ba6..9d1e3eb 100644
+--- a/pmd-test/src/main/java/net/sourceforge/pmd/testframework/TestDescriptor.java
++++ b/pmd-test/src/main/java/net/sourceforge/pmd/testframework/TestDescriptor.java
+@@ -4,10 +4,14 @@
+ 
+ package net.sourceforge.pmd.testframework;
+ 
++import java.io.IOException;
++import java.io.StringWriter;
+ import java.util.ArrayList;
+ import java.util.List;
+ import java.util.Properties;
+ 
++import net.sourceforge.pmd.Report;
++import net.sourceforge.pmd.renderers.TextRenderer;
+ import org.junit.Ignore;
+ 
+ import net.sourceforge.pmd.Rule;
+@@ -148,4 +152,25 @@ public class TestDescriptor {
+     public boolean isUseAuxClasspath() {
+         return useAuxClasspath;
+     }
++
++    public void printReport(Report report, RuleTst ruleTst) {
++        System.out.println("--------------------------------------------------------------");
++        System.out.println("Test Failure: " + getDescription());
++        System.out.println(" -> Expected " + getNumberOfProblemsExpected() + " problem(s), " + report.size()
++                + " problem(s) found.");
++        System.out.println(" -> Expected messages: " + getExpectedMessages());
++        System.out.println(" -> Expected line numbers: " + getExpectedLineNumbers());
++        System.out.println();
++        TextRenderer renderer = new TextRenderer();
++        renderer.setWriter(new StringWriter());
++        try {
++            renderer.start();
++            renderer.renderFileReport(report);
++            renderer.end();
++        } catch (IOException e) {
++            throw new RuntimeException(e);
++        }
++        System.out.println(renderer.getWriter().toString());
++        System.out.println("--------------------------------------------------------------");
++    }
+ }
+diff --git a/pmd-ui/src/main/java/net/sourceforge/pmd/util/fxdesigner/util/controls/ASTTreeItem.java b/pmd-ui/src/main/java/net/sourceforge/pmd/util/fxdesigner/util/controls/ASTTreeItem.java
+index 5b317a8..63c727d 100644
+--- a/pmd-ui/src/main/java/net/sourceforge/pmd/util/fxdesigner/util/controls/ASTTreeItem.java
++++ b/pmd-ui/src/main/java/net/sourceforge/pmd/util/fxdesigner/util/controls/ASTTreeItem.java
+@@ -5,12 +5,14 @@
+ package net.sourceforge.pmd.util.fxdesigner.util.controls;
+ 
+ import static net.sourceforge.pmd.internal.util.IteratorUtil.reverse;
++import static net.sourceforge.pmd.internal.util.IteratorUtil.toIterable;
+ import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.parentIterator;
+ 
+ import java.util.Arrays;
+ import java.util.Collections;
+ import java.util.Iterator;
+ import java.util.List;
++import java.util.function.BiConsumer;
+ 
+ import org.reactfx.value.Var;
+ 
+@@ -134,4 +136,13 @@ public final class ASTTreeItem extends TreeItem<Node> {
+     }
+ 
+ 
++    public void sideEffectParents(BiConsumer<ASTTreeItem, Integer> itemAndDepthConsumer, AstTreeView astTreeView) {
++
++        int depth = 0;
++        for (TreeItem<Node> item : toIterable(parentIterator(this, true))) {
++            // the depth is "reversed" here, i.e. the deepest node has depth 0
++            itemAndDepthConsumer.accept((ASTTreeItem) item, depth++);
++        }
++
++    }
+ }
+diff --git a/pmd-ui/src/main/java/net/sourceforge/pmd/util/fxdesigner/util/controls/AstTreeView.java b/pmd-ui/src/main/java/net/sourceforge/pmd/util/fxdesigner/util/controls/AstTreeView.java
+index 51670ae..d9b1745 100644
+--- a/pmd-ui/src/main/java/net/sourceforge/pmd/util/fxdesigner/util/controls/AstTreeView.java
++++ b/pmd-ui/src/main/java/net/sourceforge/pmd/util/fxdesigner/util/controls/AstTreeView.java
+@@ -4,11 +4,9 @@
+ 
+ package net.sourceforge.pmd.util.fxdesigner.util.controls;
+ 
+-import static net.sourceforge.pmd.internal.util.IteratorUtil.toIterable;
+ import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.parentIterator;
+ 
+ import java.util.Objects;
+-import java.util.function.BiConsumer;
+ 
+ import org.reactfx.EventSource;
+ import org.reactfx.EventStreams;
+@@ -111,27 +109,16 @@ public class AstTreeView extends TreeView<Node> implements NodeSelectionSource {
+     private void highlightFocusNodeParents(ASTTreeItem oldSelection, ASTTreeItem newSelection) {
+         if (oldSelection != null) {
+             // remove highlighting on the cells of the item
+-            sideEffectParents(oldSelection, (item, depth) -> item.setStyleClasses());
++            oldSelection.sideEffectParents((item, depth) -> item.setStyleClasses(), this);
+         }
+ 
+         if (newSelection != null) {
+             // 0 is the deepest node, "depth" goes up as we get up the parents
+-            sideEffectParents(newSelection, (item, depth) -> item.setStyleClasses("ast-parent", "depth-" + depth));
++            newSelection.sideEffectParents((item, depth) -> item.setStyleClasses("ast-parent", "depth-" + depth), this);
+         }
+     }
+ 
+ 
+-    private void sideEffectParents(ASTTreeItem deepest, BiConsumer<ASTTreeItem, Integer> itemAndDepthConsumer) {
+-
+-        int depth = 0;
+-        for (TreeItem<Node> item : toIterable(parentIterator(deepest, true))) {
+-            // the depth is "reversed" here, i.e. the deepest node has depth 0
+-            itemAndDepthConsumer.accept((ASTTreeItem) item, depth++);
+-        }
+-
+-    }
+-
+-
+     /**
+      * Returns true if the item at the given index
+      * is visible in the TreeView.
+diff --git a/pmd-visualforce/src/main/java/net/sourceforge/pmd/lang/vf/ast/ASTElExpression.java b/pmd-visualforce/src/main/java/net/sourceforge/pmd/lang/vf/ast/ASTElExpression.java
+index 4b7e7af..1f04865 100644
+--- a/pmd-visualforce/src/main/java/net/sourceforge/pmd/lang/vf/ast/ASTElExpression.java
++++ b/pmd-visualforce/src/main/java/net/sourceforge/pmd/lang/vf/ast/ASTElExpression.java
+@@ -5,6 +5,8 @@
+ 
+ package net.sourceforge.pmd.lang.vf.ast;
+ 
++import net.sourceforge.pmd.lang.vf.rule.security.VfCsrfRule;
++
+ public class ASTElExpression extends AbstractVFNode {
+     public ASTElExpression(int id) {
+         super(id);
+@@ -21,4 +23,8 @@ public class ASTElExpression extends AbstractVFNode {
+     public Object jjtAccept(VfParserVisitor visitor, Object data) {
+         return visitor.visit(this, data);
+     }
++
++    public boolean doesElContainIdentifiers(VfCsrfRule vfCsrfRule) {
++        return getFirstDescendantOfType(ASTIdentifier.class) != null;
++    }
+ }
+diff --git a/pmd-visualforce/src/main/java/net/sourceforge/pmd/lang/vf/ast/ASTText.java b/pmd-visualforce/src/main/java/net/sourceforge/pmd/lang/vf/ast/ASTText.java
+index 16a359c..53556b2 100644
+--- a/pmd-visualforce/src/main/java/net/sourceforge/pmd/lang/vf/ast/ASTText.java
++++ b/pmd-visualforce/src/main/java/net/sourceforge/pmd/lang/vf/ast/ASTText.java
+@@ -5,6 +5,8 @@
+ 
+ package net.sourceforge.pmd.lang.vf.ast;
+ 
++import net.sourceforge.pmd.lang.vf.rule.security.VfUnescapeElRule;
++
+ public class ASTText extends AbstractVFNode {
+     public ASTText(int id) {
+         super(id);
+@@ -21,4 +23,11 @@ public class ASTText extends AbstractVFNode {
+     public Object jjtAccept(VfParserVisitor visitor, Object data) {
+         return visitor.visit(this, data);
+     }
++
++    public boolean isJsonParse(VfUnescapeElRule vfUnescapeElRule) {
++        final String text = getImage().endsWith("'")
++                ? getImage().substring(0, getImage().length() - 1) : getImage();
++
++        return text.endsWith("JSON.parse(") || text.endsWith("jQuery.parseJSON(") || text.endsWith("$.parseJSON(");
++    }
+ }
+diff --git a/pmd-visualforce/src/main/java/net/sourceforge/pmd/lang/vf/rule/security/VfCsrfRule.java b/pmd-visualforce/src/main/java/net/sourceforge/pmd/lang/vf/rule/security/VfCsrfRule.java
+index 447d0c0..a62e4a4 100644
+--- a/pmd-visualforce/src/main/java/net/sourceforge/pmd/lang/vf/rule/security/VfCsrfRule.java
++++ b/pmd-visualforce/src/main/java/net/sourceforge/pmd/lang/vf/rule/security/VfCsrfRule.java
+@@ -10,7 +10,6 @@ import java.util.Locale;
+ import net.sourceforge.pmd.lang.vf.ast.ASTAttribute;
+ import net.sourceforge.pmd.lang.vf.ast.ASTElExpression;
+ import net.sourceforge.pmd.lang.vf.ast.ASTElement;
+-import net.sourceforge.pmd.lang.vf.ast.ASTIdentifier;
+ import net.sourceforge.pmd.lang.vf.rule.AbstractVfRule;
+ 
+ /**
+@@ -34,7 +33,7 @@ public class VfCsrfRule extends AbstractVfRule {
+                 case "action":
+                     ASTElExpression value = attr.getFirstDescendantOfType(ASTElExpression.class);
+                     if (value != null) {
+-                        if (doesElContainIdentifiers(value)) {
++                        if (value.doesElContainIdentifiers(this)) {
+                             isEl = true;
+                             valToReport = value;
+                         }
+@@ -58,7 +57,4 @@ public class VfCsrfRule extends AbstractVfRule {
+         return super.visit(node, data);
+     }
+ 
+-    private boolean doesElContainIdentifiers(ASTElExpression value) {
+-        return value.getFirstDescendantOfType(ASTIdentifier.class) != null;
+-    }
+ }
+diff --git a/pmd-visualforce/src/main/java/net/sourceforge/pmd/lang/vf/rule/security/VfUnescapeElRule.java b/pmd-visualforce/src/main/java/net/sourceforge/pmd/lang/vf/rule/security/VfUnescapeElRule.java
+index 6f79196..c62a983 100644
+--- a/pmd-visualforce/src/main/java/net/sourceforge/pmd/lang/vf/rule/security/VfUnescapeElRule.java
++++ b/pmd-visualforce/src/main/java/net/sourceforge/pmd/lang/vf/rule/security/VfUnescapeElRule.java
+@@ -80,7 +80,7 @@ public class VfUnescapeElRule extends AbstractVfRule {
+         boolean jsonParse = false;
+ 
+         if (prevText != null) {
+-            jsonParse = isJsonParse(prevText);
++            jsonParse = prevText.isJsonParse(this);
+             if (isUnbalanced(prevText.getImage(), '\'') || isUnbalanced(prevText.getImage(), '\"')) {
+                 quoted = true;
+             }
+@@ -104,13 +104,6 @@ public class VfUnescapeElRule extends AbstractVfRule {
+         }
+     }
+ 
+-    private boolean isJsonParse(ASTText prevText) {
+-        final String text = prevText.getImage().endsWith("'")
+-                ? prevText.getImage().substring(0, prevText.getImage().length() - 1) : prevText.getImage();
+-
+-        return text.endsWith("JSON.parse(") || text.endsWith("jQuery.parseJSON(") || text.endsWith("$.parseJSON(");
+-    }
+-
+     private boolean isUnbalanced(String image, char pattern) {
+         char[] array = image.toCharArray();
+ 
+diff --git a/pmd-vm/src/main/java/net/sourceforge/pmd/lang/vm/ast/ASTStringLiteral.java b/pmd-vm/src/main/java/net/sourceforge/pmd/lang/vm/ast/ASTStringLiteral.java
+index 16aea34..28718d4 100644
+--- a/pmd-vm/src/main/java/net/sourceforge/pmd/lang/vm/ast/ASTStringLiteral.java
++++ b/pmd-vm/src/main/java/net/sourceforge/pmd/lang/vm/ast/ASTStringLiteral.java
+@@ -44,35 +44,6 @@ public class ASTStringLiteral extends AbstractVmNode {
+     }
+ 
+     /**
+-     * Adjust all the line and column numbers that comprise a node so that they
+-     * are corrected for the string literals position within the template file.
+-     * This is neccessary if an exception is thrown while processing the node so
+-     * that the line and column position reported reflects the error position
+-     * within the template and not just relative to the error position within
+-     * the string literal.
+-     */
+-    public void adjTokenLineNums(final AbstractVmNode node) {
+-        Token tok = node.getFirstToken();
+-        // Test against null is probably not neccessary, but just being safe
+-        while (tok != null && tok != node.getLastToken()) {
+-            // If tok is on the first line, then the actual column is
+-            // offset by the template column.
+-
+-            if (tok.beginLine == 1) {
+-                tok.beginColumn += getColumn();
+-            }
+-
+-            if (tok.endLine == 1) {
+-                tok.endColumn += getColumn();
+-            }
+-
+-            tok.beginLine += getLine() - 1;
+-            tok.endLine += getLine() - 1;
+-            tok = tok.next;
+-        }
+-    }
+-
+-    /**
+      * @since 1.6
+      */
+     public static String unescape(final String string) {
+diff --git a/pmd-vm/src/main/java/net/sourceforge/pmd/lang/vm/ast/AbstractVmNode.java b/pmd-vm/src/main/java/net/sourceforge/pmd/lang/vm/ast/AbstractVmNode.java
+index a640db2..fcc17f6 100644
+--- a/pmd-vm/src/main/java/net/sourceforge/pmd/lang/vm/ast/AbstractVmNode.java
++++ b/pmd-vm/src/main/java/net/sourceforge/pmd/lang/vm/ast/AbstractVmNode.java
+@@ -238,4 +238,34 @@ public class AbstractVmNode extends AbstractNode implements VmNode {
+     public String getTemplateName() {
+         return templateName;
+     }
++
++    /**
++     * Adjust all the line and column numbers that comprise a node so that they
++     * are corrected for the string literals position within the template file.
++     * This is neccessary if an exception is thrown while processing the node so
++     * that the line and column position reported reflects the error position
++     * within the template and not just relative to the error position within
++     * the string literal.
++     * @param astStringLiteral
++     */
++    public void adjTokenLineNums(ASTStringLiteral astStringLiteral) {
++        Token tok = getFirstToken();
++        // Test against null is probably not neccessary, but just being safe
++        while (tok != null && tok != getLastToken()) {
++            // If tok is on the first line, then the actual column is
++            // offset by the template column.
++
++            if (tok.beginLine == 1) {
++                tok.beginColumn += astStringLiteral.getColumn();
++            }
++
++            if (tok.endLine == 1) {
++                tok.endColumn += astStringLiteral.getColumn();
++            }
++
++            tok.beginLine += astStringLiteral.getLine() - 1;
++            tok.endLine += astStringLiteral.getLine() - 1;
++            tok = tok.next;
++        }
++    }
+ }
