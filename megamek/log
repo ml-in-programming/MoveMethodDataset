@@ -1,0 +1,26 @@
+2019-05-27 23:52:49,735 [INFO] Project /home/mikhail/Documents/Development/MoveMethodGenerator/../MoveMethodDataset/megamek/megamek is opened
+2019-05-27 23:54:32,931 [INFO] Total number of java files: 2014
+2019-05-27 23:54:32,931 [INFO] Total number of source java files: 2014
+2019-05-27 23:54:32,931 [INFO] Total number of classes: 911
+2019-05-27 23:54:32,931 [INFO] Total number of methods: 14946
+2019-05-27 23:54:32,932 [INFO] StaticMethodsFilter filtered: 1962
+2019-05-27 23:54:32,932 [INFO] ConstructorsFilter filtered: 1086
+2019-05-27 23:54:32,932 [INFO] AbstractMethodsFilter filtered: 101
+2019-05-27 23:54:32,932 [INFO] GettersFilter filtered: 1579
+2019-05-27 23:54:32,932 [INFO] SettersFilter filtered: 800
+2019-05-27 23:54:32,932 [INFO] EmptyMethodsFilter filtered: 739
+2019-05-27 23:54:32,932 [INFO] ExceptionsThrowersFilter filtered: 4
+2019-05-27 23:54:32,932 [INFO] SingleMethodFilter filtered: 227
+2019-05-27 23:54:32,932 [INFO] SimpleDelegationsFilter filtered: 1588
+2019-05-27 23:54:32,932 [INFO] PrivateMethodsCallersFilter filtered: 1826
+2019-05-27 23:54:32,932 [INFO] PrivateFieldAccessorsFilter filtered: 2629
+2019-05-27 23:54:32,932 [INFO] OverridingMethodsFilter filtered: 1004
+2019-05-27 23:54:32,932 [INFO] OverriddenMethodsFilter filtered: 125
+2019-05-27 23:54:32,932 [INFO] MethodCallWithSuperFilter filtered: 18
+2019-05-27 23:54:32,932 [INFO] PrivateClassUserFilter filtered: 0
+2019-05-27 23:54:32,932 [INFO] GenericTypeUserFilter filtered: 0
+2019-05-27 23:54:32,932 [INFO] NoTargetsMethodsFilter filtered: 996
+2019-05-27 23:54:32,932 [INFO] Number of methods after filtration: 262
+2019-05-27 23:58:01,549 [INFO] Project /home/mikhail/Documents/Development/MoveMethodGenerator/../MoveMethodDataset/megamek/megamek is opened
+2019-05-28 00:00:29,511 [INFO] 300 potential moves found
+2019-05-28 00:00:29,511 [INFO] 28 moves performed

@@ -1,0 +1,3038 @@
+diff --git a/megamek/src/megamek/client/Client.java b/megamek/src/megamek/client/Client.java
+index cac35f6..2c91113 100644
+--- a/megamek/src/megamek/client/Client.java
++++ b/megamek/src/megamek/client/Client.java
+@@ -53,6 +53,7 @@ import megamek.client.commands.RulerCommand;
+ import megamek.client.commands.ShowEntityCommand;
+ import megamek.client.commands.ShowTileCommand;
+ import megamek.client.ui.IClientCommandHandler;
++import megamek.client.ui.swing.ClientGUI;
+ import megamek.common.Board;
+ import megamek.common.BoardDimensions;
+ import megamek.common.Building;
+@@ -159,6 +160,16 @@ public class Client implements IClientCommandHandler {
+ 
+     ConnectionHandler packetUpdate;
+ 
++    public void deleteAllUnits(ClientGUI clientGUI) {
++        ArrayList<Entity> currentUnits = getGame().getPlayerEntities(
++                getLocalPlayer(), false);
++        ArrayList<Integer> ids = new ArrayList<Integer>(currentUnits.size());
++        for (Entity e : currentUnits){
++            ids.add(e.getId());
++        }
++        sendDeleteEntities(ids);
++    }
++
+     private class ConnectionHandler implements Runnable {
+ 
+         boolean shouldStop = false;
+diff --git a/megamek/src/megamek/client/bot/BotClient.java b/megamek/src/megamek/client/bot/BotClient.java
+index 5121c31..d0b4d89 100644
+--- a/megamek/src/megamek/client/bot/BotClient.java
++++ b/megamek/src/megamek/client/bot/BotClient.java
+@@ -99,6 +99,31 @@ public abstract class BotClient extends Client {
+      */
+     private ClientGUI clientgui = null;
+ 
++    public boolean shouldBotAcknowledgeDefeat(String message, ChatProcessor chatProcessor) {
++        boolean result = false;
++        if (!StringUtil.isNullOrEmpty(message) &&
++            (message.contains("declares individual victory at the end of the turn.")
++             || message.contains("declares team victory at the end of the turn."))) {
++            String[] splitMessage = message.split(" ");
++            int i = 1;
++            String name = splitMessage[i];
++            while (!splitMessage[i + 1].equals("declares")) {
++                name += " " + splitMessage[i + 1];
++                i++;
++            }
++            for (IPlayer p : getGame().getPlayersVector()) {
++                if (p.getName().equals(name)) {
++                    if (p.isEnemyOf(getLocalPlayer())) {
++                        sendChat("/defeat");
++                        result = true;
++                    }
++                    break;
++                }
++            }
++        }
++        return result;
++    }
++
+     public class CalculateBotTurn implements Runnable {
+         public void run() {
+             calculateMyTurn();
+diff --git a/megamek/src/megamek/client/bot/CEntity.java b/megamek/src/megamek/client/bot/CEntity.java
+index 7586d10..f3c92ff 100644
+--- a/megamek/src/megamek/client/bot/CEntity.java
++++ b/megamek/src/megamek/client/bot/CEntity.java
+@@ -47,6 +47,15 @@ import megamek.common.weapons.ppc.ISSnubNosePPC;
+ 
+ public class CEntity {
+ 
++    /* could use best of best strategy instead of expensive ga */
++    public double attackUtility(MoveOption es, TestBot testBot) {
++        GAAttack result = testBot.bestAttack(es, this, 1);
++        if (result == null) {
++            return 0;
++        }
++        return result.getFittestChromosomesFitness();
++    }
++
+     static class Table extends HashMap<Integer, CEntity> {
+ 
+         /**
+diff --git a/megamek/src/megamek/client/bot/ChatProcessor.java b/megamek/src/megamek/client/bot/ChatProcessor.java
+index c33ddad..0b9dd79 100644
+--- a/megamek/src/megamek/client/bot/ChatProcessor.java
++++ b/megamek/src/megamek/client/bot/ChatProcessor.java
+@@ -34,31 +34,6 @@ import megamek.server.commands.JoinTeamCommand;
+ 
+ public class ChatProcessor {
+ 
+-    boolean shouldBotAcknowledgeDefeat(String message, BotClient bot) {
+-        boolean result = false;
+-        if (!StringUtil.isNullOrEmpty(message) &&
+-            (message.contains("declares individual victory at the end of the turn.")
+-             || message.contains("declares team victory at the end of the turn."))) {
+-            String[] splitMessage = message.split(" ");
+-            int i = 1;
+-            String name = splitMessage[i];
+-            while (!splitMessage[i + 1].equals("declares")) {
+-                name += " " + splitMessage[i + 1];
+-                i++;
+-            }
+-            for (IPlayer p : bot.getGame().getPlayersVector()) {
+-                if (p.getName().equals(name)) {
+-                    if (p.isEnemyOf(bot.getLocalPlayer())) {
+-                        bot.sendChat("/defeat");
+-                        result = true;
+-                    }
+-                    break;
+-                }
+-            }
+-        }
+-        return result;
+-    }
+-
+     boolean shouldBotAcknowledgeVictory(String message, BotClient bot) {
+         boolean result = false;
+ 
+@@ -92,7 +67,7 @@ public class ChatProcessor {
+         }
+ 
+         String message = ge.getMessage();
+-        if (shouldBotAcknowledgeDefeat(message, bot)) {
++        if (bot.shouldBotAcknowledgeDefeat(message, this)) {
+             return;
+         }
+         if (shouldBotAcknowledgeVictory(message, bot)) {
+@@ -266,7 +241,7 @@ public class ChatProcessor {
+                 princess.sendChat(msg);
+                 return;
+             }
+-            princess.setVerbosity(newLevel);
++            newLevel.setVerbosity(princess);
+             msg = "Verbosity set to " + princess.getVerbosity().toString();
+             princess.log(getClass(), METHOD_NAME, LogLevel.DEBUG, msg);
+             princess.sendChat(msg);
+diff --git a/megamek/src/megamek/client/bot/TestBot.java b/megamek/src/megamek/client/bot/TestBot.java
+index 63bace8..3210031 100644
+--- a/megamek/src/megamek/client/bot/TestBot.java
++++ b/megamek/src/megamek/client/bot/TestBot.java
+@@ -999,8 +999,8 @@ public class TestBot extends BotClient {
+                     if (!enemy.canMove()) {
+                         option.setThreat(
+                                 enemy,
+-                                (option.getThreat(enemy) + attackUtility(
+-                                        enemy.current, self)) / 2
++                                (option.getThreat(enemy) + self.attackUtility(
++                                        enemy.current, this)) / 2
+                                         );
+                         if (debug) {
+                             option.tv.add(option.getThreat(enemy)
+@@ -1454,15 +1454,6 @@ public class TestBot extends BotClient {
+         }
+     }
+ 
+-    /* could use best of best strategy instead of expensive ga */
+-    public double attackUtility(MoveOption es, CEntity target) {
+-        GAAttack result = bestAttack(es, target, 1);
+-        if (result == null) {
+-            return 0;
+-        }
+-        return result.getFittestChromosomesFitness();
+-    }
+-
+     @Override
+     public void calculateFiringTurn() {
+         int first_entity = game.getFirstEntityNum(getMyTurn());
+diff --git a/megamek/src/megamek/client/bot/princess/BasicPathRanker.java b/megamek/src/megamek/client/bot/princess/BasicPathRanker.java
+index 23484ab..4a74c41 100644
+--- a/megamek/src/megamek/client/bot/princess/BasicPathRanker.java
++++ b/megamek/src/megamek/client/bot/princess/BasicPathRanker.java
+@@ -42,11 +42,9 @@ import megamek.common.Infantry;
+ import megamek.common.LosEffects;
+ import megamek.common.Mech;
+ import megamek.common.MechWarrior;
+-import megamek.common.MiscType;
+ import megamek.common.MovePath;
+ import megamek.common.MoveStep;
+ import megamek.common.Protomech;
+-import megamek.common.QuadMech;
+ import megamek.common.Tank;
+ import megamek.common.TargetRoll;
+ import megamek.common.Targetable;
+@@ -966,8 +964,8 @@ public class BasicPathRanker extends PathRanker implements IPathRanker {
+                     break;
+                 case Terrains.WATER:
+                     if (!hazards.contains(Terrains.ICE)) {
+-                        hazardValue += calcWaterHazard(movingUnit, hex, step,
+-                                                       logMsg);
++                        hazardValue += step.calcWaterHazard(movingUnit, hex,
++                                logMsg, this);
+                     }
+                     break;
+                 case Terrains.BUILDING:
+@@ -1057,120 +1055,13 @@ public class BasicPathRanker extends PathRanker implements IPathRanker {
+         logMsg.append("\n\t\tChance to break through ice: ")
+               .append(LOG_PERCENT.format(breakthroughMod));
+ 
+-        double hazard = calcWaterHazard(movingUnit, hex, step, logMsg) *
++        double hazard = step.calcWaterHazard(movingUnit, hex, logMsg, this) *
+                         breakthroughMod;
+         logMsg.append("\n\t\tHazard value (")
+               .append(LOG_DECIMAL.format(hazard)).append(").");
+         return hazard;
+     }
+ 
+-    private double calcWaterHazard(Entity movingUnit, IHex hex, MoveStep step,
+-                                   StringBuilder logMsg) {
+-        logMsg.append("\n\tCalculating water hazard:  ");
+-
+-        // Puddles don't count.
+-        if (hex.depth() == 0) {
+-            logMsg.append("Puddles don't count (0).");
+-            return 0;
+-        }
+-
+-        // Hover units are above the surface.
+-        if (EntityMovementMode.HOVER == movingUnit.getMovementMode() ||
+-            EntityMovementMode.WIGE == movingUnit.getMovementMode() ||
+-            EntityMovementMode.NAVAL == movingUnit.getMovementMode()) {
+-            logMsg.append("Hovering or swimming above water (0).");
+-            return 0;
+-        }
+-
+-        // Amphibious units are safe (kind of the point).
+-        if (movingUnit.hasWorkingMisc(MiscType.F_FULLY_AMPHIBIOUS) ||
+-            movingUnit.hasWorkingMisc(MiscType.F_AMPHIBIOUS)) {
+-            logMsg.append("Amphibious unit (0).");
+-            return 0;
+-        }
+-
+-        // if we are crossing a bridge, then we'll be fine. Trust me.
+-        // 1. Determine bridge elevation
+-        // 2. If unit elevation is equal to bridge elevation, skip.
+-        if(hex.containsTerrain(Terrains.BRIDGE_ELEV)) {
+-            int bridgeElevation = hex.terrainLevel(Terrains.BRIDGE_ELEV);
+-            if(bridgeElevation == step.getElevation()) {
+-                logMsg.append("Unit (0) crossing bridge.");
+-                return 0;
+-            }
+-        }
+-        
+-        // Most other units are automatically destroyed.
+-        if (!(movingUnit instanceof Mech || movingUnit instanceof Protomech ||
+-              movingUnit instanceof BattleArmor)) {
+-            logMsg.append("Ill drown (1000).");
+-            return 1000;
+-        }
+-
+-        // Unsealed unit will drown.
+-        if (movingUnit instanceof Mech && ((Mech) movingUnit).isIndustrial()) {
+-            logMsg.append("Industrial mechs drown too (1000).");
+-            return 1000;
+-        }
+-
+-        // Find the submerged locations.
+-        Set<Integer> submergedLocations = new HashSet<>();
+-        for (int loc = 0; loc < movingUnit.locations(); loc++) {
+-            if (Mech.LOC_CLEG == loc && !(movingUnit instanceof TripodMech)) {
+-                continue;
+-            }
+-
+-            if ((hex.depth() >= 2) || step.isProne() ||
+-                !(movingUnit instanceof Mech)) {
+-                submergedLocations.add(loc);
+-                continue;
+-            }
+-
+-            if (Mech.LOC_RLEG == loc || Mech.LOC_LLEG == loc ||
+-                Mech.LOC_CLEG == loc) {
+-                submergedLocations.add(loc);
+-                continue;
+-            }
+-
+-            if ((movingUnit instanceof QuadMech) && (Mech.LOC_RARM == loc ||
+-                                                     Mech.LOC_LARM == loc)) {
+-                submergedLocations.add(loc);
+-            }
+-        }
+-        logMsg.append("\n\t\tSubmerged locations: ")
+-              .append(submergedLocations.size());
+-
+-        int hazardValue = 0;
+-        for (int loc : submergedLocations) {
+-            logMsg.append("\n\t\t\tLocation ").append(loc).append(" is ");
+-
+-            // Only locations withou armor can breach in movement phase.
+-            if (movingUnit.getArmor(loc) > 0) {
+-                logMsg.append(" not breached (0).");
+-                continue;
+-            }
+-
+-            // Mechs or Protomechs having a head or torso breach is deadly.  
+-            // For other units, any breach is deadly.
+-            //noinspection ConstantConditions
+-            if (Mech.LOC_HEAD == loc ||
+-                Mech.LOC_CT == loc ||
+-                Protomech.LOC_HEAD == loc ||
+-                Protomech.LOC_TORSO == loc ||
+-                (!(movingUnit instanceof Mech) &&
+-                 !(movingUnit instanceof Protomech))) {
+-                logMsg.append(" breached and critical (1000).");
+-                return 1000;
+-            }
+-
+-            // Add 50 points per potential breach location.
+-            logMsg.append(" breached (50).");
+-            hazardValue += 50;
+-        }
+-
+-        return hazardValue;
+-    }
+-
+     private double calcFireHazard(Entity movingUnit, boolean endHex,
+                                   StringBuilder logMsg) {
+         logMsg.append("\n\tCalculating fire hazard:  ");
+diff --git a/megamek/src/megamek/client/bot/princess/FireControl.java b/megamek/src/megamek/client/bot/princess/FireControl.java
+index a106426..e706616 100644
+--- a/megamek/src/megamek/client/bot/princess/FireControl.java
++++ b/megamek/src/megamek/client/bot/princess/FireControl.java
+@@ -16,7 +16,6 @@ package megamek.client.bot.princess;
+ import java.text.DecimalFormat;
+ import java.text.NumberFormat;
+ import java.util.ArrayList;
+-import java.util.Enumeration;
+ import java.util.Iterator;
+ import java.util.List;
+ import java.util.Map;
+@@ -48,7 +47,6 @@ import megamek.common.Mech;
+ import megamek.common.MechWarrior;
+ import megamek.common.Mounted;
+ import megamek.common.MovePath;
+-import megamek.common.MoveStep;
+ import megamek.common.Protomech;
+ import megamek.common.RangeType;
+ import megamek.common.Tank;
+@@ -1066,7 +1064,7 @@ public class FireControl {
+         }
+ 
+         // check if target is even under our path
+-        if (!assumeUnderFlightPlan && !isTargetUnderFlightPath(flightPath, targetState)) {
++        if (!assumeUnderFlightPlan && !flightPath.isTargetUnderFlightPath(targetState, this)) {
+             return new ToHitData(TH_AIR_STRIKE_PATH);
+         }
+ 
+@@ -1083,26 +1081,6 @@ public class FireControl {
+     }
+ 
+     /**
+-     * Checks if a target lies under a move path, to see if an aero unit can attack it.
+-     *
+-     * @param flightPath  move path to check
+-     * @param targetState used for targets position
+-     * @return TRUE if the target is under the path.
+-     */
+-    boolean isTargetUnderFlightPath(final MovePath flightPath,
+-                                    final EntityState targetState) {
+-
+-        final Coords targetCoords = targetState.getPosition();
+-        for (final Enumeration<MoveStep> step = flightPath.getSteps(); step.hasMoreElements(); ) {
+-            final Coords stepCoords = step.nextElement().getPosition();
+-            if (targetCoords.equals(stepCoords)) {
+-                return true;
+-            }
+-        }
+-        return false;
+-    }
+-
+-    /**
+      * Mostly for debugging, this returns a non-null string that describes how
+      * the guess has failed to be perfectly accurate. or null if perfectly
+      * accurate
+@@ -1690,7 +1668,7 @@ public class FireControl {
+         }
+ 
+         // Must fly over the target to hit it.
+-        if (!assumeUnderFlightPath && !isTargetUnderFlightPath(flightPath, targetState)) {
++        if (!assumeUnderFlightPath && !flightPath.isTargetUnderFlightPath(targetState, this)) {
+             return new FiringPlan(target);
+         }
+ 
+diff --git a/megamek/src/megamek/client/bot/princess/PhysicalAttackType.java b/megamek/src/megamek/client/bot/princess/PhysicalAttackType.java
+index 4fd923a..04bae9f 100644
+--- a/megamek/src/megamek/client/bot/princess/PhysicalAttackType.java
++++ b/megamek/src/megamek/client/bot/princess/PhysicalAttackType.java
+@@ -13,6 +13,11 @@
+  */
+ package megamek.client.bot.princess;
+ 
++import megamek.common.Targetable;
++import megamek.common.actions.KickAttackAction;
++import megamek.common.actions.PhysicalAttackAction;
++import megamek.common.actions.PunchAttackAction;
++
+ /**
+  * @version $Id$
+  * @lastEditBy Deric "Netzilla" Page (deric dot page at usa dot net)
+@@ -28,4 +33,25 @@ public enum PhysicalAttackType {
+     public boolean isKick() {
+         return LEFT_KICK.equals(this) || RIGHT_KICK.equals(this);
+     }
++
++    /**
++     * Builds a new {@link PhysicalAttackAction} from the given parameters.
++     *
++     * @param shooterId  The ID of the attacking unit.
++     * @param target     The unit being attacked.
++     * @param physicalInfo
++     * @return The resulting {@link PhysicalAttackType}.
++     */
++    public PhysicalAttackAction buildAction(int shooterId, Targetable target, PhysicalInfo physicalInfo) {
++        if (isPunch()) {
++            int armId = RIGHT_PUNCH == this ? PunchAttackAction.RIGHT : PunchAttackAction.LEFT;
++            return new PunchAttackAction(shooterId, target.getTargetType(), target.getTargetId(), armId, false, false, false);
++        } else if (isKick()) {
++            int legId = RIGHT_KICK == this ? KickAttackAction.RIGHT : KickAttackAction.LEFT;
++            return new KickAttackAction(shooterId, target.getTargetType(), target.getTargetId(), legId);
++        } else {
++            // todo handle other physical attack types.
++            return null;
++        }
++    }
+ }
+diff --git a/megamek/src/megamek/client/bot/princess/PhysicalInfo.java b/megamek/src/megamek/client/bot/princess/PhysicalInfo.java
+index e13973a..96836b5 100644
+--- a/megamek/src/megamek/client/bot/princess/PhysicalInfo.java
++++ b/megamek/src/megamek/client/bot/princess/PhysicalInfo.java
+@@ -91,27 +91,6 @@ public class PhysicalInfo {
+     }
+ 
+     /**
+-     * Builds a new {@link PhysicalAttackAction} from the given parameters.
+-     *
+-     * @param attackType The {@link PhysicalAttackType} of the attack.
+-     * @param shooterId  The ID of the attacking unit.
+-     * @param target     The unit being attacked.
+-     * @return The resulting {@link PhysicalAttackType}.
+-     */
+-    protected PhysicalAttackAction buildAction(PhysicalAttackType attackType, int shooterId, Targetable target) {
+-        if (attackType.isPunch()) {
+-            int armId = PhysicalAttackType.RIGHT_PUNCH == attackType ? PunchAttackAction.RIGHT : PunchAttackAction.LEFT;
+-            return new PunchAttackAction(shooterId, target.getTargetType(), target.getTargetId(), armId, false, false, false);
+-        } else if (attackType.isKick()) {
+-            int legId = PhysicalAttackType.RIGHT_KICK == attackType ? KickAttackAction.RIGHT : KickAttackAction.LEFT;
+-            return new KickAttackAction(shooterId, target.getTargetType(), target.getTargetId(), legId);
+-        } else {
+-            // todo handle other physical attack types.
+-            return null;
+-        }
+-    }
+-
+-    /**
+      * Basic constructor.
+      *
+      * @param shooter            The {@link megamek.common.Entity} doing the attacking.
+@@ -162,7 +141,7 @@ public class PhysicalInfo {
+             setHitData(owner.getFireControl(getShooter()).guessToHitModifierPhysical(getShooter(), shooterState, getTarget(),
+                                                                          targetState, getAttackType(), game));
+         } else {
+-            PhysicalAttackAction action = buildAction(physicalAttackType, getShooter().getId(), getTarget());
++            PhysicalAttackAction action = physicalAttackType.buildAction(getShooter().getId(), getTarget(), this);
+             setAction(action);
+             setHitData(physicalAttackType.isPunch() ?
+                        ((PunchAttackAction) action).toHit(game) :
+diff --git a/megamek/src/megamek/client/bot/princess/Princess.java b/megamek/src/megamek/client/bot/princess/Princess.java
+index 060b06b..257080c 100644
+--- a/megamek/src/megamek/client/bot/princess/Princess.java
++++ b/megamek/src/megamek/client/bot/princess/Princess.java
+@@ -156,10 +156,6 @@ public class Princess extends BotClient {
+         this.logger = logger;
+     }
+ 
+-    public void setVerbosity(final LogLevel level) {
+-        getBehaviorSettings().setVerbosity(level);
+-    }
+-
+     public LogLevel getVerbosity() {
+         return getBehaviorSettings().getVerbosity();
+     }
+diff --git a/megamek/src/megamek/client/ratgenerator/AbstractUnitRecord.java b/megamek/src/megamek/client/ratgenerator/AbstractUnitRecord.java
+index d93ec09..a654ca4 100644
+--- a/megamek/src/megamek/client/ratgenerator/AbstractUnitRecord.java
++++ b/megamek/src/megamek/client/ratgenerator/AbstractUnitRecord.java
+@@ -39,33 +39,8 @@ public class AbstractUnitRecord {
+ 		clan = false;
+ 		includedFactions = new HashSet<String>();
+ 	}
+-	
+-	/**
+-	 * Adjusts availability rating for the first couple years after introduction.
+-	 * 
+-	 * @param ar The AvailabilityRecord for the chassis or model.
+-	 * @param rating The force equipment rating.
+-	 * @param ratingLevels The number of equipment rating levels used by the faction.
+-	 * @param year The game year
+-	 * @return The adjusted availability rating.
+-	 */
+-	public int calcAvailability(AvailabilityRating ar,
+-			int rating, int ratingLevels, int year) {
+-		int retVal = ar.adjustForRating(rating, ratingLevels);
+-		
+-		if (introYear == year) {
+-			retVal -= 2;
+-		}
+-		if (introYear == year + 1) {
+-			retVal -= 1;
+-		}
+-		if (retVal < 0) {
+-			return 0;
+-		}
+-		return retVal;
+-	}
+ 
+-	public String getChassis() {
++    public String getChassis() {
+ 		return chassis;
+ 	}
+ 	public void setChassis(String chassis) {
+diff --git a/megamek/src/megamek/client/ratgenerator/AvailabilityRating.java b/megamek/src/megamek/client/ratgenerator/AvailabilityRating.java
+index f384127..9e711ed 100644
+--- a/megamek/src/megamek/client/ratgenerator/AvailabilityRating.java
++++ b/megamek/src/megamek/client/ratgenerator/AvailabilityRating.java
+@@ -210,4 +210,28 @@ public class AvailabilityRating {
+ 	static double calcAvRating(double weight) {
+ 		return 2.0 * Math.log(weight) / LOG_BASE;
+ 	}
++
++    /**
++     * Adjusts availability rating for the first couple years after introduction.
++     *
++     * @param rating The force equipment rating.
++     * @param ratingLevels The number of equipment rating levels used by the faction.
++     * @param year The game year
++     * @param abstractUnitRecord
++     * @return The adjusted availability rating.
++     */
++    public int calcAvailability(int rating, int ratingLevels, int year, AbstractUnitRecord abstractUnitRecord) {
++        int retVal = adjustForRating(rating, ratingLevels);
++
++        if (abstractUnitRecord.getIntroYear() == year) {
++            retVal -= 2;
++        }
++        if (abstractUnitRecord.getIntroYear() == year + 1) {
++            retVal -= 1;
++        }
++        if (retVal < 0) {
++            return 0;
++        }
++        return retVal;
++    }
+ }
+diff --git a/megamek/src/megamek/client/ratgenerator/ForceDescriptor.java b/megamek/src/megamek/client/ratgenerator/ForceDescriptor.java
+index da5ad52..c3c1b67 100644
+--- a/megamek/src/megamek/client/ratgenerator/ForceDescriptor.java
++++ b/megamek/src/megamek/client/ratgenerator/ForceDescriptor.java
+@@ -1735,4 +1735,13 @@ public class ForceDescriptor {
+             sub.show(indent + " +", logLevel);
+         }
+     }
++
++    public Integer getCoRankOther(ForceNode forceNode) {
++        for (CommanderNode n : forceNode.getCoNodes()) {
++            if (n.matches(this)) {
++                return n.getRank();
++            }
++        }
++        return null;
++    }
+ }
+diff --git a/megamek/src/megamek/client/ratgenerator/ForceNode.java b/megamek/src/megamek/client/ratgenerator/ForceNode.java
+index 558abb4..b498279 100644
+--- a/megamek/src/megamek/client/ratgenerator/ForceNode.java
++++ b/megamek/src/megamek/client/ratgenerator/ForceNode.java
+@@ -305,15 +305,6 @@ public class ForceNode extends RulesetNode {
+         return xoNodes;
+     }
+ 
+-    public Integer getCoRank(ForceDescriptor fd) {
+-        for (CommanderNode n : coNodes) {
+-            if (n.matches(fd)) {
+-                return n.getRank();
+-            }
+-        }
+-        return null;
+-    }
+-
+     public void setEschelon(Integer eschelon) {
+         this.eschelon = eschelon;
+     }
+diff --git a/megamek/src/megamek/client/ratgenerator/MissionRole.java b/megamek/src/megamek/client/ratgenerator/MissionRole.java
+index 7a96750..2c4b10e 100644
+--- a/megamek/src/megamek/client/ratgenerator/MissionRole.java
++++ b/megamek/src/megamek/client/ratgenerator/MissionRole.java
+@@ -16,8 +16,12 @@ package megamek.client.ratgenerator;
+ import java.util.Collection;
+ import java.util.HashSet;
+ 
++import megamek.client.ui.Messages;
++import megamek.client.ui.swing.ForceGeneratorOptionsView;
+ import megamek.common.UnitType;
+ 
++import javax.swing.*;
++
+ /**
+  * Used to adjust availability to conform to a particular mission role.
+  * 
+@@ -598,4 +602,11 @@ public enum MissionRole {
+ 	public String toString() {
+ 		return name().toLowerCase();
+ 	}
++
++    public JCheckBox createMissionRoleCheck(ForceGeneratorOptionsView forceGeneratorOptionsView) {
++        String key = "MissionRole." + toString().toLowerCase();
++        JCheckBox chk = new JCheckBox(Messages.getString(key));
++        chk.setToolTipText(Messages.getString(key + ".tooltip"));
++        return chk;
++    }
+ }
+diff --git a/megamek/src/megamek/client/ratgenerator/RATGenerator.java b/megamek/src/megamek/client/ratgenerator/RATGenerator.java
+index 1e369b5..1dcbe2d 100644
+--- a/megamek/src/megamek/client/ratgenerator/RATGenerator.java
++++ b/megamek/src/megamek/client/ratgenerator/RATGenerator.java
+@@ -375,9 +375,9 @@ public class RATGenerator {
+ 			if (ar == null) {
+ 				continue;
+ 			}
+-			double cAv = cRec.calcAvailability(ar, ratingLevel, numRatingLevels, early);
++			double cAv = ar.calcAvailability(ratingLevel, numRatingLevels, early);
+ 			cAv = interpolate(cAv,
+-					cRec.calcAvailability(ar, ratingLevel, numRatingLevels, late),
++					ar.calcAvailability(ratingLevel, numRatingLevels, late),
+ 					Math.max(early, cRec.getIntroYear()), late, year);
+ 			if (cAv > 0) {
+ 				double totalModelWeight = cRec.totalModelWeight(early,
+@@ -397,9 +397,9 @@ public class RATGenerator {
+ 					if (ar == null || ar.getAvailability() == 0) {
+ 						continue;
+ 					}
+-					double mAv = mRec.calcAvailability(ar, ratingLevel, numRatingLevels, early);
++					double mAv = ar.calcAvailability(ratingLevel, numRatingLevels, early);
+ 					mAv = interpolate(mAv,
+-							mRec.calcAvailability(ar, ratingLevel, numRatingLevels, late),
++							ar.calcAvailability(ratingLevel, numRatingLevels, late),
+ 							Math.max(early, mRec.getIntroYear()), late, year);
+ 					Double adjMAv = MissionRole.adjustAvailabilityByRole(mAv, roles, mRec, year, roleStrictness);
+ 					if (adjMAv != null) {
+diff --git a/megamek/src/megamek/client/ui/swing/AdvancedSearchDialog.java b/megamek/src/megamek/client/ui/swing/AdvancedSearchDialog.java
+index 50b63fc..4ba4711 100644
+--- a/megamek/src/megamek/client/ui/swing/AdvancedSearchDialog.java
++++ b/megamek/src/megamek/client/ui/swing/AdvancedSearchDialog.java
+@@ -813,53 +813,6 @@ public class AdvancedSearchDialog extends JDialog implements ActionListener,
+         return false;
+     }
+ 
+-    private boolean matchUnitType(int unitTypeFilter, EquipmentType eq){
+-        // All is selected
+-        if (unitTypeFilter < 0){
+-            return true;
+-        }
+-        switch (unitTypeFilter) {
+-        case 5: //UnitType.AERO: the aero index is out of order
+-            if (eq.hasFlag(WeaponType.F_AERO_WEAPON)
+-                    || eq.hasFlag(MiscType.F_FIGHTER_EQUIPMENT)) {
+-                return true;
+-            }
+-            break;
+-        case UnitType.BATTLE_ARMOR:
+-            if (eq.hasFlag(WeaponType.F_BA_WEAPON)
+-                    || eq.hasFlag(MiscType.F_BA_EQUIPMENT)) {
+-                return true;
+-            }
+-            break;
+-        case UnitType.INFANTRY:
+-            if (eq.hasFlag(WeaponType.F_INFANTRY)) {
+-                return true;
+-            }
+-            break;
+-        case UnitType.MEK:
+-            if (eq.hasFlag(WeaponType.F_MECH_WEAPON)
+-                    || eq.hasFlag(MiscType.F_MECH_EQUIPMENT)) {
+-                return true;
+-            }
+-            break;
+-        case UnitType.TANK:
+-            if (eq.hasFlag(WeaponType.F_TANK_WEAPON)
+-                    || eq.hasFlag(MiscType.F_TANK_EQUIPMENT)) {
+-                return true;
+-            }
+-            break;
+-        case UnitType.PROTOMEK:
+-            if (eq.hasFlag(WeaponType.F_PROTO_WEAPON)
+-                    || eq.hasFlag(MiscType.F_PROTOMECH_EQUIPMENT)) {
+-                return true;
+-            }
+-            break;
+-        default:
+-            return false;
+-        }
+-        return false;
+-    }
+-
+     void filterTables() {
+         RowFilter<WeaponsTableModel, Integer> weaponFilter = null;
+         RowFilter<EquipmentTableModel, Integer> equipmentFilter = null;
+@@ -880,7 +833,7 @@ public class AdvancedSearchDialog extends JDialog implements ActionListener,
+                             matchTechLvl(techLevel,wp.getTechLevel(gameYear));
+                     boolean techClassMatch =
+                             matchTechClass(techClass,currTechClass);
+-                    boolean unitTypeMatch = matchUnitType(unitType,wp);
++                    boolean unitTypeMatch = wp.matchUnitType(unitType, this);
+                     if (techLvlMatch && techClassMatch && unitTypeMatch){
+                         return true;
+                     }else{
+@@ -906,7 +859,7 @@ public class AdvancedSearchDialog extends JDialog implements ActionListener,
+                             matchTechLvl(techLevel,eq.getTechLevel(gameYear));
+                     boolean techClassMatch =
+                             matchTechClass(techClass,currTechClass);
+-                    boolean unitTypeMatch = matchUnitType(unitType,eq);
++                    boolean unitTypeMatch = eq.matchUnitType(unitType, this);
+                     if (techLvlMatch && techClassMatch && unitTypeMatch){
+                         return true;
+                     }else{
+diff --git a/megamek/src/megamek/client/ui/swing/AnalyzeFormationDialog.java b/megamek/src/megamek/client/ui/swing/AnalyzeFormationDialog.java
+index a039e41..4105385 100644
+--- a/megamek/src/megamek/client/ui/swing/AnalyzeFormationDialog.java
++++ b/megamek/src/megamek/client/ui/swing/AnalyzeFormationDialog.java
+@@ -249,29 +249,24 @@ public class AnalyzeFormationDialog extends JDialog {
+         List<FormationType.Constraint> retVal = new ArrayList<>();
+         if ((networkMask & ModelRecord.NETWORK_BOOSTED) != 0) {
+             retVal.add(new FormationType.CountConstraint(1,
+-                    ms -> (getNetworkMask(ms) & ModelRecord.NETWORK_BOOSTED_MASTER) != 0, "C3 Boosted Master"));
++                    ms -> (ms.getNetworkMask(this) & ModelRecord.NETWORK_BOOSTED_MASTER) != 0, "C3 Boosted Master"));
+             retVal.add(new FormationType.CountConstraint(3,
+-                    ms -> (getNetworkMask(ms) & ModelRecord.NETWORK_BOOSTED_SLAVE) != 0, "C3 Boosted Slave"));            
++                    ms -> (ms.getNetworkMask(this) & ModelRecord.NETWORK_BOOSTED_SLAVE) != 0, "C3 Boosted Slave"));
+         } else if ((networkMask & ModelRecord.NETWORK_C3_MASTER) != 0) {
+             retVal.add(new FormationType.CountConstraint(1,
+-                    ms -> (getNetworkMask(ms) & ModelRecord.NETWORK_C3_MASTER) != 0, "C3 Master"));
++                    ms -> (ms.getNetworkMask(this) & ModelRecord.NETWORK_C3_MASTER) != 0, "C3 Master"));
+             retVal.add(new FormationType.CountConstraint(3,
+-                    ms -> (getNetworkMask(ms) & ModelRecord.NETWORK_C3_SLAVE) != 0, "C3 Slave"));            
++                    ms -> (ms.getNetworkMask(this) & ModelRecord.NETWORK_C3_SLAVE) != 0, "C3 Slave"));
+         } else if ((networkMask & ModelRecord.NETWORK_C3I) != 0) {
+             retVal.add(new FormationType.CountConstraint(1,
+-                    ms -> (getNetworkMask(ms) & ModelRecord.NETWORK_C3I) != 0, "C3i"));
++                    ms -> (ms.getNetworkMask(this) & ModelRecord.NETWORK_C3I) != 0, "C3i"));
+         } else if ((networkMask & ModelRecord.NETWORK_NOVA) != 0) {
+             retVal.add(new FormationType.CountConstraint(1,
+-                    ms -> (getNetworkMask(ms) & ModelRecord.NETWORK_NOVA) != 0, "Nova CEWS"));
++                    ms -> (ms.getNetworkMask(this) & ModelRecord.NETWORK_NOVA) != 0, "Nova CEWS"));
+         }
+         return retVal;
+     }
+-    
+-    private int getNetworkMask(MechSummary ms) {
+-        ModelRecord mRec = RATGenerator.getInstance().getModelRecord(ms.getName());
+-        return mRec == null? ModelRecord.NETWORK_NONE : mRec.getNetworkMask();
+-    }
+-    
++
+     class UnitTableRowFilter extends RowFilter<UnitTableModel,Integer> {
+         FormationType.Constraint constraint;
+ 
+diff --git a/megamek/src/megamek/client/ui/swing/ChatLounge.java b/megamek/src/megamek/client/ui/swing/ChatLounge.java
+index 1dbba3a..5d85a04 100644
+--- a/megamek/src/megamek/client/ui/swing/ChatLounge.java
++++ b/megamek/src/megamek/client/ui/swing/ChatLounge.java
+@@ -2724,7 +2724,7 @@ public class ChatLounge extends AbstractPhaseDisplay
+                         Messages.getString("ChatLounge.SelectBotOrPlayer")); //$NON-NLS-1$ //$NON-NLS-2$
+                 return;
+             }
+-            clientgui.deleteAllUnits(c);
++            c.deleteAllUnits(clientgui);
+         } else if (ev.getSource().equals(butOptions)) {
+             // Make sure the game options dialog is editable.
+             if (!clientgui.getGameOptionsDialog().isEditable()) {
+diff --git a/megamek/src/megamek/client/ui/swing/ClientGUI.java b/megamek/src/megamek/client/ui/swing/ClientGUI.java
+index 22e240b..d9e44d2 100644
+--- a/megamek/src/megamek/client/ui/swing/ClientGUI.java
++++ b/megamek/src/megamek/client/ui/swing/ClientGUI.java
+@@ -711,7 +711,7 @@ public class ClientGUI extends JPanel implements WindowListener, BoardViewListen
+             ignoreHotKeys = false;
+         }
+         if ("fileUnitsClear".equalsIgnoreCase(event.getActionCommand())) { //$NON-NLS-1$
+-            deleteAllUnits(client);
++            client.deleteAllUnits(this);
+         }
+         if ("fileUnitsReinforce".equalsIgnoreCase(event.getActionCommand())) { //$NON-NLS-1$
+             ignoreHotKeys = true;
+@@ -1552,16 +1552,6 @@ public class ClientGUI extends JPanel implements WindowListener, BoardViewListen
+         }
+     }
+ 
+-    public void deleteAllUnits(Client c) {
+-        ArrayList<Entity> currentUnits = c.getGame().getPlayerEntities(
+-                c.getLocalPlayer(), false);
+-        ArrayList<Integer> ids = new ArrayList<Integer>(currentUnits.size());
+-        for (Entity e : currentUnits){
+-            ids.add(e.getId());
+-        }
+-        c.sendDeleteEntities(ids);
+-    }
+-
+     /**
+      * Allow the player to save a list of entities to a MegaMek Unit List file.
+      * A "Save As" dialog will be displayed that allows the user to select the
+diff --git a/megamek/src/megamek/client/ui/swing/ForceGeneratorOptionsView.java b/megamek/src/megamek/client/ui/swing/ForceGeneratorOptionsView.java
+index 6c34e87..2b32f45 100644
+--- a/megamek/src/megamek/client/ui/swing/ForceGeneratorOptionsView.java
++++ b/megamek/src/megamek/client/ui/swing/ForceGeneratorOptionsView.java
+@@ -350,67 +350,67 @@ public class ForceGeneratorOptionsView extends JPanel implements FocusListener,
+         gbc = new GridBagConstraints();
+         gbc.anchor = GridBagConstraints.NORTHWEST;
+ 
+-        chkRoleRecon = createMissionRoleCheck(MissionRole.RECON);
++        chkRoleRecon = MissionRole.RECON.createMissionRoleCheck(this);
+         gbc.gridx = 0;
+         gbc.gridy = 0;
+         panGroundRole.add(chkRoleRecon, gbc);
+ 
+-        chkRoleFireSupport = createMissionRoleCheck(MissionRole.FIRE_SUPPORT);
++        chkRoleFireSupport = MissionRole.FIRE_SUPPORT.createMissionRoleCheck(this);
+         gbc.gridx = 1;
+         gbc.gridy = 0;
+         panGroundRole.add(chkRoleFireSupport, gbc);
+ 
+-        chkRoleUrban = createMissionRoleCheck(MissionRole.URBAN);
++        chkRoleUrban = MissionRole.URBAN.createMissionRoleCheck(this);
+         gbc.gridx = 2;
+         gbc.gridy = 0;
+         panGroundRole.add(chkRoleUrban, gbc);
+ 
+-        chkRoleCavalry = createMissionRoleCheck(MissionRole.CAVALRY);
++        chkRoleCavalry = MissionRole.CAVALRY.createMissionRoleCheck(this);
+         gbc.gridx = 3;
+         gbc.gridy = 0;
+         panGroundRole.add(chkRoleCavalry, gbc);
+ 
+-        chkRoleRaider = createMissionRoleCheck(MissionRole.RAIDER);
++        chkRoleRaider = MissionRole.RAIDER.createMissionRoleCheck(this);
+         gbc.gridx = 0;
+         gbc.gridy = 1;
+         panGroundRole.add(chkRoleRaider, gbc);
+ 
+-        chkRoleIncindiary = createMissionRoleCheck(MissionRole.INCENDIARY);
++        chkRoleIncindiary = MissionRole.INCENDIARY.createMissionRoleCheck(this);
+         gbc.gridx = 1;
+         gbc.gridy = 1;
+         panGroundRole.add(chkRoleIncindiary, gbc);
+ 
+-        chkRoleAntiAircraft = createMissionRoleCheck(MissionRole.ANTI_AIRCRAFT);
++        chkRoleAntiAircraft = MissionRole.ANTI_AIRCRAFT.createMissionRoleCheck(this);
+         gbc.gridx = 2;
+         gbc.gridy = 1;
+         panGroundRole.add(chkRoleAntiAircraft, gbc);
+ 
+-        chkRoleAntiInfantry = createMissionRoleCheck(MissionRole.ANTI_INFANTRY);
++        chkRoleAntiInfantry = MissionRole.ANTI_INFANTRY.createMissionRoleCheck(this);
+         gbc.gridx = 3;
+         gbc.gridy = 1;
+         panGroundRole.add(chkRoleAntiInfantry, gbc);
+ 
+-        chkRoleArtillery = createMissionRoleCheck(MissionRole.ARTILLERY);
++        chkRoleArtillery = MissionRole.ARTILLERY.createMissionRoleCheck(this);
+         gbc.gridx = 0;
+         gbc.gridy = 2;
+         panGroundRole.add(chkRoleArtillery, gbc);
+ 
+-        chkRoleMissileArtillery = createMissionRoleCheck(MissionRole.MISSILE_ARTILLERY);
++        chkRoleMissileArtillery = MissionRole.MISSILE_ARTILLERY.createMissionRoleCheck(this);
+         gbc.gridx = 1;
+         gbc.gridy = 2;
+         panGroundRole.add(chkRoleMissileArtillery, gbc);
+ 
+-        chkRoleInfantrySupport = createMissionRoleCheck(MissionRole.INF_SUPPORT);
++        chkRoleInfantrySupport = MissionRole.INF_SUPPORT.createMissionRoleCheck(this);
+         gbc.gridx = 2;
+         gbc.gridy = 2;
+         panGroundRole.add(chkRoleInfantrySupport, gbc);
+ 
+-        chkRoleTransport = createMissionRoleCheck(MissionRole.CARGO);
++        chkRoleTransport = MissionRole.CARGO.createMissionRoleCheck(this);
+         gbc.gridx = 0;
+         gbc.gridy = 3;
+         panGroundRole.add(chkRoleTransport, gbc);
+ 
+-        chkRoleEngineer = createMissionRoleCheck(MissionRole.ENGINEER);
++        chkRoleEngineer = MissionRole.ENGINEER.createMissionRoleCheck(this);
+         gbc.gridx = 1;
+         gbc.gridy = 3;
+         panGroundRole.add(chkRoleEngineer, gbc);
+@@ -418,17 +418,17 @@ public class ForceGeneratorOptionsView extends JPanel implements FocusListener,
+         gbc = new GridBagConstraints();
+         gbc.anchor = GridBagConstraints.NORTHWEST;
+ 
+-        chkRoleFieldGun = createMissionRoleCheck(MissionRole.FIELD_GUN);
++        chkRoleFieldGun = MissionRole.FIELD_GUN.createMissionRoleCheck(this);
+         gbc.gridx = 0;
+         gbc.gridy = 0;
+         panInfRole.add(chkRoleFieldGun, gbc);
+ 
+-        chkRoleFieldArtillery = createMissionRoleCheck(MissionRole.ARTILLERY);
++        chkRoleFieldArtillery = MissionRole.ARTILLERY.createMissionRoleCheck(this);
+         gbc.gridx = 1;
+         gbc.gridy = 0;
+         panInfRole.add(chkRoleFieldArtillery, gbc);
+ 
+-        chkRoleFieldMissileArtillery = createMissionRoleCheck(MissionRole.MISSILE_ARTILLERY);
++        chkRoleFieldMissileArtillery = MissionRole.MISSILE_ARTILLERY.createMissionRoleCheck(this);
+         gbc.gridx = 2;
+         gbc.gridy = 0;
+         panInfRole.add(chkRoleFieldMissileArtillery, gbc);
+@@ -436,37 +436,37 @@ public class ForceGeneratorOptionsView extends JPanel implements FocusListener,
+         gbc = new GridBagConstraints();
+         gbc.anchor = GridBagConstraints.NORTHWEST;
+ 
+-        chkRoleAirRecon = createMissionRoleCheck(MissionRole.RECON);
++        chkRoleAirRecon = MissionRole.RECON.createMissionRoleCheck(this);
+         gbc.gridx = 0;
+         gbc.gridy = 0;
+         panAirRole.add(chkRoleAirRecon, gbc);
+ 
+-        chkRoleGroundSupport = createMissionRoleCheck(MissionRole.GROUND_SUPPORT);
++        chkRoleGroundSupport = MissionRole.GROUND_SUPPORT.createMissionRoleCheck(this);
+         gbc.gridx = 1;
+         gbc.gridy = 0;
+         panAirRole.add(chkRoleGroundSupport, gbc);
+ 
+-        chkRoleInterceptor = createMissionRoleCheck(MissionRole.INTERCEPTOR);
++        chkRoleInterceptor = MissionRole.INTERCEPTOR.createMissionRoleCheck(this);
+         gbc.gridx = 2;
+         gbc.gridy = 0;
+         panAirRole.add(chkRoleInterceptor, gbc);
+ 
+-        chkRoleEscort = createMissionRoleCheck(MissionRole.ESCORT);
++        chkRoleEscort = MissionRole.ESCORT.createMissionRoleCheck(this);
+         gbc.gridx = 0;
+         gbc.gridy = 1;
+         panAirRole.add(chkRoleEscort, gbc);
+ 
+-        chkRoleBomber = createMissionRoleCheck(MissionRole.BOMBER);
++        chkRoleBomber = MissionRole.BOMBER.createMissionRoleCheck(this);
+         gbc.gridx = 1;
+         gbc.gridy = 1;
+         panAirRole.add(chkRoleBomber, gbc);
+ 
+-        chkRoleAssault = createMissionRoleCheck(MissionRole.ASSAULT);
++        chkRoleAssault = MissionRole.ASSAULT.createMissionRoleCheck(this);
+         gbc.gridx = 0;
+         gbc.gridy = 2;
+         panAirRole.add(chkRoleAssault, gbc);
+ 
+-        chkRoleAirTransport = createMissionRoleCheck(MissionRole.CARGO);
++        chkRoleAirTransport = MissionRole.CARGO.createMissionRoleCheck(this);
+         gbc.gridx = 1;
+         gbc.gridy = 2;
+         panAirRole.add(chkRoleAirTransport, gbc);
+@@ -474,13 +474,6 @@ public class ForceGeneratorOptionsView extends JPanel implements FocusListener,
+         refreshFactions();
+     }
+ 
+-    private JCheckBox createMissionRoleCheck(MissionRole role) {
+-        String key = "MissionRole." + role.toString().toLowerCase();
+-        JCheckBox chk = new JCheckBox(Messages.getString(key));
+-        chk.setToolTipText(Messages.getString(key + ".tooltip"));
+-        return chk;
+-    }
+-
+     private void generateForce() {
+         ForceDescriptor fd = new ForceDescriptor();
+         fd.setTopLevel(true);
+diff --git a/megamek/src/megamek/client/ui/swing/UnitOverview.java b/megamek/src/megamek/client/ui/swing/UnitOverview.java
+index c29cbcc..335f8ab 100644
+--- a/megamek/src/megamek/client/ui/swing/UnitOverview.java
++++ b/megamek/src/megamek/client/ui/swing/UnitOverview.java
+@@ -44,7 +44,6 @@ import megamek.common.Infantry;
+ import megamek.common.Mech;
+ import megamek.common.Protomech;
+ import megamek.common.Tank;
+-import megamek.common.options.OptionsConstants;
+ import megamek.common.util.MegaMekFile;
+ import megamek.common.util.StringUtil;
+ 
+@@ -143,7 +142,7 @@ public class UnitOverview implements IDisplayable {
+             graph.drawImage(i1, x, y, null);
+             printLine(graph, x + 3, y + 46, name);
+             drawBars(graph, e, x, y);
+-            drawHeat(graph, e, x, y);
++            e.drawHeat(graph, x, y, this);
+             drawConditionStrings(graph, e, x, y);
+             graph.setColor(getFrameColor(e));
+             graph.drawRect(x, y, ICON_WIDTH, ICON_HEIGHT);
+@@ -299,32 +298,6 @@ public class UnitOverview implements IDisplayable {
+         return visible;
+     }
+ 
+-    private void drawHeat(Graphics graph, Entity entity, int x, int y) {
+-        if (!((entity instanceof Mech) || (entity instanceof Aero))) {
+-            return;
+-        }
+-        boolean mtHeat = false;
+-        int mHeat = 30;
+-        if ((entity.getGame() != null)
+-                && entity.getGame().getOptions().booleanOption(OptionsConstants.ADVCOMBAT_TACOPS_HEAT)) {
+-            mHeat = 50;
+-            mtHeat = true;
+-        }
+-        int heat = Math.min(mHeat, entity.heat);
+-
+-        graph.setColor(Color.darkGray);
+-        graph.fillRect(x + 52, y + 4, 2, 30);
+-        graph.setColor(Color.lightGray);
+-        graph.fillRect(x + 51, y + 3, 2, 30);
+-        graph.setColor(Color.red);
+-        if (mtHeat) {
+-            graph.fillRect(x + 51, y + 3 + (30 - (int) (heat * 0.6)), 2,
+-                    (int) (heat * 0.6));
+-        } else {
+-            graph.fillRect(x + 51, y + 3 + (30 - heat), 2, heat);
+-        }
+-    }
+-
+     private void drawBars(Graphics graph, Entity entity, int x, int y) {
+         // Lets draw our armor and internal status bars
+         int baseBarLength = 23;
+diff --git a/megamek/src/megamek/client/ui/swing/boardview/BoardView1.java b/megamek/src/megamek/client/ui/swing/boardview/BoardView1.java
+index a01524d..36a33cd 100644
+--- a/megamek/src/megamek/client/ui/swing/boardview/BoardView1.java
++++ b/megamek/src/megamek/client/ui/swing/boardview/BoardView1.java
+@@ -1792,25 +1792,6 @@ public class BoardView1 extends JPanel implements IBoardView, Scrollable,
+         }
+     }
+ 
+-    private synchronized void drawHexSpritesForHex(Coords c, Graphics g,
+-            ArrayList<? extends HexSprite> spriteArrayList) {
+-        Rectangle view = g.getClipBounds();
+-
+-        for (HexSprite sprite : spriteArrayList) {
+-            Coords cp = sprite.getPosition();
+-            // This can potentially be an expensive operation
+-            Rectangle spriteBounds = sprite.getBounds();
+-            if (cp.equals(c) && view.intersects(spriteBounds)
+-                    && !sprite.isHidden()) {
+-                if (!sprite.isReady()) {
+-                    sprite.prepare();
+-                }
+-                sprite.drawOnto(g, spriteBounds.x, spriteBounds.y,
+-                        this, false);
+-            }
+-        }
+-    }
+-
+     /**
+      * Draws the Entity for the given hex. This function is used by the
+      * isometric rendering process so that sprites are drawn in the order that
+@@ -2407,10 +2388,10 @@ public class BoardView1 extends JPanel implements IBoardView, Scrollable,
+                             drawHex(c, g, saveBoardImage);
+                             if (GUIPreferences.getInstance()
+                                     .getShowFieldOfFire()) {
+-                                drawHexSpritesForHex(c, g, fieldofFireSprites);
++                                c.drawHexSpritesForHex(g, fieldofFireSprites, this);
+                             }
+-                            drawHexSpritesForHex(c, g, moveEnvSprites);
+-                            drawHexSpritesForHex(c, g, moveModEnvSprites);
++                            c.drawHexSpritesForHex(g, moveEnvSprites, this);
++                            c.drawHexSpritesForHex(g, moveModEnvSprites, this);
+                             if ((en_Deployer != null)
+                                     && board.isLegalDeployment(c,
+                                             en_Deployer.getStartingPos())) {
+diff --git a/megamek/src/megamek/client/ui/swing/unitDisplay/WeaponPanel.java b/megamek/src/megamek/client/ui/swing/unitDisplay/WeaponPanel.java
+index 6f14b8a..9a4335c 100644
+--- a/megamek/src/megamek/client/ui/swing/unitDisplay/WeaponPanel.java
++++ b/megamek/src/megamek/client/ui/swing/unitDisplay/WeaponPanel.java
+@@ -1851,7 +1851,7 @@ public class WeaponPanel extends PicMap implements ListSelectionListener,
+                     continue;
+                 }
+ 
+-                m_chBayWeapon.addItem(formatBayWeapon(curWeapon));
++                m_chBayWeapon.addItem(curWeapon.formatBayWeapon(this));
+             }
+ 
+             if (chosen == -1) {
+@@ -2150,12 +2150,6 @@ public class WeaponPanel extends PicMap implements ListSelectionListener,
+         return sb.toString();
+     }
+ 
+-    private String formatBayWeapon(Mounted m) {
+-        StringBuffer sb = new StringBuffer(64);
+-        sb.append(m.getDesc());
+-        return sb.toString();
+-    }
+-
+     /**
+      * Update the range display for the selected ammo.
+      *
+diff --git a/megamek/src/megamek/client/ui/swing/widget/GeneralInfoMapSet.java b/megamek/src/megamek/client/ui/swing/widget/GeneralInfoMapSet.java
+index c12ff62..bfd1c41 100644
+--- a/megamek/src/megamek/client/ui/swing/widget/GeneralInfoMapSet.java
++++ b/megamek/src/megamek/client/ui/swing/widget/GeneralInfoMapSet.java
+@@ -21,7 +21,6 @@ import java.awt.Color;
+ import java.awt.Font;
+ import java.awt.FontMetrics;
+ import java.awt.Image;
+-import java.util.Enumeration;
+ import java.util.Vector;
+ 
+ import javax.swing.JComponent;
+@@ -43,9 +42,6 @@ import megamek.common.QuadVee;
+ import megamek.common.Sensor;
+ import megamek.common.Tank;
+ import megamek.common.Warship;
+-import megamek.common.options.IOption;
+-import megamek.common.options.IOptionGroup;
+-import megamek.common.options.IOptions;
+ import megamek.common.options.OptionsConstants;
+ import megamek.common.options.PilotOptions;
+ import megamek.common.util.MegaMekFile;
+@@ -346,7 +342,7 @@ public class GeneralInfoMapSet implements DisplayMapSet {
+ 
+         if ((null != en.getGame())
+                 && en.getGame().getOptions().booleanOption(OptionsConstants.ADVANCED_STRATOPS_QUIRKS)) {
+-            addOptionsToList(en.getQuirks(), quirksAndPartReps);
++            quirksAndPartReps.addOptionsToList(en.getQuirks(), this);
+         }
+ 
+         if ((null != en.getGame())
+@@ -354,7 +350,7 @@ public class GeneralInfoMapSet implements DisplayMapSet {
+             // skip a line for readability
+             quirksAndPartReps.addString("");
+ 
+-            addOptionsToList(en.getPartialRepairs(), quirksAndPartReps);
++            quirksAndPartReps.addOptionsToList(en.getPartialRepairs(), this);
+         }
+ 
+         if (en.mpUsed > 0) {
+@@ -580,27 +576,6 @@ public class GeneralInfoMapSet implements DisplayMapSet {
+ 
+     }
+ 
+-    /**
+-     * Add all options from the given IOptions instance into an array of PMSimpleLabel elements.
+-     * @param optionsInstance IOptions instance
+-     * @param quirksAndPartReps
+-     */
+-    public void addOptionsToList(IOptions optionsInstance, PMMultiLineLabel quirksAndPartReps) {
+-        for (Enumeration<IOptionGroup> optionGroups = optionsInstance.getGroups(); optionGroups.hasMoreElements();) {
+-            IOptionGroup group = optionGroups.nextElement();
+-            if (optionsInstance.count(group.getKey()) > 0) {
+-                quirksAndPartReps.addString(group.getDisplayableName());
+-
+-                for (Enumeration<IOption> options = group.getOptions(); options.hasMoreElements();) {
+-                    IOption option = options.nextElement();
+-                    if (option != null && option.booleanValue()) {
+-                        quirksAndPartReps.addString("  " + option.getDisplayableNameWithValue());
+-                    }
+-                }
+-            }
+-        }
+-    }
+-
+     public PMAreasGroup getContentGroup() {
+         return content;
+     }
+diff --git a/megamek/src/megamek/client/ui/swing/widget/PMMultiLineLabel.java b/megamek/src/megamek/client/ui/swing/widget/PMMultiLineLabel.java
+index 3eab1d8..7de6d1e 100644
+--- a/megamek/src/megamek/client/ui/swing/widget/PMMultiLineLabel.java
++++ b/megamek/src/megamek/client/ui/swing/widget/PMMultiLineLabel.java
+@@ -1,10 +1,15 @@
+ package megamek.client.ui.swing.widget;
+ 
++import megamek.common.options.IOption;
++import megamek.common.options.IOptionGroup;
++import megamek.common.options.IOptions;
++
+ import java.awt.Color;
+ import java.awt.Font;
+ import java.awt.FontMetrics;
+ import java.awt.Graphics;
+ import java.util.ArrayList;
++import java.util.Enumeration;
+ import java.util.List;
+ 
+ /**
+@@ -70,5 +75,25 @@ public class PMMultiLineLabel extends PMSimpleLabel {
+         g.setColor(temp);
+         g.setFont(font);
+     }
+-    
++
++    /**
++     * Add all options from the given IOptions instance into an array of PMSimpleLabel elements.
++     * @param optionsInstance IOptions instance
++     * @param generalInfoMapSet
++     */
++    public void addOptionsToList(IOptions optionsInstance, GeneralInfoMapSet generalInfoMapSet) {
++        for (Enumeration<IOptionGroup> optionGroups = optionsInstance.getGroups(); optionGroups.hasMoreElements();) {
++            IOptionGroup group = optionGroups.nextElement();
++            if (optionsInstance.count(group.getKey()) > 0) {
++                addString(group.getDisplayableName());
++
++                for (Enumeration<IOption> options = group.getOptions(); options.hasMoreElements();) {
++                    IOption option = options.nextElement();
++                    if (option != null && option.booleanValue()) {
++                        addString("  " + option.getDisplayableNameWithValue());
++                    }
++                }
++            }
++        }
++    }
+ }
+diff --git a/megamek/src/megamek/common/AmmoType.java b/megamek/src/megamek/common/AmmoType.java
+index 654a76a..27ef53e 100644
+--- a/megamek/src/megamek/common/AmmoType.java
++++ b/megamek/src/megamek/common/AmmoType.java
+@@ -15,6 +15,8 @@
+ 
+ package megamek.common;
+ 
++import megamek.common.weapons.CapitalMissileHandler;
++
+ import java.math.BigInteger;
+ import java.util.ArrayList;
+ import java.util.Enumeration;
+@@ -15252,6 +15254,40 @@ public class AmmoType extends EquipmentType {
+         }
+     }
+ 
++    /*
++     * get the cap mis mod given a single ammo type
++     */
++    public int getCritMod(CapitalMissileHandler capitalMissileHandler) {
++        if (this == null || getAmmoType() == T_PIRANHA
++                || getAmmoType() == T_AAA_MISSILE
++                || getAmmoType() == T_ASEW_MISSILE
++                || getAmmoType() == T_LAA_MISSILE) {
++            return 0;
++        }
++        if (getAmmoType() == T_WHITE_SHARK
++                || getAmmoType() == T_WHITE_SHARK_T
++                || hasFlag(F_AR10_WHITE_SHARK)
++                // Santa Anna, per IO rules
++                || hasFlag(F_SANTA_ANNA)) {
++            return 9;
++        } else if (getAmmoType() == T_KRAKEN_T
++                || getAmmoType() == T_KRAKENM
++                // Peacemaker, per IO rules
++                || hasFlag(F_PEACEMAKER)) {
++            return 8;
++        } else if (getAmmoType() == T_KILLER_WHALE
++                || getAmmoType() == T_KILLER_WHALE_T
++                || hasFlag(F_AR10_KILLER_WHALE)
++                || getAmmoType() == T_MANTA_RAY
++                || getAmmoType() == T_ALAMO) {
++            return 10;
++        } else if (getAmmoType() == T_STINGRAY) {
++            return 12;
++        } else {
++            return 11;
++        }
++    }
++
+     /**
+      * Helper class for creating munition types.
+      */
+diff --git a/megamek/src/megamek/common/Compute.java b/megamek/src/megamek/common/Compute.java
+index dd9bd26..b4f318b 100644
+--- a/megamek/src/megamek/common/Compute.java
++++ b/megamek/src/megamek/common/Compute.java
+@@ -4805,7 +4805,7 @@ public class Compute {
+         int range = sensor.getRangeByBracket();
+ 
+         // adjust the range based on LOS and planetary conditions
+-        range = sensor.adjustRange(range, game, los);
++        range = los.adjustRange(range, game, sensor);
+ 
+         //If we're an airborne aero, sensor range is limited to within a few hexes of the flightline against ground targets
+         //TO Dec 2017 Errata p17
+diff --git a/megamek/src/megamek/common/Coords.java b/megamek/src/megamek/common/Coords.java
+index e78f1a8..3c67c5d 100644
+--- a/megamek/src/megamek/common/Coords.java
++++ b/megamek/src/megamek/common/Coords.java
+@@ -14,10 +14,13 @@
+ 
+ package megamek.common;
+ 
++import java.awt.*;
+ import java.io.Serializable;
+ import java.util.ArrayList;
+ import java.util.List;
+ 
++import megamek.client.ui.swing.boardview.BoardView1;
++import megamek.client.ui.swing.boardview.HexSprite;
+ import megamek.common.util.HashCodeUtil;
+ 
+ /**
+@@ -487,4 +490,23 @@ public class Coords implements Serializable {
+     public final int getY() {
+         return y;
+     }
++
++    public synchronized void drawHexSpritesForHex(Graphics g,
++                                                  ArrayList<? extends HexSprite> spriteArrayList, BoardView1 boardView1) {
++        Rectangle view = g.getClipBounds();
++
++        for (HexSprite sprite : spriteArrayList) {
++            Coords cp = sprite.getPosition();
++            // This can potentially be an expensive operation
++            Rectangle spriteBounds = sprite.getBounds();
++            if (cp.equals(this) && view.intersects(spriteBounds)
++                    && !sprite.isHidden()) {
++                if (!sprite.isReady()) {
++                    sprite.prepare();
++                }
++                sprite.drawOnto(g, spriteBounds.x, spriteBounds.y,
++                        boardView1, false);
++            }
++        }
++    }
+ }
+diff --git a/megamek/src/megamek/common/Entity.java b/megamek/src/megamek/common/Entity.java
+index 63015f9..2892e7b 100644
+--- a/megamek/src/megamek/common/Entity.java
++++ b/megamek/src/megamek/common/Entity.java
+@@ -16,6 +16,7 @@
+ 
+ package megamek.common;
+ 
++import java.awt.*;
+ import java.math.BigInteger;
+ import java.text.NumberFormat;
+ import java.util.ArrayList;
+@@ -37,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
+ import java.util.stream.Collectors;
+ 
+ import megamek.client.ui.swing.GUIPreferences;
++import megamek.client.ui.swing.UnitOverview;
+ import megamek.common.Building.BasementType;
+ import megamek.common.IGame.Phase;
+ import megamek.common.MovePath.MoveStepType;
+@@ -166,6 +168,32 @@ public abstract class Entity extends TurnOrdered implements Transporter,
+ 
+     public static final String ENTITY_AIR_TO_GROUND_SENSOR_RANGE= Messages.getString("Entity.sensor_range_vs_ground_target");
+ 
++    public void drawHeat(Graphics graph, int x, int y, UnitOverview unitOverview) {
++        if (!((this instanceof Mech) || (this instanceof Aero))) {
++            return;
++        }
++        boolean mtHeat = false;
++        int mHeat = 30;
++        if ((getGame() != null)
++                && getGame().getOptions().booleanOption(OptionsConstants.ADVCOMBAT_TACOPS_HEAT)) {
++            mHeat = 50;
++            mtHeat = true;
++        }
++        int heat = Math.min(mHeat, this.heat);
++
++        graph.setColor(Color.darkGray);
++        graph.fillRect(x + 52, y + 4, 2, 30);
++        graph.setColor(Color.lightGray);
++        graph.fillRect(x + 51, y + 3, 2, 30);
++        graph.setColor(Color.red);
++        if (mtHeat) {
++            graph.fillRect(x + 51, y + 3 + (30 - (int) (heat * 0.6)), 2,
++                    (int) (heat * 0.6));
++        } else {
++            graph.fillRect(x + 51, y + 3 + (30 - heat), 2, heat);
++        }
++    }
++
+     // Weapon sort order defines
+     public static enum WeaponSortOrder {
+         DEFAULT("DEFAULT"),
+diff --git a/megamek/src/megamek/common/EntityFluff.java b/megamek/src/megamek/common/EntityFluff.java
+index 7873826..875c1fb 100644
+--- a/megamek/src/megamek/common/EntityFluff.java
++++ b/megamek/src/megamek/common/EntityFluff.java
+@@ -17,9 +17,12 @@ import java.io.Serializable;
+ import java.util.EnumMap;
+ import java.util.List;
+ import java.util.Map;
++import java.util.StringJoiner;
++import java.util.function.Supplier;
+ import java.util.stream.Collectors;
+ 
+ import megamek.common.annotations.Nullable;
++import megamek.common.templates.TROView;
+ 
+ /**
+  * Tracks fluff details for entities.
+@@ -33,6 +36,32 @@ public class EntityFluff implements Serializable {
+      */
+     private static final long serialVersionUID = -8018098140016149185L;
+ 
++    /**
++     * Builds the fluff name for a system component.
++     *
++     * @param system
++     *            The system component
++     * @param altText
++     *            Alternate text that will be used if neither fluff field is set.
++     * @param troView
++     * @return The fluff display name, which consists of the manufacturer and the
++     *         model separated by a space. If either is missing it is left out.
++     */
++    public String formatSystemFluff(System system, Supplier<String> altText, TROView troView) {
++        final StringJoiner sj = new StringJoiner(" ");
++        if (getSystemManufacturer(system).length() > 0) {
++            sj.add(getSystemManufacturer(system));
++        }
++        if (getSystemModel(system).length() > 0) {
++            sj.add(getSystemModel(system));
++        }
++        if (sj.toString().length() > 0) {
++            return sj.toString();
++        } else {
++            return altText.get();
++        }
++    }
++
+     public enum System {
+         CHASSIS, ENGINE, ARMOR, JUMPJET, COMMUNICATIONS, TARGETING;
+ 
+diff --git a/megamek/src/megamek/common/EntityMovementMode.java b/megamek/src/megamek/common/EntityMovementMode.java
+index bdb46f3..5389a6d 100644
+--- a/megamek/src/megamek/common/EntityMovementMode.java
++++ b/megamek/src/megamek/common/EntityMovementMode.java
+@@ -75,4 +75,14 @@ public enum EntityMovementMode {
+     {
+         return t.name();
+     }
++
++    public int getConversionModeFor(LandAirMech landAirMech) {
++        if (this == AERODYNE || this == WHEELED) {
++            return LandAirMech.CONV_MODE_FIGHTER;
++        } else if (this == WIGE) {
++            return LandAirMech.CONV_MODE_AIRMECH;
++        } else {
++            return LandAirMech.CONV_MODE_MECH;
++        }
++    }
+ }
+diff --git a/megamek/src/megamek/common/EquipmentType.java b/megamek/src/megamek/common/EquipmentType.java
+index e5be51d..4a1c2e0 100644
+--- a/megamek/src/megamek/common/EquipmentType.java
++++ b/megamek/src/megamek/common/EquipmentType.java
+@@ -28,6 +28,7 @@ import java.util.Map;
+ import java.util.Objects;
+ import java.util.Vector;
+ 
++import megamek.client.ui.swing.AdvancedSearchDialog;
+ import megamek.common.options.GameOptions;
+ import megamek.common.weapons.autocannons.HVACWeapon;
+ import megamek.common.weapons.defensivepods.BPodWeapon;
+@@ -1199,4 +1200,51 @@ public class EquipmentType implements ITechnology {
+     public int getBaseAvailability(int era) {
+         return techAdvancement.getBaseAvailability(era);
+     }
++
++    public boolean matchUnitType(int unitTypeFilter, AdvancedSearchDialog advancedSearchDialog){
++        // All is selected
++        if (unitTypeFilter < 0){
++            return true;
++        }
++        switch (unitTypeFilter) {
++        case 5: //UnitType.AERO: the aero index is out of order
++            if (hasFlag(WeaponType.F_AERO_WEAPON)
++                    || hasFlag(MiscType.F_FIGHTER_EQUIPMENT)) {
++                return true;
++            }
++            break;
++        case UnitType.BATTLE_ARMOR:
++            if (hasFlag(WeaponType.F_BA_WEAPON)
++                    || hasFlag(MiscType.F_BA_EQUIPMENT)) {
++                return true;
++            }
++            break;
++        case UnitType.INFANTRY:
++            if (hasFlag(WeaponType.F_INFANTRY)) {
++                return true;
++            }
++            break;
++        case UnitType.MEK:
++            if (hasFlag(WeaponType.F_MECH_WEAPON)
++                    || hasFlag(MiscType.F_MECH_EQUIPMENT)) {
++                return true;
++            }
++            break;
++        case UnitType.TANK:
++            if (hasFlag(WeaponType.F_TANK_WEAPON)
++                    || hasFlag(MiscType.F_TANK_EQUIPMENT)) {
++                return true;
++            }
++            break;
++        case UnitType.PROTOMEK:
++            if (hasFlag(WeaponType.F_PROTO_WEAPON)
++                    || hasFlag(MiscType.F_PROTOMECH_EQUIPMENT)) {
++                return true;
++            }
++            break;
++        default:
++            return false;
++        }
++        return false;
++    }
+ }
+diff --git a/megamek/src/megamek/common/LandAirMech.java b/megamek/src/megamek/common/LandAirMech.java
+index d527bc7..9a2602d 100644
+--- a/megamek/src/megamek/common/LandAirMech.java
++++ b/megamek/src/megamek/common/LandAirMech.java
+@@ -945,11 +945,11 @@ public class LandAirMech extends BipedMech implements IAero, IBomber {
+     }
+ 
+     public boolean canConvertTo(EntityMovementMode toMode) {
+-        return canConvertTo(getConversionMode(), getConversionModeFor(toMode));
++        return canConvertTo(getConversionMode(), toMode.getConversionModeFor(this));
+     }
+ 
+     public boolean canConvertTo(int fromMode, EntityMovementMode toMode) {
+-        return canConvertTo(fromMode, getConversionModeFor(toMode));
++        return canConvertTo(fromMode, toMode.getConversionModeFor(this));
+     }
+ 
+     /**
+@@ -1018,16 +1018,6 @@ public class LandAirMech extends BipedMech implements IAero, IBomber {
+         return true;
+     }
+ 
+-    public int getConversionModeFor(EntityMovementMode mmode) {
+-        if (mmode == EntityMovementMode.AERODYNE || mmode == EntityMovementMode.WHEELED) {
+-            return CONV_MODE_FIGHTER;
+-        } else if (mmode == EntityMovementMode.WIGE) {
+-            return CONV_MODE_AIRMECH;
+-        } else {
+-            return CONV_MODE_MECH;
+-        }
+-    }
+-
+     @Override
+     public boolean canFall(boolean gyroLegDamage) {
+         return getConversionMode() != CONV_MODE_FIGHTER && !isAirborneVTOLorWIGE();
+diff --git a/megamek/src/megamek/common/LosEffects.java b/megamek/src/megamek/common/LosEffects.java
+index efd70c8..eac4af1 100644
+--- a/megamek/src/megamek/common/LosEffects.java
++++ b/megamek/src/megamek/common/LosEffects.java
+@@ -34,6 +34,65 @@ import megamek.server.SmokeCloud;
+  */
+ public class LosEffects {
+ 
++    public int adjustRange(int range, IGame game, Sensor sensor) {
++
++        if (((sensor.getType() == Sensor.TYPE_MEK_RADAR) || (sensor.getType() == Sensor.TYPE_VEE_RADAR)
++                || (sensor.getType() == Sensor.TYPE_VEE_MAGSCAN) || (sensor.getType() == Sensor.TYPE_MEK_MAGSCAN))
++                && ((getHardBuildings() + getSoftBuildings()) > 0)) {
++            return 0;
++        }
++
++        if (isBlockedByHill()
++                && (sensor.getType() != Sensor.TYPE_MEK_SEISMIC)
++                && (sensor.getType() != Sensor.TYPE_VEE_SEISMIC)
++                && ((sensor.getType() != Sensor.TYPE_MEK_MAGSCAN) || game.getOptions()
++                        .booleanOption(OptionsConstants.ADVANCED_MAGSCAN_NOHILLS))
++                && ((sensor.getType() != Sensor.TYPE_VEE_MAGSCAN) || game.getOptions()
++                        .booleanOption(OptionsConstants.ADVANCED_MAGSCAN_NOHILLS)) && !sensor.isBAP()) {
++            return 0;
++        }
++
++        if ((sensor.getType() != Sensor.TYPE_MEK_SEISMIC) && (sensor.getType() != Sensor.TYPE_VEE_SEISMIC)) {
++            if (game.getPlanetaryConditions().hasEMI()) {
++                range -= 4;
++            }
++            // TODO: add lightning
++        }
++
++        if ((sensor.getType() == Sensor.TYPE_MEK_RADAR) || (sensor.getType() == Sensor.TYPE_VEE_RADAR)
++                || (sensor.getType() == Sensor.TYPE_VEE_IR) || (sensor.getType() == Sensor.TYPE_MEK_IR)
++                || (sensor.getType() == Sensor.TYPE_BA_HEAT)) {
++            range -= getHeavyWoods() + getSoftBuildings();
++            range -= 2 * (getUltraWoods() + getHardBuildings());
++        }
++
++        if ((sensor.getType() == Sensor.TYPE_MEK_IR) || (sensor.getType() == Sensor.TYPE_VEE_IR)) {
++            range -= game.getPlanetaryConditions().getTemperatureDifference(50,
++                    -30);
++        }
++
++        //Most spacecraft sensors only work in space...
++        if (!game.getBoard().inSpace() &&
++                (sensor.getType() == Sensor.TYPE_SPACECRAFT_ESM
++                || sensor.getType() == Sensor.TYPE_SPACECRAFT_THERMAL
++                || sensor.getType() == Sensor.TYPE_AERO_THERMAL)) {
++            range = 0;
++        }
++
++        //Aero/Small Craft Active Sensors have longer range in space
++        if (game.getBoard().inSpace() && sensor.getType() == Sensor.TYPE_AERO_SENSOR) {
++            range = Sensor.ASF_RADAR_MAX_RANGE;
++        }
++
++        //DropShip radar has reduced range when not in space
++        if (!game.getBoard().inSpace() && sensor.getType() == Sensor.TYPE_SPACECRAFT_RADAR) {
++            range = Sensor.LC_RADAR_GROUND_RANGE;
++        }
++
++        return range;
++
++    }
++
+     public static class AttackInfo {
+         public boolean attUnderWater;
+         public boolean attInWater;
+diff --git a/megamek/src/megamek/common/Mech.java b/megamek/src/megamek/common/Mech.java
+index 69d1487..c1f8b3d 100644
+--- a/megamek/src/megamek/common/Mech.java
++++ b/megamek/src/megamek/common/Mech.java
+@@ -31,6 +31,7 @@ import java.util.Map;
+ import java.util.Set;
+ import java.util.Vector;
+ 
++import megamek.common.loaders.MepFile;
+ import megamek.common.loaders.MtfFile;
+ import megamek.common.logging.DefaultMmLogger;
+ import megamek.common.logging.LogLevel;
+@@ -8920,4 +8921,15 @@ public abstract class Mech extends Entity {
+     public int getSpriteDrawPriority() {
+         return 6;
+     }
++
++    /**
++     * Decodes and sets the mech's armor and internal structure values
++     * @param loc
++     * @param s
++     * @param mepFile
++     */
++    public void decodeArmorAndInternals(int loc, String s, MepFile mepFile) {
++        initializeArmor(Integer.parseInt(s.substring(2, 4)), loc);
++        initializeInternal(Integer.parseInt(s.substring(12)), loc);
++    }
+ }
+diff --git a/megamek/src/megamek/common/MechSummary.java b/megamek/src/megamek/common/MechSummary.java
+index b1a0259..9058c39 100644
+--- a/megamek/src/megamek/common/MechSummary.java
++++ b/megamek/src/megamek/common/MechSummary.java
+@@ -14,6 +14,10 @@
+ 
+ package megamek.common;
+ 
++import megamek.client.ratgenerator.ModelRecord;
++import megamek.client.ratgenerator.RATGenerator;
++import megamek.client.ui.swing.AnalyzeFormationDialog;
++
+ import java.io.File;
+ import java.io.Serializable;
+ import java.util.HashSet;
+@@ -584,4 +588,9 @@ public class MechSummary implements Serializable {
+     public int hashCode() {
+         return Objects.hash(m_sChassis, m_sModel, m_sUnitType, m_sSourceFile);
+     }
++
++    public int getNetworkMask(AnalyzeFormationDialog analyzeFormationDialog) {
++        ModelRecord mRec = RATGenerator.getInstance().getModelRecord(getName());
++        return mRec == null? ModelRecord.NETWORK_NONE : mRec.getNetworkMask();
++    }
+ }
+diff --git a/megamek/src/megamek/common/MiscType.java b/megamek/src/megamek/common/MiscType.java
+index d52c0f3..db799e2 100644
+--- a/megamek/src/megamek/common/MiscType.java
++++ b/megamek/src/megamek/common/MiscType.java
+@@ -24,6 +24,7 @@ package megamek.common;
+ import java.math.BigInteger;
+ 
+ import megamek.common.verifier.TestEntity;
++import megamek.common.verifier.TestEntityOption;
+ import megamek.common.weapons.ppc.CLERPPC;
+ import megamek.common.weapons.ppc.ISERPPC;
+ import megamek.common.weapons.ppc.ISHeavyPPC;
+@@ -11831,4 +11832,113 @@ public class MiscType extends EquipmentType {
+     public String toString() {
+         return "MiscType: " + name;
+     }
++
++    public int calcMiscCrits(TestEntity testEntity) {
++        if (hasFlag(F_CLUB)
++                && (hasSubType(S_HATCHET)
++                        || hasSubType(S_SWORD)
++                        || hasSubType(S_CHAIN_WHIP) || hasSubType(S_MACE_THB))) {
++            return (int) Math.ceil(testEntity.getWeight() / 15.0);
++        } else if (hasFlag(F_CLUB)
++                && hasSubType(S_MACE)) {
++            return (int) Math.ceil(testEntity.getWeight() / 10.0);
++        } else if (hasFlag(F_CLUB)
++                && hasSubType(S_RETRACTABLE_BLADE)) {
++            return 1 + (int) Math.ceil(testEntity.getWeight() / 20.0);
++        } else if (hasFlag(F_CLUB)
++                && hasSubType(S_PILE_DRIVER)) {
++            return 8;
++        } else if (hasFlag(F_CLUB)
++                && hasSubType(S_CHAINSAW)) {
++            return 5;
++        } else if (hasFlag(F_CLUB)
++                && hasSubType(S_DUAL_SAW)) {
++            return 7;
++        } else if (hasFlag(F_CLUB)
++                && hasSubType(S_BACKHOE)) {
++            return 6;
++        } else if (hasFlag(F_MASC)) {
++            if (getInternalName().equals("ISMASC")) {
++                return (int) Math.round(testEntity.getWeight() / 20.0);
++            } else if (getInternalName().equals("CLMASC")) {
++                return (int) Math.round(testEntity.getWeight() / 25.0);
++            }
++        } else if (hasFlag(F_TARGCOMP)) {
++            double fTons = 0.0f;
++            for (Mounted mo : testEntity.getEntity().getWeaponList()) {
++                WeaponType wt = (WeaponType) mo.getType();
++                if (wt.hasFlag(WeaponType.F_DIRECT_FIRE)) {
++                    fTons += wt.getTonnage(testEntity.getEntity());
++                }
++            }
++            for (Mounted mo : testEntity.getEntity().getMisc()) {
++                MiscType mt2 = (MiscType) mo.getType();
++                if (mt2.hasFlag(F_RISC_LASER_PULSE_MODULE)) {
++                    fTons += getTonnage(testEntity.getEntity());
++                }
++            }
++            double weight = 0.0f;
++            if (getInternalName().equals("ISTargeting Computer")) {
++                weight = TestEntity.ceil(fTons / 4.0f,
++                        testEntity.getWeightCeilingTargComp());
++            } else if (getInternalName().equals("CLTargeting Computer")) {
++                weight = TestEntity.ceil(fTons / 5.0f,
++                        testEntity.getWeightCeilingTargComp());
++            }
++            switch (testEntity.getTargCompCrits()) {
++                case TestEntityOption.CEIL_TARGCOMP_CRITS:
++                    return (int) Math.ceil(weight);
++                case TestEntityOption.ROUND_TARGCOMP_CRITS:
++                    return (int) Math.round(weight);
++                case TestEntityOption.FLOOR_TARGCOMP_CRITS:
++                    return (int) Math.floor(weight);
++            }
++        } else if (getArmorTypeName(
++                T_ARMOR_FERRO_FIBROUS).equals(
++                getInternalName())) {
++            if (testEntity.isClanArmor()) {
++                return 7;
++            }
++            return 14;
++        } else if (getArmorTypeName(
++                T_ARMOR_FERRO_FIBROUS_PROTO).equals(
++                getInternalName())) {
++            return 16;
++        } else if (getArmorTypeName(
++                T_ARMOR_LIGHT_FERRO).equals(getInternalName())) {
++            return 7;
++        } else if (getArmorTypeName(
++                T_ARMOR_HEAVY_FERRO).equals(getInternalName())) {
++            return 21;
++        } else if (hasFlag(F_ENDO_STEEL)) {
++            if (testEntity.isClan()
++                    || getInternalName()
++                            .equals("Clan "
++                                    + getStructureTypeName(T_STRUCTURE_ENDO_STEEL))) {
++                return 7;
++            }
++            return 14;
++        } else if (hasFlag(F_ENDO_STEEL_PROTO)) {
++            return 16;
++        } else if (hasFlag(F_ENDO_COMPOSITE)) {
++            if (testEntity.isClan()
++                    || getInternalName()
++                            .equals("Clan "
++                                    + getStructureTypeName(T_STRUCTURE_ENDO_COMPOSITE))) {
++                return 4;
++            }
++            return 7;
++        } else if (hasFlag(F_REACTIVE)) {
++            if (testEntity.isClanArmor()) {
++                return 7;
++            }
++            return 14;
++        } else if (hasFlag(F_REFLECTIVE)) {
++            if (testEntity.isClanArmor()) {
++                return 5;
++            }
++            return 10;
++        }
++        return getCriticals(testEntity.getEntity());
++    }
+ }
+diff --git a/megamek/src/megamek/common/Mounted.java b/megamek/src/megamek/common/Mounted.java
+index 79afe8a..312d926 100644
+--- a/megamek/src/megamek/common/Mounted.java
++++ b/megamek/src/megamek/common/Mounted.java
+@@ -27,6 +27,7 @@ import java.util.List;
+ import java.util.Set;
+ import java.util.Vector;
+ 
++import megamek.client.ui.swing.unitDisplay.WeaponPanel;
+ import megamek.common.actions.WeaponAttackAction;
+ import megamek.common.options.OptionsConstants;
+ import megamek.common.options.WeaponQuirks;
+@@ -1919,4 +1920,9 @@ public class Mounted implements Serializable, RoundUpdated, PhaseUpdated {
+         }
+     }
+ 
++    public String formatBayWeapon(WeaponPanel weaponPanel) {
++        StringBuffer sb = new StringBuffer(64);
++        sb.append(getDesc());
++        return sb.toString();
++    }
+ }
+diff --git a/megamek/src/megamek/common/MovePath.java b/megamek/src/megamek/common/MovePath.java
+index 255915a..977c624 100644
+--- a/megamek/src/megamek/common/MovePath.java
++++ b/megamek/src/megamek/common/MovePath.java
+@@ -29,7 +29,8 @@ import java.util.Set;
+ import java.util.TreeMap;
+ import java.util.Vector;
+ 
+-import megamek.common.MovePath.MoveStepType;
++import megamek.client.bot.princess.EntityState;
++import megamek.client.bot.princess.FireControl;
+ import megamek.common.annotations.Nullable;
+ import megamek.common.options.OptionsConstants;
+ import megamek.common.pathfinder.AbstractPathFinder;
+@@ -57,6 +58,25 @@ public class MovePath implements Cloneable, Serializable {
+         this.entity = entity;
+     }
+ 
++    /**
++     * Checks if a target lies under a move path, to see if an aero unit can attack it.
++     *
++     * @param targetState used for targets position
++     * @param fireControl
++     * @return TRUE if the target is under the path.
++     */
++    public boolean isTargetUnderFlightPath(final EntityState targetState, FireControl fireControl) {
++
++        final Coords targetCoords = targetState.getPosition();
++        for (final Enumeration<MoveStep> step = getSteps(); step.hasMoreElements(); ) {
++            final Coords stepCoords = step.nextElement().getPosition();
++            if (targetCoords.equals(stepCoords)) {
++                return true;
++            }
++        }
++        return false;
++    }
++
+     public enum MoveStepType {
+         NONE, FORWARDS, BACKWARDS, TURN_LEFT, TURN_RIGHT, GET_UP, GO_PRONE, START_JUMP, CHARGE, DFA,
+         FLEE, LATERAL_LEFT, LATERAL_RIGHT, LATERAL_LEFT_BACKWARDS, LATERAL_RIGHT_BACKWARDS, UNJAM_RAC,
+@@ -1611,7 +1631,7 @@ public class MovePath implements Cloneable, Serializable {
+         }
+         // A LAM converting from AirMech to Mech mode automatically lands at the end of movement.
+         if ((getEntity() instanceof LandAirMech)
+-                && (((LandAirMech)getEntity()).getConversionModeFor(getFinalConversionMode()) == LandAirMech.CONV_MODE_MECH)){
++                && (getFinalConversionMode().getConversionModeFor(((LandAirMech)getEntity())) == LandAirMech.CONV_MODE_MECH)){
+             if (getLastStep() != null) {
+                 return getLastStep().getClearance() > 0;
+             } else {
+diff --git a/megamek/src/megamek/common/MoveStep.java b/megamek/src/megamek/common/MoveStep.java
+index 7b561b4..560d17f 100644
+--- a/megamek/src/megamek/common/MoveStep.java
++++ b/megamek/src/megamek/common/MoveStep.java
+@@ -23,11 +23,9 @@
+ package megamek.common;
+ 
+ import java.io.Serializable;
+-import java.util.ArrayList;
+-import java.util.Iterator;
+-import java.util.TreeMap;
+-import java.util.Vector;
++import java.util.*;
+ 
++import megamek.client.bot.princess.BasicPathRanker;
+ import megamek.common.MovePath.MoveStepType;
+ import megamek.common.options.OptionsConstants;
+ 
+@@ -3977,4 +3975,111 @@ public class MoveStep implements Serializable {
+         }
+         return entity instanceof Mech;
+     }
++
++    public double calcWaterHazard(Entity movingUnit, IHex hex,
++                                  StringBuilder logMsg, BasicPathRanker basicPathRanker) {
++        logMsg.append("\n\tCalculating water hazard:  ");
++
++        // Puddles don't count.
++        if (hex.depth() == 0) {
++            logMsg.append("Puddles don't count (0).");
++            return 0;
++        }
++
++        // Hover units are above the surface.
++        if (EntityMovementMode.HOVER == movingUnit.getMovementMode() ||
++            EntityMovementMode.WIGE == movingUnit.getMovementMode() ||
++            EntityMovementMode.NAVAL == movingUnit.getMovementMode()) {
++            logMsg.append("Hovering or swimming above water (0).");
++            return 0;
++        }
++
++        // Amphibious units are safe (kind of the point).
++        if (movingUnit.hasWorkingMisc(MiscType.F_FULLY_AMPHIBIOUS) ||
++            movingUnit.hasWorkingMisc(MiscType.F_AMPHIBIOUS)) {
++            logMsg.append("Amphibious unit (0).");
++            return 0;
++        }
++
++        // if we are crossing a bridge, then we'll be fine. Trust me.
++        // 1. Determine bridge elevation
++        // 2. If unit elevation is equal to bridge elevation, skip.
++        if(hex.containsTerrain(Terrains.BRIDGE_ELEV)) {
++            int bridgeElevation = hex.terrainLevel(Terrains.BRIDGE_ELEV);
++            if(bridgeElevation == getElevation()) {
++                logMsg.append("Unit (0) crossing bridge.");
++                return 0;
++            }
++        }
++
++        // Most other units are automatically destroyed.
++        if (!(movingUnit instanceof Mech || movingUnit instanceof Protomech ||
++              movingUnit instanceof BattleArmor)) {
++            logMsg.append("Ill drown (1000).");
++            return 1000;
++        }
++
++        // Unsealed unit will drown.
++        if (movingUnit instanceof Mech && ((Mech) movingUnit).isIndustrial()) {
++            logMsg.append("Industrial mechs drown too (1000).");
++            return 1000;
++        }
++
++        // Find the submerged locations.
++        Set<Integer> submergedLocations = new HashSet<>();
++        for (int loc = 0; loc < movingUnit.locations(); loc++) {
++            if (Mech.LOC_CLEG == loc && !(movingUnit instanceof TripodMech)) {
++                continue;
++            }
++
++            if ((hex.depth() >= 2) || isProne() ||
++                !(movingUnit instanceof Mech)) {
++                submergedLocations.add(loc);
++                continue;
++            }
++
++            if (Mech.LOC_RLEG == loc || Mech.LOC_LLEG == loc ||
++                Mech.LOC_CLEG == loc) {
++                submergedLocations.add(loc);
++                continue;
++            }
++
++            if ((movingUnit instanceof QuadMech) && (Mech.LOC_RARM == loc ||
++                                                     Mech.LOC_LARM == loc)) {
++                submergedLocations.add(loc);
++            }
++        }
++        logMsg.append("\n\t\tSubmerged locations: ")
++              .append(submergedLocations.size());
++
++        int hazardValue = 0;
++        for (int loc : submergedLocations) {
++            logMsg.append("\n\t\t\tLocation ").append(loc).append(" is ");
++
++            // Only locations withou armor can breach in movement phase.
++            if (movingUnit.getArmor(loc) > 0) {
++                logMsg.append(" not breached (0).");
++                continue;
++            }
++
++            // Mechs or Protomechs having a head or torso breach is deadly.
++            // For other units, any breach is deadly.
++            //noinspection ConstantConditions
++            if (Mech.LOC_HEAD == loc ||
++                Mech.LOC_CT == loc ||
++                Protomech.LOC_HEAD == loc ||
++                Protomech.LOC_TORSO == loc ||
++                (!(movingUnit instanceof Mech) &&
++                 !(movingUnit instanceof Protomech))) {
++                logMsg.append(" breached and critical (1000).");
++                return 1000;
++            }
++
++            // Add 50 points per potential breach location.
++            logMsg.append(" breached (50).");
++            hazardValue += 50;
++        }
++
++        return hazardValue;
++    }
+ }
+diff --git a/megamek/src/megamek/common/PilotingRollData.java b/megamek/src/megamek/common/PilotingRollData.java
+index f0358eb..fca981b 100644
+--- a/megamek/src/megamek/common/PilotingRollData.java
++++ b/megamek/src/megamek/common/PilotingRollData.java
+@@ -47,4 +47,10 @@ public class PilotingRollData extends TargetRoll {
+         return entityId;
+     }
+ 
++    public PilotingRollData addQuadPilotingBonus(int destroyedLegs, QuadMech quadMech) {
++        if (destroyedLegs == 0) {
++            addModifier(-2, "Quad bonus");
++        }
++        return this;
++    }
+ }
+diff --git a/megamek/src/megamek/common/Protomech.java b/megamek/src/megamek/common/Protomech.java
+index 047568a..aac74fe 100644
+--- a/megamek/src/megamek/common/Protomech.java
++++ b/megamek/src/megamek/common/Protomech.java
+@@ -22,6 +22,7 @@ import java.util.Map;
+ import java.util.Vector;
+ 
+ import megamek.common.preference.PreferenceManager;
++import megamek.common.verifier.TestProtomech;
+ 
+ /**
+  * Protomechs. Level 2 Clan equipment.
+@@ -2441,5 +2442,21 @@ public class Protomech extends Entity {
+         roll.addModifier(TargetRoll.CHECK_FALSE,
+                          "Protomechs cannot fall");
+         return roll;
+-    }   
++    }
++
++    /**
++     * Determine the minimum walk MP for the protomech based on configuration
++     *
++     *
++     * @param testProtomech@return      The minimum walk MP
++     */
++    public int getMinimumWalkMP(TestProtomech testProtomech) {
++        if (isGlider()) {
++            return 4;
++        } else if (isQuad()) {
++            return 3;
++        } else {
++            return 1;
++        }
++    }
+ }
+diff --git a/megamek/src/megamek/common/QuadMech.java b/megamek/src/megamek/common/QuadMech.java
+index 997cd8e..33d9098 100644
+--- a/megamek/src/megamek/common/QuadMech.java
++++ b/megamek/src/megamek/common/QuadMech.java
+@@ -290,13 +290,6 @@ public class QuadMech extends Mech {
+         }
+         return true;
+     }
+-    
+-    public PilotingRollData addQuadPilotingBonus(PilotingRollData roll, int destroyedLegs) {
+-        if (destroyedLegs == 0) {
+-            roll.addModifier(-2, "Quad bonus");
+-        }
+-        return roll;
+-    }
+ 
+     /**
+      * Add in any piloting skill mods
+diff --git a/megamek/src/megamek/common/Sensor.java b/megamek/src/megamek/common/Sensor.java
+index 34d2831..5ed62db 100644
+--- a/megamek/src/megamek/common/Sensor.java
++++ b/megamek/src/megamek/common/Sensor.java
+@@ -16,8 +16,6 @@ package megamek.common;
+ import java.io.Serializable;
+ import java.util.List;
+ 
+-import megamek.common.options.OptionsConstants;
+-
+ /**
+  * This class will hold all the information about a particular active sensor,
+  * including its rolls
+@@ -161,65 +159,6 @@ public class Sensor implements Serializable {
+         }
+     }
+ 
+-    public int adjustRange(int range, IGame game, LosEffects los) {
+-
+-        if (((type == TYPE_MEK_RADAR) || (type == TYPE_VEE_RADAR)
+-                || (type == TYPE_VEE_MAGSCAN) || (type == TYPE_MEK_MAGSCAN))
+-                && ((los.getHardBuildings() + los.getSoftBuildings()) > 0)) {
+-            return 0;
+-        }
+-        
+-        if (los.isBlockedByHill()
+-                && (type != TYPE_MEK_SEISMIC)
+-                && (type != TYPE_VEE_SEISMIC)
+-                && ((type != TYPE_MEK_MAGSCAN) || game.getOptions()
+-                        .booleanOption(OptionsConstants.ADVANCED_MAGSCAN_NOHILLS))
+-                && ((type != TYPE_VEE_MAGSCAN) || game.getOptions()
+-                        .booleanOption(OptionsConstants.ADVANCED_MAGSCAN_NOHILLS)) && !isBAP()) {
+-            return 0;
+-        }
+-
+-        if ((type != TYPE_MEK_SEISMIC) && (type != TYPE_VEE_SEISMIC)) {
+-            if (game.getPlanetaryConditions().hasEMI()) {
+-                range -= 4;
+-            }
+-            // TODO: add lightning
+-        }
+-
+-        if ((type == TYPE_MEK_RADAR) || (type == TYPE_VEE_RADAR)
+-                || (type == TYPE_VEE_IR) || (type == TYPE_MEK_IR)
+-                || (type == TYPE_BA_HEAT)) {
+-            range -= los.getHeavyWoods() + los.getSoftBuildings();
+-            range -= 2 * (los.getUltraWoods() + los.getHardBuildings());
+-        }
+-
+-        if ((type == TYPE_MEK_IR) || (type == TYPE_VEE_IR)) {
+-            range -= game.getPlanetaryConditions().getTemperatureDifference(50,
+-                    -30);
+-        }
+-        
+-        //Most spacecraft sensors only work in space...
+-        if (!game.getBoard().inSpace() && 
+-                (type == TYPE_SPACECRAFT_ESM 
+-                || type == TYPE_SPACECRAFT_THERMAL 
+-                || type == TYPE_AERO_THERMAL)) {
+-            range = 0;            
+-        }
+-        
+-        //Aero/Small Craft Active Sensors have longer range in space
+-        if (game.getBoard().inSpace() && type == TYPE_AERO_SENSOR) {
+-            range = ASF_RADAR_MAX_RANGE;
+-        }
+-        
+-        //DropShip radar has reduced range when not in space
+-        if (!game.getBoard().inSpace() && type == TYPE_SPACECRAFT_RADAR) {
+-            range = LC_RADAR_GROUND_RANGE;
+-        }
+-
+-        return range;
+-
+-    }
+-
+     public int getModsForStealth(Entity te) {
+ 
+         int mod = 0;
+diff --git a/megamek/src/megamek/common/TurnVectors.java b/megamek/src/megamek/common/TurnVectors.java
+index 11a0143..860e59f 100755
+--- a/megamek/src/megamek/common/TurnVectors.java
++++ b/megamek/src/megamek/common/TurnVectors.java
+@@ -14,7 +14,10 @@
+ 
+ package megamek.common;
+ 
++import megamek.server.Server;
++
+ import java.util.Enumeration;
++import java.util.Iterator;
+ import java.util.Vector;
+ 
+ /**
+@@ -543,6 +546,31 @@ public class TurnVectors implements Enumeration<ITurnOrdered> {
+     public int getMin() {
+         return this.min;
+     }
+-    
+ 
++
++    public Vector<GameTurn> checkTurnOrderStranded(Server server) {
++        Vector<GameTurn> turns = new Vector<GameTurn>(getTotalTurns()
++                + getEvenTurns());
++        // Stranded units only during movement phases, rebuild the turns vector
++        if (server.getGame().getPhase() == IGame.Phase.PHASE_MOVEMENT) {
++            // See if there are any loaded units stranded on immobile transports.
++            Iterator<Entity> strandedUnits = server.getGame()
++                    .getSelectedEntities(new EntitySelector() {
++                        public boolean accept(Entity entity) {
++                            if (this.getGame().isEntityStranded(entity)) {
++                                return true;
++                            }
++                            return false;
++                        }
++                    });
++            if (strandedUnits.hasNext()) {
++                // Add a game turn to unload stranded units, if this
++                // is the movement phase.
++                turns = new Vector<GameTurn>(getTotalTurns()
++                                             + getEvenTurns() + 1);
++                turns.addElement(new GameTurn.UnloadStrandedTurn(strandedUnits));
++            }
++        }
++        return turns;
++    }
+ }
+diff --git a/megamek/src/megamek/common/actions/WeaponAttackAction.java b/megamek/src/megamek/common/actions/WeaponAttackAction.java
+index 4eb9501..55dd1f6 100644
+--- a/megamek/src/megamek/common/actions/WeaponAttackAction.java
++++ b/megamek/src/megamek/common/actions/WeaponAttackAction.java
+@@ -77,10 +77,7 @@ import megamek.common.weapons.DiveBombAttack;
+ import megamek.common.weapons.InfantryAttack;
+ import megamek.common.weapons.artillery.ArtilleryCannonWeapon;
+ import megamek.common.weapons.artillery.ArtilleryWeapon;
+-import megamek.common.weapons.bayweapons.LaserBayWeapon;
+-import megamek.common.weapons.bayweapons.PPCBayWeapon;
+-import megamek.common.weapons.bayweapons.PulseLaserBayWeapon;
+-import megamek.common.weapons.bayweapons.ScreenLauncherBayWeapon;
++import megamek.common.weapons.bayweapons.*;
+ import megamek.common.weapons.gaussrifles.GaussWeapon;
+ import megamek.common.weapons.gaussrifles.ISHGaussRifle;
+ import megamek.common.weapons.lasers.ISBombastLaser;
+@@ -4492,4 +4489,22 @@ public class WeaponAttackAction extends AbstractAttackAction implements Serializ
+     public void updateTurnsTilHit(IGame game) {
+         
+     }
++
++    /**
++     *
++     * @param g
++     * @param ammoBayWeapon
++     */
++    public void checkAmmo(IGame g, AmmoBayWeapon ammoBayWeapon) {
++        Entity ae = getEntity(g);
++        Mounted m = ae.getEquipment(getWeaponId());
++        for (int wId : m.getBayWeapons()) {
++            Mounted weapon = ae.getEquipment(wId);
++            Mounted ammo = weapon.getLinked();
++            if (ammo == null || ammo.getUsableShotsLeft() < 1) {
++                ae.loadWeaponWithSameAmmo(weapon);
++                ammo = weapon.getLinked();
++            }
++        }
++    }
+ }
+diff --git a/megamek/src/megamek/common/loaders/MepFile.java b/megamek/src/megamek/common/loaders/MepFile.java
+index a979a7c..d78e546 100644
+--- a/megamek/src/megamek/common/loaders/MepFile.java
++++ b/megamek/src/megamek/common/loaders/MepFile.java
+@@ -216,17 +216,17 @@ public class MepFile implements IMechLoader {
+ 
+             mech.setArmorType(armorType);
+ 
+-            decodeArmorAndInternals(mech, Mech.LOC_HEAD, headArmor);
+-            decodeArmorAndInternals(mech, Mech.LOC_LARM, larmArmor);
+-            decodeArmorAndInternals(mech, Mech.LOC_LT, ltArmor);
++            mech.decodeArmorAndInternals(Mech.LOC_HEAD, headArmor, this);
++            mech.decodeArmorAndInternals(Mech.LOC_LARM, larmArmor, this);
++            mech.decodeArmorAndInternals(Mech.LOC_LT, ltArmor, this);
+             decodeRearArmor(mech, Mech.LOC_LT, ltrArmor);
+-            decodeArmorAndInternals(mech, Mech.LOC_CT, ctArmor);
++            mech.decodeArmorAndInternals(Mech.LOC_CT, ctArmor, this);
+             decodeRearArmor(mech, Mech.LOC_CT, ctrArmor);
+-            decodeArmorAndInternals(mech, Mech.LOC_RT, rtArmor);
++            mech.decodeArmorAndInternals(Mech.LOC_RT, rtArmor, this);
+             decodeRearArmor(mech, Mech.LOC_RT, rtrArmor);
+-            decodeArmorAndInternals(mech, Mech.LOC_RARM, rarmArmor);
+-            decodeArmorAndInternals(mech, Mech.LOC_RLEG, rlegArmor);
+-            decodeArmorAndInternals(mech, Mech.LOC_LLEG, llegArmor);
++            mech.decodeArmorAndInternals(Mech.LOC_RARM, rarmArmor, this);
++            mech.decodeArmorAndInternals(Mech.LOC_RLEG, rlegArmor, this);
++            mech.decodeArmorAndInternals(Mech.LOC_LLEG, llegArmor, this);
+ 
+             // remove arm actuators
+             for (int i = 0; i < equipData.length; i++) {
+@@ -332,14 +332,6 @@ public class MepFile implements IMechLoader {
+     }
+ 
+     /**
+-     * Decodes and sets the mech's armor and internal structure values
+-     */
+-    private void decodeArmorAndInternals(Mech mech, int loc, String s) {
+-        mech.initializeArmor(Integer.parseInt(s.substring(2, 4)), loc);
+-        mech.initializeInternal(Integer.parseInt(s.substring(12)), loc);
+-    }
+-
+-    /**
+      * Decodes and sets the mech's rear armor values
+      */
+     private void decodeRearArmor(Mech mech, int loc, String string) {
+diff --git a/megamek/src/megamek/common/logging/LogLevel.java b/megamek/src/megamek/common/logging/LogLevel.java
+index f090449..34b9594 100644
+--- a/megamek/src/megamek/common/logging/LogLevel.java
++++ b/megamek/src/megamek/common/logging/LogLevel.java
+@@ -13,6 +13,7 @@
+  */
+ package megamek.common.logging;
+ 
++import megamek.client.bot.princess.Princess;
+ import megamek.common.annotations.Nullable;
+ import org.apache.log4j.Level;
+ 
+@@ -89,4 +90,8 @@ public enum LogLevel {
+         }
+         return null;
+     }
++
++    public void setVerbosity(Princess princess) {
++        princess.getBehaviorSettings().setVerbosity(this);
++    }
+ }
+diff --git a/megamek/src/megamek/common/net/Packet.java b/megamek/src/megamek/common/net/Packet.java
+index a8d0e82..a3b6517 100644
+--- a/megamek/src/megamek/common/net/Packet.java
++++ b/megamek/src/megamek/common/net/Packet.java
+@@ -14,6 +14,10 @@
+ 
+ package megamek.common.net;
+ 
++import megamek.common.net.marshall.PacketMarshaller;
++
++import java.io.ByteArrayOutputStream;
++
+ /**
+  * Application layer data packet used to exchange information between client and
+  * server.
+@@ -215,4 +219,22 @@ public class Packet {
+     public boolean getBooleanValue(int index) {
+         return ((Boolean) getObject(index)).booleanValue();
+     }
++
++    /**
++     * Marshalls the packet data into the <code>byte[]</code>
++     *
++     *
++     * @param packetMarshaller@return marshalled representation of the given <code>Packet</code>
++     */
++    public byte[] marshall(PacketMarshaller packetMarshaller) {
++        ByteArrayOutputStream bo = new ByteArrayOutputStream();
++        try {
++            packetMarshaller.marshall(this, bo);
++            bo.flush();
++            return bo.toByteArray();
++        } catch (Exception e) {
++            e.printStackTrace();
++            return null;
++        }
++    }
+ }
+diff --git a/megamek/src/megamek/common/net/marshall/PacketMarshaller.java b/megamek/src/megamek/common/net/marshall/PacketMarshaller.java
+index da6afd3..0789e5c 100644
+--- a/megamek/src/megamek/common/net/marshall/PacketMarshaller.java
++++ b/megamek/src/megamek/common/net/marshall/PacketMarshaller.java
+@@ -15,7 +15,6 @@
+ package megamek.common.net.marshall;
+ 
+ import java.io.ByteArrayInputStream;
+-import java.io.ByteArrayOutputStream;
+ import java.io.InputStream;
+ import java.io.OutputStream;
+ 
+@@ -32,24 +31,6 @@ public abstract class PacketMarshaller {
+     public static final int NATIVE_SERIALIZATION_MARSHALING = 0;
+ 
+     /**
+-     * Marshalls the packet data into the <code>byte[]</code>
+-     *
+-     * @param packet packet to marshall
+-     * @return marshalled representation of the given <code>Packet</code>
+-     */
+-    public byte[] marshall(Packet packet) {
+-        ByteArrayOutputStream bo = new ByteArrayOutputStream();
+-        try {
+-            marshall(packet, bo);
+-            bo.flush();
+-            return bo.toByteArray();
+-        } catch (Exception e) {
+-            e.printStackTrace();
+-            return null;
+-        }
+-    }
+-
+-    /**
+      * Marshalls the packet data into the given <code>OutputStream</code>
+      *
+      * @param packet packet to marshall
+diff --git a/megamek/src/megamek/common/templates/AeroTROView.java b/megamek/src/megamek/common/templates/AeroTROView.java
+index 5a1cb38..acf7b37 100644
+--- a/megamek/src/megamek/common/templates/AeroTROView.java
++++ b/megamek/src/megamek/common/templates/AeroTROView.java
+@@ -106,8 +106,8 @@ public class AeroTROView extends TROView {
+ 
+     private void addFluff() {
+         addMechVeeAeroFluff(aero);
+-        setModelData("frameDesc", formatSystemFluff(EntityFluff.System.CHASSIS, aero.getFluff(),
+-                () -> Messages.getString("TROView.Unknown")));
++        setModelData("frameDesc", aero.getFluff().formatSystemFluff(EntityFluff.System.CHASSIS,
++                () -> Messages.getString("TROView.Unknown"), AeroTROView.this));
+     }
+ 
+     private static final int[][] AERO_ARMOR_LOCS = { { Aero.LOC_NOSE }, { Aero.LOC_RWING, Aero.LOC_LWING },
+diff --git a/megamek/src/megamek/common/templates/MechTROView.java b/megamek/src/megamek/common/templates/MechTROView.java
+index f362bbb..a25123f 100644
+--- a/megamek/src/megamek/common/templates/MechTROView.java
++++ b/megamek/src/megamek/common/templates/MechTROView.java
+@@ -141,8 +141,8 @@ public class MechTROView extends TROView {
+     protected void addFluff() {
+         addMechVeeAeroFluff(mech);
+         setModelData("chassisDesc",
+-                formatSystemFluff(EntityFluff.System.CHASSIS, mech.getFluff(), () -> formatChassisDesc()));
+-        setModelData("jjDesc", formatSystemFluff(EntityFluff.System.JUMPJET, mech.getFluff(), () -> formatJJDesc()));
++                mech.getFluff().formatSystemFluff(EntityFluff.System.CHASSIS, () -> formatChassisDesc(), MechTROView.this));
++        setModelData("jjDesc", mech.getFluff().formatSystemFluff(EntityFluff.System.JUMPJET, () -> formatJJDesc(), MechTROView.this));
+         setModelData("jumpCapacity", mech.getJumpMP() * 30);
+     }
+ 
+diff --git a/megamek/src/megamek/common/templates/ProtomechTROView.java b/megamek/src/megamek/common/templates/ProtomechTROView.java
+index 213801f..686bd0a 100644
+--- a/megamek/src/megamek/common/templates/ProtomechTROView.java
++++ b/megamek/src/megamek/common/templates/ProtomechTROView.java
+@@ -99,10 +99,10 @@ public class ProtomechTROView extends TROView {
+     private void addFluff() {
+         addMechVeeAeroFluff(proto);
+         if (proto.getOriginalJumpMP() > 0) {
+-            setModelData("chassisDesc", formatSystemFluff(EntityFluff.System.CHASSIS, proto.getFluff(), () -> ""));
++            setModelData("chassisDesc", proto.getFluff().formatSystemFluff(EntityFluff.System.CHASSIS, () -> "", ProtomechTROView.this));
+         }
+         if (!proto.isGlider()) {
+-            setModelData("jjDesc", formatSystemFluff(EntityFluff.System.JUMPJET, proto.getFluff(), () -> ""));
++            setModelData("jjDesc", proto.getFluff().formatSystemFluff(EntityFluff.System.JUMPJET, () -> "", ProtomechTROView.this));
+             setModelData("jumpCapacity", proto.getJumpMP() * 30);
+         }
+         if (proto.isGlider()) {
+diff --git a/megamek/src/megamek/common/templates/TROView.java b/megamek/src/megamek/common/templates/TROView.java
+index 9ff45d9..b2a2423 100644
+--- a/megamek/src/megamek/common/templates/TROView.java
++++ b/megamek/src/megamek/common/templates/TROView.java
+@@ -28,7 +28,6 @@ import java.util.List;
+ import java.util.Map;
+ import java.util.StringJoiner;
+ import java.util.function.BiFunction;
+-import java.util.function.Supplier;
+ import java.util.stream.Collectors;
+ 
+ import freemarker.template.Template;
+@@ -214,43 +213,16 @@ public class TROView {
+         }
+     }
+ 
+-    /**
+-     * Builds the fluff name for a system component.
+-     *
+-     * @param system
+-     *            The system component
+-     * @param fluff
+-     *            The {@link Entity}'s fluff object
+-     * @param altText
+-     *            Alternate text that will be used if neither fluff field is set.
+-     * @return The fluff display name, which consists of the manufacturer and the
+-     *         model separated by a space. If either is missing it is left out.
+-     */
+-    protected String formatSystemFluff(EntityFluff.System system, EntityFluff fluff, Supplier<String> altText) {
+-        final StringJoiner sj = new StringJoiner(" ");
+-        if (fluff.getSystemManufacturer(system).length() > 0) {
+-            sj.add(fluff.getSystemManufacturer(system));
+-        }
+-        if (fluff.getSystemModel(system).length() > 0) {
+-            sj.add(fluff.getSystemModel(system));
+-        }
+-        if (sj.toString().length() > 0) {
+-            return sj.toString();
+-        } else {
+-            return altText.get();
+-        }
+-    }
+-
+     protected void addMechVeeAeroFluff(Entity entity) {
+         addEntityFluff(entity);
+         model.put("massDesc", NumberFormat.getInstance().format(entity.getWeight())
+                 + Messages.getString(entity.getWeight() == 1.0 ? "TROView.ton" : "TROView.tons"));
+-        model.put("engineDesc", formatSystemFluff(EntityFluff.System.ENGINE, entity.getFluff(),
+-                () -> stripNotes(entity.getEngine().getEngineName())));
++        model.put("engineDesc", entity.getFluff().formatSystemFluff(EntityFluff.System.ENGINE,
++                () -> stripNotes(entity.getEngine().getEngineName()), this));
+         model.put("cruisingSpeed", entity.getWalkMP() * 10.8);
+         model.put("maxSpeed", entity.getRunMP() * 10.8);
+         model.put("armorDesc",
+-                formatSystemFluff(EntityFluff.System.ARMOR, entity.getFluff(), () -> formatArmorType(entity, false)));
++                entity.getFluff().formatSystemFluff(EntityFluff.System.ARMOR, () -> formatArmorType(entity, false), this));
+         final Map<String, Integer> weaponCount = new HashMap<>();
+         double podSpace = 0.0;
+         for (final Mounted m : entity.getEquipment()) {
+@@ -268,10 +240,10 @@ public class TROView {
+             armaments.add(String.format(Messages.getString("TROView.podspace.format"), podSpace));
+         }
+         model.put("armamentList", armaments);
+-        model.put("communicationDesc", formatSystemFluff(EntityFluff.System.COMMUNICATIONS, entity.getFluff(),
+-                () -> Messages.getString("TROView.Unknown")));
+-        model.put("targetingDesc", formatSystemFluff(EntityFluff.System.TARGETING, entity.getFluff(),
+-                () -> Messages.getString("TROView.Unknown")));
++        model.put("communicationDesc", entity.getFluff().formatSystemFluff(EntityFluff.System.COMMUNICATIONS,
++                () -> Messages.getString("TROView.Unknown"), this));
++        model.put("targetingDesc", entity.getFluff().formatSystemFluff(EntityFluff.System.TARGETING,
++                () -> Messages.getString("TROView.Unknown"), this));
+     }
+ 
+     private String formatTechBase(Entity entity) {
+diff --git a/megamek/src/megamek/common/templates/VehicleTROView.java b/megamek/src/megamek/common/templates/VehicleTROView.java
+index 08afc2e..a6b33de 100644
+--- a/megamek/src/megamek/common/templates/VehicleTROView.java
++++ b/megamek/src/megamek/common/templates/VehicleTROView.java
+@@ -114,8 +114,8 @@ public class VehicleTROView extends TROView {
+     private void addFluff() {
+         addMechVeeAeroFluff(tank);
+         if (tank.getJumpMP() > 0) {
+-            setModelData("jjDesc", formatSystemFluff(EntityFluff.System.JUMPJET, tank.getFluff(),
+-                    () -> Messages.getString("TROView.jjVehicle")));
++            setModelData("jjDesc", tank.getFluff().formatSystemFluff(EntityFluff.System.JUMPJET,
++                    () -> Messages.getString("TROView.jjVehicle"), VehicleTROView.this));
+             setModelData("jumpCapacity", tank.getJumpMP() * 30);
+         }
+     }
+diff --git a/megamek/src/megamek/common/verifier/TestEntity.java b/megamek/src/megamek/common/verifier/TestEntity.java
+index 33af6de..12323ac 100755
+--- a/megamek/src/megamek/common/verifier/TestEntity.java
++++ b/megamek/src/megamek/common/verifier/TestEntity.java
+@@ -707,118 +707,6 @@ public abstract class TestEntity implements TestEntityOption {
+         return buff.toString();
+     }
+ 
+-    public int calcMiscCrits(MiscType mt) {
+-        if (mt.hasFlag(MiscType.F_CLUB)
+-                && (mt.hasSubType(MiscType.S_HATCHET)
+-                        || mt.hasSubType(MiscType.S_SWORD)
+-                        || mt.hasSubType(MiscType.S_CHAIN_WHIP) || mt
+-                            .hasSubType(MiscType.S_MACE_THB))) {
+-            return (int) Math.ceil(getWeight() / 15.0);
+-        } else if (mt.hasFlag(MiscType.F_CLUB)
+-                && mt.hasSubType(MiscType.S_MACE)) {
+-            return (int) Math.ceil(getWeight() / 10.0);
+-        } else if (mt.hasFlag(MiscType.F_CLUB)
+-                && mt.hasSubType(MiscType.S_RETRACTABLE_BLADE)) {
+-            return 1 + (int) Math.ceil(getWeight() / 20.0);
+-        } else if (mt.hasFlag(MiscType.F_CLUB)
+-                && mt.hasSubType(MiscType.S_PILE_DRIVER)) {
+-            return 8;
+-        } else if (mt.hasFlag(MiscType.F_CLUB)
+-                && mt.hasSubType(MiscType.S_CHAINSAW)) {
+-            return 5;
+-        } else if (mt.hasFlag(MiscType.F_CLUB)
+-                && mt.hasSubType(MiscType.S_DUAL_SAW)) {
+-            return 7;
+-        } else if (mt.hasFlag(MiscType.F_CLUB)
+-                && mt.hasSubType(MiscType.S_BACKHOE)) {
+-            return 6;
+-        } else if (mt.hasFlag(MiscType.F_MASC)) {
+-            if (mt.getInternalName().equals("ISMASC")) {
+-                return (int) Math.round(getWeight() / 20.0);
+-            } else if (mt.getInternalName().equals("CLMASC")) {
+-                return (int) Math.round(getWeight() / 25.0);
+-            }
+-        } else if (mt.hasFlag(MiscType.F_TARGCOMP)) {
+-            double fTons = 0.0f;
+-            for (Mounted mo : getEntity().getWeaponList()) {
+-                WeaponType wt = (WeaponType) mo.getType();
+-                if (wt.hasFlag(WeaponType.F_DIRECT_FIRE)) {
+-                    fTons += wt.getTonnage(getEntity());
+-                }
+-            }
+-            for (Mounted mo : getEntity().getMisc()) {
+-                MiscType mt2 = (MiscType) mo.getType();
+-                if (mt2.hasFlag(MiscType.F_RISC_LASER_PULSE_MODULE)) {
+-                    fTons += mt.getTonnage(getEntity());
+-                }
+-            }
+-            double weight = 0.0f;
+-            if (mt.getInternalName().equals("ISTargeting Computer")) {
+-                weight = TestEntity.ceil(fTons / 4.0f,
+-                        getWeightCeilingTargComp());
+-            } else if (mt.getInternalName().equals("CLTargeting Computer")) {
+-                weight = TestEntity.ceil(fTons / 5.0f,
+-                        getWeightCeilingTargComp());
+-            }
+-            switch (getTargCompCrits()) {
+-                case CEIL_TARGCOMP_CRITS:
+-                    return (int) Math.ceil(weight);
+-                case ROUND_TARGCOMP_CRITS:
+-                    return (int) Math.round(weight);
+-                case FLOOR_TARGCOMP_CRITS:
+-                    return (int) Math.floor(weight);
+-            }
+-        } else if (EquipmentType.getArmorTypeName(
+-                EquipmentType.T_ARMOR_FERRO_FIBROUS).equals(
+-                mt.getInternalName())) {
+-            if (isClanArmor()) {
+-                return 7;
+-            }
+-            return 14;
+-        } else if (EquipmentType.getArmorTypeName(
+-                EquipmentType.T_ARMOR_FERRO_FIBROUS_PROTO).equals(
+-                mt.getInternalName())) {
+-            return 16;
+-        } else if (EquipmentType.getArmorTypeName(
+-                EquipmentType.T_ARMOR_LIGHT_FERRO).equals(mt.getInternalName())) {
+-            return 7;
+-        } else if (EquipmentType.getArmorTypeName(
+-                EquipmentType.T_ARMOR_HEAVY_FERRO).equals(mt.getInternalName())) {
+-            return 21;
+-        } else if (mt.hasFlag(MiscType.F_ENDO_STEEL)) {
+-            if (isClan()
+-                    || mt.getInternalName()
+-                            .equals("Clan "
+-                                    + EquipmentType
+-                                            .getStructureTypeName(EquipmentType.T_STRUCTURE_ENDO_STEEL))) {
+-                return 7;
+-            }
+-            return 14;
+-        } else if (mt.hasFlag(MiscType.F_ENDO_STEEL_PROTO)) {
+-            return 16;
+-        } else if (mt.hasFlag(MiscType.F_ENDO_COMPOSITE)) {
+-            if (isClan()
+-                    || mt.getInternalName()
+-                            .equals("Clan "
+-                                    + EquipmentType
+-                                            .getStructureTypeName(EquipmentType.T_STRUCTURE_ENDO_COMPOSITE))) {
+-                return 4;
+-            }
+-            return 7;
+-        } else if (mt.hasFlag(MiscType.F_REACTIVE)) {
+-            if (isClanArmor()) {
+-                return 7;
+-            }
+-            return 14;
+-        } else if (mt.hasFlag(MiscType.F_REFLECTIVE)) {
+-            if (isClanArmor()) {
+-                return 5;
+-            }
+-            return 10;
+-        }
+-        return mt.getCriticals(getEntity());
+-    }
+-
+     /**
+      * Computes heat sink requirement for heat-neutral units (vehicles, conventional fighters,
+      * protomechs). This is a total of energy weapons that don't use ammo and some other miscellaneous
+diff --git a/megamek/src/megamek/common/verifier/TestMech.java b/megamek/src/megamek/common/verifier/TestMech.java
+index a6ca0dc..d1409fe 100755
+--- a/megamek/src/megamek/common/verifier/TestMech.java
++++ b/megamek/src/megamek/common/verifier/TestMech.java
+@@ -502,7 +502,7 @@ public class TestMech extends TestEntity {
+         EquipmentType et = mounted.getType();
+         int criticals = 0;
+         if (et instanceof MiscType) {
+-            criticals = calcMiscCrits((MiscType) et);
++            criticals = ((MiscType) et).calcMiscCrits(TestMech.this);
+         } else {
+             criticals = et.getCriticals(entity);
+         }
+diff --git a/megamek/src/megamek/common/verifier/TestProtomech.java b/megamek/src/megamek/common/verifier/TestProtomech.java
+index a016113..f5c9cfc 100644
+--- a/megamek/src/megamek/common/verifier/TestProtomech.java
++++ b/megamek/src/megamek/common/verifier/TestProtomech.java
+@@ -613,23 +613,7 @@ public class TestProtomech extends TestEntity {
+     public double getWeightPowerAmp() {
+         return 0;
+     }
+-    
+-    /**
+-     * Determine the minimum walk MP for the protomech based on configuration
+-     * 
+-     * @param proto The protomech
+-     * @return      The minimum walk MP
+-     */
+-    public int getMinimumWalkMP(Protomech proto) {
+-        if (proto.isGlider()) {
+-            return 4;
+-        } else if (proto.isQuad()) {
+-            return 3;
+-        } else {
+-            return 1;
+-        }
+-    }
+-    
++
+     /**
+      * Computes the required engine rating
+      * 
+diff --git a/megamek/src/megamek/common/weapons/CapitalMissileHandler.java b/megamek/src/megamek/common/weapons/CapitalMissileHandler.java
+index 13459dd..11297b4 100644
+--- a/megamek/src/megamek/common/weapons/CapitalMissileHandler.java
++++ b/megamek/src/megamek/common/weapons/CapitalMissileHandler.java
+@@ -413,43 +413,9 @@ public class CapitalMissileHandler extends AmmoWeaponHandler {
+     @Override
+     protected int getCapMisMod() {
+         AmmoType atype = (AmmoType) ammo.getType();
+-        return getCritMod(atype);
++        return atype.getCritMod(this);
+     }
+ 
+-    /*
+-     * get the cap mis mod given a single ammo type
+-     */
+-    protected int getCritMod(AmmoType atype) {
+-        if (atype == null || atype.getAmmoType() == AmmoType.T_PIRANHA
+-                || atype.getAmmoType() == AmmoType.T_AAA_MISSILE
+-                || atype.getAmmoType() == AmmoType.T_ASEW_MISSILE
+-                || atype.getAmmoType() == AmmoType.T_LAA_MISSILE) {
+-            return 0;
+-        }
+-        if (atype.getAmmoType() == AmmoType.T_WHITE_SHARK
+-                || atype.getAmmoType() == AmmoType.T_WHITE_SHARK_T
+-                || atype.hasFlag(AmmoType.F_AR10_WHITE_SHARK)
+-                // Santa Anna, per IO rules
+-                || atype.hasFlag(AmmoType.F_SANTA_ANNA)) {
+-            return 9;
+-        } else if (atype.getAmmoType() == AmmoType.T_KRAKEN_T
+-                || atype.getAmmoType() == AmmoType.T_KRAKENM
+-                // Peacemaker, per IO rules
+-                || atype.hasFlag(AmmoType.F_PEACEMAKER)) {
+-            return 8;
+-        } else if (atype.getAmmoType() == AmmoType.T_KILLER_WHALE
+-                || atype.getAmmoType() == AmmoType.T_KILLER_WHALE_T
+-                || atype.hasFlag(AmmoType.F_AR10_KILLER_WHALE)
+-                || atype.getAmmoType() == AmmoType.T_MANTA_RAY
+-                || atype.getAmmoType() == AmmoType.T_ALAMO) {
+-            return 10;
+-        } else if (atype.getAmmoType() == AmmoType.T_STINGRAY) {
+-            return 12;
+-        } else {
+-            return 11;
+-        }
+-    }
+-    
+     /**
+      * Checks to see if this point defense/AMS bay can engage a capital missile
+      * This should return true. Only when handling capital missile attacks can this be false.
+diff --git a/megamek/src/megamek/common/weapons/bayweapons/AmmoBayWeapon.java b/megamek/src/megamek/common/weapons/bayweapons/AmmoBayWeapon.java
+index 1ec939f..3604b4f 100644
+--- a/megamek/src/megamek/common/weapons/bayweapons/AmmoBayWeapon.java
++++ b/megamek/src/megamek/common/weapons/bayweapons/AmmoBayWeapon.java
+@@ -17,9 +17,7 @@
+  */
+ package megamek.common.weapons.bayweapons;
+ 
+-import megamek.common.Entity;
+ import megamek.common.IGame;
+-import megamek.common.Mounted;
+ import megamek.common.ToHitData;
+ import megamek.common.actions.WeaponAttackAction;
+ import megamek.common.weapons.AmmoBayWeaponHandler;
+@@ -45,26 +43,10 @@ public abstract class AmmoBayWeapon extends BayWeapon {
+         // Just in case. Often necessary when/if multiple ammo weapons are
+         // fired; if this line not present
+         // then when one ammo slots run dry the rest silently don't fire.
+-        checkAmmo(waa, game);
++        waa.checkAmmo(game, this);
+         return super.fire(waa, game, server);
+     }
+ 
+-    /**
+-     * 
+-     */
+-    protected void checkAmmo(WeaponAttackAction waa, IGame g) {
+-        Entity ae = waa.getEntity(g);
+-        Mounted m = ae.getEquipment(waa.getWeaponId());
+-        for (int wId : m.getBayWeapons()) {
+-            Mounted weapon = ae.getEquipment(wId);
+-            Mounted ammo = weapon.getLinked();
+-            if (ammo == null || ammo.getUsableShotsLeft() < 1) {
+-                ae.loadWeaponWithSameAmmo(weapon);
+-                ammo = weapon.getLinked();
+-            }
+-        }
+-    }
+-
+     /*
+      * (non-Javadoc)
+      * 
+diff --git a/megamek/src/megamek/server/FireProcessor.java b/megamek/src/megamek/server/FireProcessor.java
+index 2185d3e..85ed343 100644
+--- a/megamek/src/megamek/server/FireProcessor.java
++++ b/megamek/src/megamek/server/FireProcessor.java
+@@ -385,7 +385,7 @@ public class FireProcessor extends DynamicTerrainProcessor {
+ 
+                 int roll = Compute.d6(2);
+ 
+-                boolean dissipated = driftSmokeDissipate(cloud, roll, windStr);
++                boolean dissipated = cloud.driftSmokeDissipate(roll, windStr, this);
+ 
+                 if ( dissipated || cloud.didDrift() ){
+                     driftSmokeReport(cloud,dissipated);
+@@ -476,40 +476,6 @@ public class FireProcessor extends DynamicTerrainProcessor {
+         return nextCoords;
+     }
+ 
+-    /**
+-     * Diisipates Smoke clouds instead of indivdiual smoke hexes
+-     * @param cloud
+-     * @param roll
+-     * @param windStr
+-     * @return
+-     */
+-    public boolean driftSmokeDissipate(SmokeCloud cloud, int roll, int windStr) {
+-
+-        //HVAC Heavy smoke dissipation
+-        if ( (cloud.getDuration() > 0) && ((cloud.getDuration()-1) == 0) ) {
+-            cloud.setDuration(0);
+-            cloud.setSmokeLevel(0);
+-            return true;
+-        }
+-
+-        if ( (cloud.getDuration() > 0) && ((cloud.getDuration()-1) > 0) ) {
+-            cloud.setDuration(cloud.getDuration()-1);
+-        }
+-
+-        // Dissipate in various winds
+-        if ((roll > 10) || ((roll > 9) && (windStr == PlanetaryConditions.WI_MOD_GALE))
+-                || ((roll > 7) && (windStr == PlanetaryConditions.WI_STRONG_GALE))
+-                || ((roll > 5) && (windStr == PlanetaryConditions.WI_STORM))) {
+-            return true;
+-        }
+-        //All smoke goes bye bye in Tornados
+-        if ( windStr > PlanetaryConditions.WI_STORM ) {
+-            cloud.setSmokeLevel(0);
+-            return true;
+-        }
+-        return false;
+-    }
+-
+     public void driftSmokeReport(SmokeCloud cloud, boolean dis) {
+         Report r;
+         int size = cloud.getSmokeLevel();
+diff --git a/megamek/src/megamek/server/Server.java b/megamek/src/megamek/server/Server.java
+index abc1a38..e1d540e 100644
+--- a/megamek/src/megamek/server/Server.java
++++ b/megamek/src/megamek/server/Server.java
+@@ -3715,32 +3715,6 @@ public class Server implements Runnable {
+         transmitAllPlayerUpdates();
+     }
+ 
+-    private Vector<GameTurn> checkTurnOrderStranded(TurnVectors team_order) {
+-        Vector<GameTurn> turns = new Vector<GameTurn>(team_order.getTotalTurns()
+-                + team_order.getEvenTurns());
+-        // Stranded units only during movement phases, rebuild the turns vector
+-        if (game.getPhase() == IGame.Phase.PHASE_MOVEMENT) {
+-            // See if there are any loaded units stranded on immobile transports.
+-            Iterator<Entity> strandedUnits = game
+-                    .getSelectedEntities(new EntitySelector() {
+-                        public boolean accept(Entity entity) {
+-                            if (game.isEntityStranded(entity)) {
+-                                return true;
+-                            }
+-                            return false;
+-                        }
+-                    });
+-            if (strandedUnits.hasNext()) {
+-                // Add a game turn to unload stranded units, if this
+-                // is the movement phase.
+-                turns = new Vector<GameTurn>(team_order.getTotalTurns()
+-                                             + team_order.getEvenTurns() + 1);
+-                turns.addElement(new GameTurn.UnloadStrandedTurn(strandedUnits));
+-            }
+-        }
+-        return turns;
+-    }
+-
+     /**
+      * Determines the turn oder for a given phase (with individual init)
+      *
+@@ -3787,7 +3761,7 @@ public class Server implements Runnable {
+         TurnVectors team_order = TurnOrdered.generateTurnOrder(entities, game);
+ 
+         // Now, we collect everything into a single vector.
+-        Vector<GameTurn> turns = checkTurnOrderStranded(team_order);
++        Vector<GameTurn> turns = team_order.checkTurnOrderStranded(this);
+ 
+ 
+ 
+@@ -4006,7 +3980,7 @@ public class Server implements Runnable {
+                 game.getTeamsVector(), game);
+ 
+         // Now, we collect everything into a single vector.
+-        Vector<GameTurn> turns = checkTurnOrderStranded(team_order);
++        Vector<GameTurn> turns = team_order.checkTurnOrderStranded(this);
+ 
+         // Walk through the global order, assigning turns
+         // for individual players to the single vector.
+diff --git a/megamek/src/megamek/server/SmokeCloud.java b/megamek/src/megamek/server/SmokeCloud.java
+index f6b4dcf..4653d21 100644
+--- a/megamek/src/megamek/server/SmokeCloud.java
++++ b/megamek/src/megamek/server/SmokeCloud.java
+@@ -19,6 +19,7 @@ import java.io.Serializable;
+ import java.util.ArrayList;
+ 
+ import megamek.common.Coords;
++import megamek.common.PlanetaryConditions;
+ 
+ public class SmokeCloud implements Serializable{
+     
+@@ -115,4 +116,38 @@ public class SmokeCloud implements Serializable{
+     public boolean didDrift(){
+         return this.didDrift;
+     }
++
++    /**
++     * Diisipates Smoke clouds instead of indivdiual smoke hexes
++     * @param roll
++     * @param windStr
++     * @param fireProcessor
++     * @return
++     */
++    public boolean driftSmokeDissipate(int roll, int windStr, FireProcessor fireProcessor) {
++
++        //HVAC Heavy smoke dissipation
++        if ( (getDuration() > 0) && ((getDuration()-1) == 0) ) {
++            setDuration(0);
++            setSmokeLevel(0);
++            return true;
++        }
++
++        if ( (getDuration() > 0) && ((getDuration()-1) > 0) ) {
++            setDuration(getDuration()-1);
++        }
++
++        // Dissipate in various winds
++        if ((roll > 10) || ((roll > 9) && (windStr == PlanetaryConditions.WI_MOD_GALE))
++                || ((roll > 7) && (windStr == PlanetaryConditions.WI_STRONG_GALE))
++                || ((roll > 5) && (windStr == PlanetaryConditions.WI_STORM))) {
++            return true;
++        }
++        //All smoke goes bye bye in Tornados
++        if ( windStr > PlanetaryConditions.WI_STORM ) {
++            setSmokeLevel(0);
++            return true;
++        }
++        return false;
++    }
+ }
+\ No newline at end of file
+diff --git a/megamek/unittests/megamek/client/bot/ChatProcessorTest.java b/megamek/unittests/megamek/client/bot/ChatProcessorTest.java
+index b221236..aeec799 100644
+--- a/megamek/unittests/megamek/client/bot/ChatProcessorTest.java
++++ b/megamek/unittests/megamek/client/bot/ChatProcessorTest.java
+@@ -117,38 +117,38 @@ public class ChatProcessorTest {
+         String cmd = VictoryCommand.getDeclareIndividual(mockHumanPlayerDave.getName());
+         String msg = Server.formatChatMessage(Server.ORIGIN, cmd);
+         Assert.assertTrue(mockHumanPlayerDave.isEnemyOf(mockBotPlayerHal));
+-        Assert.assertTrue(chatProcessor.shouldBotAcknowledgeDefeat(msg, mockBotHal));
++        Assert.assertTrue(mockBotHal.shouldBotAcknowledgeDefeat(msg, chatProcessor));
+ 
+         // Test team human victory.
+         cmd = VictoryCommand.getDeclareTeam(mockHumanPlayerDave.getName());
+         msg = Server.formatChatMessage(Server.ORIGIN, cmd);
+-        Assert.assertTrue(chatProcessor.shouldBotAcknowledgeDefeat(msg, mockBotHal));
++        Assert.assertTrue(mockBotHal.shouldBotAcknowledgeDefeat(msg, chatProcessor));
+ 
+         // Test a different message.
+         msg = "This is general chat message with no bot commands.";
+-        Assert.assertFalse(chatProcessor.shouldBotAcknowledgeDefeat(msg, mockBotHal));
++        Assert.assertFalse(mockBotHal.shouldBotAcknowledgeDefeat(msg, chatProcessor));
+ 
+         // Test a null message.
+-        Assert.assertFalse(chatProcessor.shouldBotAcknowledgeDefeat(null, mockBotHal));
++        Assert.assertFalse(mockBotHal.shouldBotAcknowledgeDefeat(null, chatProcessor));
+ 
+         // Test an empty message.
+         msg = "";
+-        Assert.assertFalse(chatProcessor.shouldBotAcknowledgeDefeat(msg, mockBotHal));
++        Assert.assertFalse(mockBotHal.shouldBotAcknowledgeDefeat(msg, chatProcessor));
+ 
+         // Test victory by human partner.
+         cmd = VictoryCommand.getDeclareIndividual(mockHumanPlayerKirk.getName());
+         msg = Server.formatChatMessage(Server.ORIGIN, cmd);
+-        Assert.assertFalse(chatProcessor.shouldBotAcknowledgeDefeat(msg, mockBotHal));
++        Assert.assertFalse(mockBotHal.shouldBotAcknowledgeDefeat(msg, chatProcessor));
+ 
+         // Test victory by self.
+         cmd = VictoryCommand.getDeclareIndividual(mockBotPlayerHal.getName());
+         msg = Server.formatChatMessage(Server.ORIGIN, cmd);
+-        Assert.assertFalse(chatProcessor.shouldBotAcknowledgeDefeat(msg, mockBotHal));
++        Assert.assertFalse(mockBotHal.shouldBotAcknowledgeDefeat(msg, chatProcessor));
+ 
+         // Test victory by opposing bot.
+         cmd = VictoryCommand.getDeclareIndividual(mockBotPlayerVGer.getName());
+         msg = Server.formatChatMessage(Server.ORIGIN, cmd);
+-        Assert.assertTrue(chatProcessor.shouldBotAcknowledgeDefeat(msg, mockBotHal));
++        Assert.assertTrue(mockBotHal.shouldBotAcknowledgeDefeat(msg, chatProcessor));
+     }
+ 
+     @Test
+diff --git a/megamek/unittests/megamek/client/bot/princess/FireControlTest.java b/megamek/unittests/megamek/client/bot/princess/FireControlTest.java
+index 9032249..2a84f4b 100644
+--- a/megamek/unittests/megamek/client/bot/princess/FireControlTest.java
++++ b/megamek/unittests/megamek/client/bot/princess/FireControlTest.java
+@@ -1931,10 +1931,10 @@ public class FireControlTest {
+                .guessToHitModifierHelperForAnyAttack(Mockito.any(Entity.class), Mockito.any(EntityState.class),
+                                                      Mockito.any(Targetable.class), Mockito.any(EntityState.class),
+                                                      Mockito.anyInt(), Mockito.any(IGame.class));
+-        Mockito.doReturn(true).when(testFireControl).isTargetUnderFlightPath(Mockito.any(MovePath.class),
+-                                                                             Mockito.any(EntityState.class));
+-        Mockito.doReturn(false).when(testFireControl).isTargetUnderFlightPath(Mockito.eq(mockFlightPathBad),
+-                                                                              Mockito.any(EntityState.class));
++        Mockito.any(MovePath.class).isTargetUnderFlightPath(
++                Mockito.any(EntityState.class), Mockito.doReturn(true).when(testFireControl));
++        Mockito.eq(mockFlightPathBad).isTargetUnderFlightPath(
++                Mockito.any(EntityState.class), Mockito.doReturn(false).when(testFireControl));
+ 
+         final Mounted mockWeapon = Mockito.mock(Mounted.class);
+         Mockito.when(mockWeapon.canFire()).thenReturn(true);
+@@ -2028,7 +2028,7 @@ public class FireControlTest {
+         MovePath mockPath = Mockito.mock(MovePath.class);
+         Mockito.when(mockPath.getSteps()).thenReturn(pathSteps.elements());
+         Mockito.when(mockStep.getPosition()).thenReturn(mockTargetCoords);
+-        Assert.assertTrue(testFireControl.isTargetUnderFlightPath(mockPath, mockTargetState));
++        Assert.assertTrue(mockPath.isTargetUnderFlightPath(mockTargetState, testFireControl));
+ 
+         // Test the target not being under the path.
+         pathSteps = new Vector<>(1);
+@@ -2037,7 +2037,7 @@ public class FireControlTest {
+         mockPath = Mockito.mock(MovePath.class);
+         Mockito.when(mockPath.getSteps()).thenReturn(pathSteps.elements());
+         Mockito.when(mockStep.getPosition()).thenReturn(mockShooterCoords);
+-        Assert.assertFalse(testFireControl.isTargetUnderFlightPath(mockPath, mockTargetState));
++        Assert.assertFalse(mockPath.isTargetUnderFlightPath(mockTargetState, testFireControl));
+     }
+ 
+     @SuppressWarnings("ResultOfMethodCallIgnored")
+diff --git a/megamek/unittests/megamek/client/bot/princess/PhysicalInfoTest.java b/megamek/unittests/megamek/client/bot/princess/PhysicalInfoTest.java
+index 9631c04..83af0cf 100644
+--- a/megamek/unittests/megamek/client/bot/princess/PhysicalInfoTest.java
++++ b/megamek/unittests/megamek/client/bot/princess/PhysicalInfoTest.java
+@@ -1,6 +1,5 @@
+ package megamek.client.bot.princess;
+ 
+-import megamek.client.bot.princess.FireControl.FireControlType;
+ import megamek.common.BipedMech;
+ import megamek.common.Coords;
+ import megamek.common.Entity;
+@@ -76,13 +75,13 @@ public class PhysicalInfoTest {
+         PhysicalAttackType kick = PhysicalAttackType.LEFT_KICK;
+ 
+         PunchAttackAction punchAction = Mockito.mock(PunchAttackAction.class);
+-        Mockito.doReturn(punchAction).when(testPhysicalInfo).buildAction(Mockito.eq(punch), Mockito.anyInt(),
+-                                                                         Mockito.any(Targetable.class));
++        Mockito.eq(punch).buildAction(Mockito.anyInt(),
++                                                                         Mockito.any(Targetable.class), Mockito.doReturn(punchAction).when(testPhysicalInfo));
+         Mockito.when(punchAction.toHit(Mockito.any(IGame.class))).thenReturn(mockToHit);
+ 
+         KickAttackAction kickAction = Mockito.mock(KickAttackAction.class);
+-        Mockito.doReturn(kickAction).when(testPhysicalInfo).buildAction(Mockito.eq(kick), Mockito.anyInt(),
+-                                                                        Mockito.any(Targetable.class));
++        Mockito.eq(kick).buildAction(Mockito.anyInt(),
++                                                                        Mockito.any(Targetable.class), Mockito.doReturn(kickAction).when(testPhysicalInfo));
+         Mockito.when(kickAction.toHit(Mockito.any(IGame.class))).thenReturn(mockToHit);
+ 
+         // Test a vanilla punch.
