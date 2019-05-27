@@ -53,3 +53,6 @@
 [submodule "vespa/vespa"]
 	path = vespa/vespa
 	url = https://github.com/vespa-engine/vespa.git
+[submodule "elasticsearch/elasticsearch"]
+	path = elasticsearch/elasticsearch
+	url = https://github.com/elastic/elasticsearch.git

@@ -1,0 +1,26 @@
+2019-05-27 23:52:47,606 [INFO] Project C:/Dev/MoveMethodGenerator/../MoveMethodDataset/elasticsearch/elasticsearch is opened
+2019-05-27 23:54:52,887 [INFO] Total number of java files: 11094
+2019-05-27 23:54:52,887 [INFO] Total number of source java files: 11091
+2019-05-27 23:54:52,887 [INFO] Total number of classes: 4760
+2019-05-27 23:54:52,887 [INFO] Total number of methods: 39829
+2019-05-27 23:54:52,887 [INFO] StaticMethodsFilter filtered: 5781
+2019-05-27 23:54:52,887 [INFO] ConstructorsFilter filtered: 5795
+2019-05-27 23:54:52,887 [INFO] AbstractMethodsFilter filtered: 536
+2019-05-27 23:54:52,887 [INFO] GettersFilter filtered: 6040
+2019-05-27 23:54:52,887 [INFO] SettersFilter filtered: 744
+2019-05-27 23:54:52,887 [INFO] EmptyMethodsFilter filtered: 952
+2019-05-27 23:54:52,889 [INFO] ExceptionsThrowersFilter filtered: 411
+2019-05-27 23:54:52,889 [INFO] SingleMethodFilter filtered: 758
+2019-05-27 23:54:52,889 [INFO] SimpleDelegationsFilter filtered: 5997
+2019-05-27 23:54:52,889 [INFO] PrivateMethodsCallersFilter filtered: 3470
+2019-05-27 23:54:52,889 [INFO] PrivateFieldAccessorsFilter filtered: 4801
+2019-05-27 23:54:52,889 [INFO] OverridingMethodsFilter filtered: 3154
+2019-05-27 23:54:52,889 [INFO] OverriddenMethodsFilter filtered: 77
+2019-05-27 23:54:52,889 [INFO] MethodCallWithSuperFilter filtered: 3
+2019-05-27 23:54:52,889 [INFO] PrivateClassUserFilter filtered: 8
+2019-05-27 23:54:52,889 [INFO] GenericTypeUserFilter filtered: 0
+2019-05-27 23:54:52,889 [INFO] NoTargetsMethodsFilter filtered: 1017
+2019-05-27 23:54:52,889 [INFO] Number of methods after filtration: 285
+2019-05-27 23:56:51,454 [INFO] Project C:/Dev/MoveMethodGenerator/../MoveMethodDataset/elasticsearch/elasticsearch is opened
+2019-05-27 23:59:28,125 [INFO] 344 potential moves found
+2019-05-27 23:59:28,125 [INFO] 104 moves performed
