@@ -8,7 +8,8 @@ This repository is structured the following way:
    
     -> patches - folder containing patch to apply and physically move methods in project
    
-    -> *.csv - files describing move method refactorings data (for more information see https://github.com/ml-in-programming/MoveMethodGenerator/)
+    -> *.csv - files describing move method refactorings data 
+       (for more information see https://github.com/ml-in-programming/MoveMethodGenerator/)
    
     -> log - log of utilities for move method refactorings generation
 
