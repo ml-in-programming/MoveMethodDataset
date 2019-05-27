@@ -11,3 +11,5 @@ This repository is structured the following way:
     -> *.csv - files describing move method refactorings data (for more information see https://github.com/ml-in-programming/MoveMethodGenerator/)
    
     -> log - log of utilities for move method refactorings generation
+
+-> print_statistics.py - python script that outputs statistics of the dataset (how many methods moved)
