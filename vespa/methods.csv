@@ -1,0 +1,398 @@
+id,name,file,offset,containing_class_id,target_ids
+0,com.yahoo.jrt.tool.RpcInvoker.getArgument,jrt\src\com\yahoo\jrt\tool\RpcInvoker.java,784,293,315
+1,com.yahoo.jrt.Supervisor.invokeBatch,jrt\src\com\yahoo\jrt\Supervisor.java,5718,310,352 315
+2,com.yahoo.docproc.Call.configDocUpd,docproc\src\main\java\com\yahoo\docproc\Call.java,3769,374,1
+3,com.yahoo.docproc.Call.unwrapSchemaMapping,docproc\src\main\java\com\yahoo\docproc\Call.java,4750,374,269
+4,com.yahoo.docproc.CallStack.remove,docproc\src\main\java\com\yahoo\docproc\CallStack.java,8875,69,374
+5,com.yahoo.docproc.CallStack.contains,docproc\src\main\java\com\yahoo\docproc\CallStack.java,9337,69,374
+6,com.yahoo.docproc.DocprocExecutor.processUntilDone,docproc\src\main\java\com\yahoo\docproc\DocprocExecutor.java,5951,246,269
+7,com.yahoo.document.json.readers.VespaJsonDocumentReader.readPut,document\src\main\java\com\yahoo\document\json\readers\VespaJsonDocumentReader.java,4235,370,197 262
+8,com.yahoo.document.json.readers.VespaJsonDocumentReader.readAssignFieldPathUpdate,document\src\main\java\com\yahoo\document\json\readers\VespaJsonDocumentReader.java,8411,370,149 197
+9,com.yahoo.document.json.readers.VespaJsonDocumentReader.readAddFieldPathUpdate,document\src\main\java\com\yahoo\document\json\readers\VespaJsonDocumentReader.java,8857,370,149 197
+10,com.yahoo.document.json.readers.VespaJsonDocumentReader.readRemoveFieldPathUpdate,document\src\main\java\com\yahoo\document\json\readers\VespaJsonDocumentReader.java,9300,370,149 197
+11,com.yahoo.document.json.readers.VespaJsonDocumentReader.readArithmeticFieldPathUpdate,document\src\main\java\com\yahoo\document\json\readers\VespaJsonDocumentReader.java,9551,370,149 197
+12,com.yahoo.document.select.rule.LogicNode.pickOrdering,document\src\main\java\com\yahoo\document\select\rule\LogicNode.java,2842,266,369
+13,com.yahoo.document.select.rule.DocumentNode.evaluate,document\src\main\java\com\yahoo\document\select\rule\DocumentNode.java,956,175,120
+14,com.yahoo.document.select.rule.ComparisonNode.getOrdering,document\src\main\java\com\yahoo\document\select\rule\ComparisonNode.java,2542,216,335 290
+15,com.yahoo.document.select.rule.ComparisonNode.compare,document\src\main\java\com\yahoo\document\select\rule\ComparisonNode.java,5256,216,347 412 290
+16,com.yahoo.document.select.rule.ComparisonNode.compare,document\src\main\java\com\yahoo\document\select\rule\ComparisonNode.java,6143,216,347 335 290
+17,com.yahoo.document.fieldset.FieldSetRepo.parseFieldCollection,document\src\main\java\com\yahoo\document\fieldset\FieldSetRepo.java,1204,413,99
+18,com.yahoo.document.fieldset.FieldSetRepo.copyFields,document\src\main\java\com\yahoo\document\fieldset\FieldSetRepo.java,4000,413,159
+19,com.yahoo.document.fieldset.FieldSetRepo.stripFields,document\src\main\java\com\yahoo\document\fieldset\FieldSetRepo.java,4500,413,159
+20,com.yahoo.document.datatypes.Struct.assignFrom,document\src\main\java\com\yahoo\document\datatypes\Struct.java,5913,225,84
+21,com.yahoo.document.annotation.SpanList.checkValidity,document\src\main\java\com\yahoo\document\annotation\SpanList.java,2046,161,173
+22,com.yahoo.document.annotation.SpanTree.copySpan,document\src\main\java\com\yahoo\document\annotation\SpanTree.java,7617,255,173
+23,com.yahoo.document.annotation.SpanTree.annotate,document\src\main\java\com\yahoo\document\annotation\SpanTree.java,18172,255,243 173
+24,com.yahoo.document.annotation.SpanTree.annotate,document\src\main\java\com\yahoo\document\annotation\SpanTree.java,19966,255,173 186
+25,com.yahoo.document.annotation.SpanTree.clearAnnotations,document\src\main\java\com\yahoo\document\annotation\SpanTree.java,21278,255,173
+26,com.yahoo.document.annotation.SpanTree.clearAnnotationsRecursive,document\src\main\java\com\yahoo\document\annotation\SpanTree.java,21623,255,173
+27,com.yahoo.document.annotation.AnnotationType.isValueCompatible,document\src\main\java\com\yahoo\document\annotation\AnnotationType.java,3427,186,243
+28,com.yahoo.document.Field.validateId,document\src\main\java\com\yahoo\document\Field.java,5546,366,149
+29,com.yahoo.document.serialization.VespaDocumentSerializer6.write,document\src\main\java\com\yahoo\document\serialization\VespaDocumentSerializer6.java,20626,382,148
+30,com.yahoo.document.serialization.VespaDocumentSerializer6.write,document\src\main\java\com\yahoo\document\serialization\VespaDocumentSerializer6.java,20846,382,343
+31,com.yahoo.document.serialization.VespaDocumentSerializer6.write,document\src\main\java\com\yahoo\document\serialization\VespaDocumentSerializer6.java,21496,382,144
+32,com.yahoo.document.serialization.VespaDocumentDeserializer42.getValueUpdate,document\src\main\java\com\yahoo\document\serialization\VespaDocumentDeserializer42.java,23524,309,289
+33,com.yahoo.document.DocumentType.addField,document\src\main\java\com\yahoo\document\DocumentType.java,5524,149,366
+34,com.yahoo.document.DocumentType.addField,document\src\main\java\com\yahoo\document\DocumentType.java,5996,149,289
+35,com.yahoo.document.DocumentType.addHeaderField,document\src\main\java\com\yahoo\document\DocumentType.java,6668,149,289
+36,com.yahoo.document.DocumentUpdate.verifyType,document\src\main\java\com\yahoo\document\DocumentUpdate.java,3720,136,159
+37,com.yahoo.document.ReferenceDataType.compareTargetType,document\src\main\java\com\yahoo\document\ReferenceDataType.java,3715,191,289
+38,com.yahoo.document.BaseStructDataType.hasField,document\src\main\java\com\yahoo\document\BaseStructDataType.java,3531,390,366
+39,com.yahoo.document.DocumentTypeManager.registerDocumentType,document\src\main\java\com\yahoo\document\DocumentTypeManager.java,10478,99,149
+40,com.yahoo.document.DocumentTypeManager.replaceTemporaryTypeInReference,document\src\main\java\com\yahoo\document\DocumentTypeManager.java,15173,99,191
+41,com.yahoo.vespaxmlparser.VespaXMLFieldReader.assignPositionFieldFromStringIfNonEmpty,document\src\main\java\com\yahoo\vespaxmlparser\VespaXMLFieldReader.java,10081,341,225
+42,com.yahoo.component.ComponentSpecification.nestInNamespace,component\src\main\java\com\yahoo\component\ComponentSpecification.java,2461,167,147
+43,com.yahoo.component.ComponentSpecification.namespaceMatch,component\src\main\java\com\yahoo\component\ComponentSpecification.java,5615,167,147
+44,com.yahoo.config.codegen.LeafCNode.setValue,configgen\src\main\java\com\yahoo\config\codegen\LeafCNode.java,3247,267,20
+45,com.yahoo.searchlib.expression.RawResultNodeVector.add,searchlib\src\main\java\com\yahoo\searchlib\expression\RawResultNodeVector.java,785,239,108
+46,com.yahoo.searchlib.expression.BoolResultNodeVector.add,searchlib\src\main\java\com\yahoo\searchlib\expression\BoolResultNodeVector.java,542,95,353
+47,com.yahoo.searchlib.expression.Int8ResultNodeVector.add,searchlib\src\main\java\com\yahoo\searchlib\expression\Int8ResultNodeVector.java,645,392,393
+48,com.yahoo.searchlib.expression.FloatResultNodeVector.add,searchlib\src\main\java\com\yahoo\searchlib\expression\FloatResultNodeVector.java,795,336,210
+49,com.yahoo.searchlib.expression.Int16ResultNodeVector.add,searchlib\src\main\java\com\yahoo\searchlib\expression\Int16ResultNodeVector.java,663,48,180
+50,com.yahoo.searchlib.expression.Int32ResultNodeVector.add,searchlib\src\main\java\com\yahoo\searchlib\expression\Int32ResultNodeVector.java,664,376,114
+51,com.yahoo.searchlib.expression.StringResultNodeVector.add,searchlib\src\main\java\com\yahoo\searchlib\expression\StringResultNodeVector.java,800,79,152
+52,com.yahoo.searchlib.expression.IntegerResultNodeVector.add,searchlib\src\main\java\com\yahoo\searchlib\expression\IntegerResultNodeVector.java,674,137,166
+53,com.yahoo.searchlib.expression.RawBucketResultNodeVector.add,searchlib\src\main\java\com\yahoo\searchlib\expression\RawBucketResultNodeVector.java,750,124,406
+54,com.yahoo.searchlib.expression.FloatBucketResultNodeVector.add,searchlib\src\main\java\com\yahoo\searchlib\expression\FloatBucketResultNodeVector.java,825,162,112
+55,com.yahoo.searchlib.expression.StringBucketResultNodeVector.add,searchlib\src\main\java\com\yahoo\searchlib\expression\StringBucketResultNodeVector.java,830,8,234
+56,com.yahoo.searchlib.expression.IntegerBucketResultNodeVector.add,searchlib\src\main\java\com\yahoo\searchlib\expression\IntegerBucketResultNodeVector.java,704,303,153
+57,com.yahoo.searchlib.aggregation.hll.SketchMerger.mergeSparseWithSparse,searchlib\src\main\java\com\yahoo\searchlib\aggregation\hll\SketchMerger.java,1565,67,407
+58,com.yahoo.searchlib.aggregation.hll.SketchMerger.mergeNormalWithNormal,searchlib\src\main\java\com\yahoo\searchlib\aggregation\hll\SketchMerger.java,1924,67,218
+59,com.yahoo.searchlib.aggregation.hll.SketchMerger.mergeNormalWithSparse,searchlib\src\main\java\com\yahoo\searchlib\aggregation\hll\SketchMerger.java,2067,67,407 218
+60,com.yahoo.searchlib.aggregation.Group.addAggregationResult,searchlib\src\main\java\com\yahoo\searchlib\aggregation\Group.java,8271,380,360
+61,com.yahoo.searchlib.aggregation.Grouping.addLevel,searchlib\src\main\java\com\yahoo\searchlib\aggregation\Grouping.java,5808,247,89
+62,com.yahoo.searchlib.aggregation.HitsAggregationResult.addHit,searchlib\src\main\java\com\yahoo\searchlib\aggregation\HitsAggregationResult.java,2814,298,361
+63,com.yahoo.searchlib.rankingexpression.rule.SetMembershipNode.testMembership,searchlib\src\main\java\com\yahoo\searchlib\rankingexpression\rule\SetMembershipNode.java,3086,130,263
+64,com.yahoo.searchlib.rankingexpression.transform.Simplifier.hasSingleUndividableChild,searchlib\src\main\java\com\yahoo\searchlib\rankingexpression\transform\Simplifier.java,1643,405,279
+65,com.yahoo.searchlib.rankingexpression.transform.Simplifier.allMultiplicationOrDivision,searchlib\src\main\java\com\yahoo\searchlib\rankingexpression\transform\Simplifier.java,4448,405,7
+66,com.yahoo.searchlib.rankingexpression.transform.Simplifier.hasZero,searchlib\src\main\java\com\yahoo\searchlib\rankingexpression\transform\Simplifier.java,4710,405,7
+67,com.yahoo.searchlib.rankingexpression.transform.ConstantDereferencer.transformArguments,searchlib\src\main\java\com\yahoo\searchlib\rankingexpression\transform\ConstantDereferencer.java,1473,292,41 42
+68,com.yahoo.searchlib.rankingexpression.transform.ConstantDereferencer.transformConstantReference,searchlib\src\main\java\com\yahoo\searchlib\rankingexpression\transform\ConstantDereferencer.java,1911,292,41 42
+69,com.yahoo.searchlib.rankingexpression.evaluation.gbdtoptimization.GBDTOptimizer.getVariableIndex,searchlib\src\main\java\com\yahoo\searchlib\rankingexpression\evaluation\gbdtoptimization\GBDTOptimizer.java,6575,414,123
+70,com.yahoo.searchlib.rankingexpression.evaluation.gbdtoptimization.GBDTOptimizer.toValue,searchlib\src\main\java\com\yahoo\searchlib\rankingexpression\evaluation\gbdtoptimization\GBDTOptimizer.java,7420,414,123
+71,com.yahoo.searchlib.rankingexpression.evaluation.TensorValue.asTensor,searchlib\src\main\java\com\yahoo\searchlib\rankingexpression\evaluation\TensorValue.java,4126,304,232
+72,com.yahoo.searchlib.rankingexpression.evaluation.TensorValue.compareTensor,searchlib\src\main\java\com\yahoo\searchlib\rankingexpression\evaluation\TensorValue.java,4725,304,399
+73,com.yahoo.searchlib.rankingexpression.evaluation.TensorValue.functionOnTensor,searchlib\src\main\java\com\yahoo\searchlib\rankingexpression\evaluation\TensorValue.java,5720,304,301
+74,com.yahoo.searchlib.rankingexpression.evaluation.DoubleOnlyArrayContext.put,searchlib\src\main\java\com\yahoo\searchlib\rankingexpression\evaluation\DoubleOnlyArrayContext.java,2241,242,232
+75,com.yahoo.searchlib.rankingexpression.Reference.toString,searchlib\src\main\java\com\yahoo\searchlib\rankingexpression\Reference.java,4936,38,201
+76,com.yahoo.text.XMLWriter.w,vespajlib\src\main\java\com\yahoo\text\XMLWriter.java,15243,244,268
+77,com.yahoo.vespa.objects.BufferSerializer.putInt1_4Bytes,vespajlib\src\main\java\com\yahoo\vespa\objects\BufferSerializer.java,2005,126,226
+78,com.yahoo.vespa.objects.BufferSerializer.putInt2_4_8Bytes,vespajlib\src\main\java\com\yahoo\vespa\objects\BufferSerializer.java,2118,126,226
+79,com.yahoo.tensor.functions.Concat.unboundIn,vespajlib\src\main\java\com\yahoo\tensor\functions\Concat.java,3249,165,172
+80,com.yahoo.tensor.functions.Concat.concatSize,vespajlib\src\main\java\com\yahoo\tensor\functions\Concat.java,7447,165,172 44
+81,com.yahoo.tensor.functions.Concat.mapIndexes,vespajlib\src\main\java\com\yahoo\tensor\functions\Concat.java,9575,165,172
+82,com.yahoo.tensor.functions.Concat.mapContent,vespajlib\src\main\java\com\yahoo\tensor\functions\Concat.java,10362,165,378
+83,com.yahoo.tensor.functions.Rename.rename,vespajlib\src\main\java\com\yahoo\tensor\functions\Rename.java,5183,117,378
+84,com.yahoo.tensor.functions.Generate.validateType,vespajlib\src\main\java\com\yahoo\tensor\functions\Generate.java,1476,189,172
+85,com.yahoo.tensor.functions.Generate.dimensionSizes,vespajlib\src\main\java\com\yahoo\tensor\functions\Generate.java,2827,189,172
+86,com.yahoo.tensor.functions.ReduceJoin.strides,vespajlib\src\main\java\com\yahoo\tensor\functions\ReduceJoin.java,12071,342,172
+87,com.yahoo.tensor.functions.ReduceJoin.dimensionsInCommon,vespajlib\src\main\java\com\yahoo\tensor\functions\ReduceJoin.java,12532,342,44
+88,com.yahoo.tensor.serialization.DenseBinaryFormat.encodeDimensions,vespajlib\src\main\java\com\yahoo\tensor\serialization\DenseBinaryFormat.java,1555,86,133 44
+89,com.yahoo.tensor.serialization.DenseBinaryFormat.encodeDoubleCells,vespajlib\src\main\java\com\yahoo\tensor\serialization\DenseBinaryFormat.java,2237,86,133 44
+90,com.yahoo.tensor.serialization.DenseBinaryFormat.encodeFloatCells,vespajlib\src\main\java\com\yahoo\tensor\serialization\DenseBinaryFormat.java,2423,86,133 44
+91,com.yahoo.tensor.serialization.DenseBinaryFormat.sizesFromType,vespajlib\src\main\java\com\yahoo\tensor\serialization\DenseBinaryFormat.java,4194,86,172
+92,com.yahoo.tensor.serialization.DenseBinaryFormat.decodeDoubleCells,vespajlib\src\main\java\com\yahoo\tensor\serialization\DenseBinaryFormat.java,4939,86,133 254
+93,com.yahoo.tensor.serialization.DenseBinaryFormat.decodeFloatCells,vespajlib\src\main\java\com\yahoo\tensor\serialization\DenseBinaryFormat.java,5183,86,133 254
+94,com.yahoo.tensor.IndexedTensor.throwOnIncompatibleType,vespajlib\src\main\java\com\yahoo\tensor\IndexedTensor.java,6824,44,172
+95,com.yahoo.tensor.TensorAddress.toString,vespajlib\src\main\java\com\yahoo\tensor\TensorAddress.java,2431,378,172
+96,com.yahoo.jdisc.handler.ThreadedRequestHandler.handleRequest,jdisc_core\src\main\java\com\yahoo\jdisc\handler\ThreadedRequestHandler.java,4907,76,52 211
+97,com.yahoo.messagebus.routing.RoutingNode.setError,messagebus\src\main\java\com\yahoo\messagebus\routing\RoutingNode.java,25386,59,333
+98,com.yahoo.messagebus.MessageBus.deliverError,messagebus\src\main\java\com\yahoo\messagebus\MessageBus.java,21251,128,387
+99,com.yahoo.messagebus.SourceSession.createSendTimedoutReply,messagebus\src\main\java\com\yahoo\messagebus\SourceSession.java,7277,34,333 387
+100,com.yahoo.messagebus.DestinationSession.acknowledge,messagebus\src\main\java\com\yahoo\messagebus\DestinationSession.java,2154,141,387
+101,com.yahoo.messagebus.DestinationSession.reply,messagebus\src\main\java\com\yahoo\messagebus\DestinationSession.java,2907,141,395
+102,com.yahoo.vespa.hosted.node.admin.task.util.process.TestTerminal.expectCommand,node-admin\src\main\java\com\yahoo\vespa\hosted\node\admin\task\util\process\TestTerminal.java,1057,248,345
+103,com.yahoo.vespa.hosted.node.admin.configserver.noderepository.Acl.getTrustedNodes,node-admin\src\main\java\com\yahoo\vespa\hosted\node\admin\configserver\noderepository\Acl.java,3456,27,49
+104,com.yahoo.vespa.hosted.node.admin.configserver.noderepository.Acl.getTrustedPorts,node-admin\src\main\java\com\yahoo\vespa\hosted\node\admin\configserver\noderepository\Acl.java,3755,27,49
+105,com.yahoo.processing.request.Properties.get,processing\src\main\java\com\yahoo\processing\request\Properties.java,6613,28,236
+106,com.yahoo.language.opennlp.OpenNlpTokenizer.getStemmerForLanguage,linguistics\src\main\java\com\yahoo\language\opennlp\OpenNlpTokenizer.java,2413,276,386
+107,com.yahoo.vespa.model.admin.Admin.addMetricsProxyCluster,config-model\src\main\java\com\yahoo\vespa\model\admin\Admin.java,8226,116,383
+108,com.yahoo.vespa.model.admin.Admin.addConfigSentinel,config-model\src\main\java\com\yahoo\vespa\model\admin\Admin.java,9226,116,118
+109,com.yahoo.vespa.model.admin.Admin.addAndInitializeService,config-model\src\main\java\com\yahoo\vespa\model\admin\Admin.java,10107,116,2 118
+110,com.yahoo.vespa.model.admin.Admin.deployHostIsMissing,config-model\src\main\java\com\yahoo\vespa\model\admin\Admin.java,11250,116,118
+111,com.yahoo.vespa.model.search.IndexedSearchCluster.fillDocumentDBConfig,config-model\src\main\java\com\yahoo\vespa\model\search\IndexedSearchCluster.java,11057,125,260
+112,com.yahoo.vespa.model.search.AbstractSearchCluster.addDocumentNames,config-model\src\main\java\com\yahoo\vespa\model\search\AbstractSearchCluster.java,2714,264,273
+113,com.yahoo.vespa.model.builder.xml.dom.DomAdminBuilderBase.addLogForwarders,config-model\src\main\java\com\yahoo\vespa\model\builder\xml\dom\DomAdminBuilderBase.java,5224,12,116 326
+114,com.yahoo.vespa.model.content.cluster.ContentCluster.prepare,config-model\src\main\java\com\yahoo\vespa\model\content\cluster\ContentCluster.java,27654,365,383
+115,com.yahoo.vespa.model.content.ContentSearchCluster.addSearchDefinitions,config-model\src\main\java\com\yahoo\vespa\model\content\ContentSearchCluster.java,8989,94,383 264
+116,com.yahoo.vespa.model.container.search.searchchain.SearchChains.addSources,config-model\src\main\java\com\yahoo\vespa\model\container\search\searchchain\SearchChains.java,3900,305,109
+117,com.yahoo.vespa.model.application.validation.first.AccessControlValidator.hasHandlerThatNeedsProtection,config-model\src\main\java\com\yahoo\vespa\model\application\validation\first\AccessControlValidator.java,2443,39,46
+118,com.yahoo.vespa.model.application.validation.change.GlobalDocumentChangeValidator.validateContentCluster,config-model\src\main\java\com\yahoo\vespa\model\application\validation\change\GlobalDocumentChangeValidator.java,1533,220,365
+119,com.yahoo.vespa.model.application.validation.SearchDataTypeValidator.disallowIndexingOfMaps,config-model\src\main\java\com\yahoo\vespa\model\application\validation\SearchDataTypeValidator.java,3946,105,273 264
+120,com.yahoo.vespa.model.application.validation.RankingConstantsValidator.validateRankingConstant,config-model\src\main\java\com\yahoo\vespa\model\application\validation\RankingConstantsValidator.java,2605,6,56
+121,com.yahoo.vespa.model.VespaModel.createGlobalRankProfiles,config-model\src\main\java\com\yahoo\vespa\model\VespaModel.java,10298,107,4 194
+122,com.yahoo.config.model.admin.AdminModel.verifyClusterControllersOnlyDefinedForContent,config-model\src\main\java\com\yahoo\config\model\admin\AdminModel.java,2155,16,199
+123,com.yahoo.searchdefinition.derived.IndexInfo.hasMultiValueField,config-model\src\main\java\com\yahoo\searchdefinition\derived\IndexInfo.java,16837,329,200
+124,com.yahoo.searchdefinition.derived.IndexInfo.isExactMatch,config-model\src\main\java\com\yahoo\searchdefinition\derived\IndexInfo.java,18063,329,192
+125,com.yahoo.searchdefinition.derived.SummaryMap.getCommand,config-model\src\main\java\com\yahoo\searchdefinition\derived\SummaryMap.java,3393,322,203
+126,com.yahoo.searchdefinition.derived.VsmSummary.doMapField,config-model\src\main\java\com\yahoo\searchdefinition\derived\VsmSummary.java,1788,51,228 253
+127,com.yahoo.searchdefinition.derived.AttributeFields.isAttributeInFieldSet,config-model\src\main\java\com\yahoo\searchdefinition\derived\AttributeFields.java,7330,397,26
+128,com.yahoo.searchdefinition.derived.AttributeFields.getConfig,config-model\src\main\java\com\yahoo\searchdefinition\derived\AttributeFields.java,7514,397,26
+129,com.yahoo.searchdefinition.derived.RankProfileList.deriveRankProfiles,config-model\src\main\java\com\yahoo\searchdefinition\derived\RankProfileList.java,2191,205,4 397 253
+130,com.yahoo.searchdefinition.derived.NativeRankTypeDefinitionSet.createEmptyRankType,config-model\src\main\java\com\yahoo\searchdefinition\derived\NativeRankTypeDefinitionSet.java,1352,250,394
+131,com.yahoo.searchdefinition.derived.NativeRankTypeDefinitionSet.createAboutRankType,config-model\src\main\java\com\yahoo\searchdefinition\derived\NativeRankTypeDefinitionSet.java,1964,250,394
+132,com.yahoo.searchdefinition.derived.NativeRankTypeDefinitionSet.createIdentityRankType,config-model\src\main\java\com\yahoo\searchdefinition\derived\NativeRankTypeDefinitionSet.java,2605,250,394
+133,com.yahoo.searchdefinition.derived.NativeRankTypeDefinitionSet.createTagsRankType,config-model\src\main\java\com\yahoo\searchdefinition\derived\NativeRankTypeDefinitionSet.java,3250,250,394
+134,com.yahoo.searchdefinition.document.SDField.populate,config-model\src\main\java\com\yahoo\searchdefinition\document\SDField.java,5397,371,192 317
+135,com.yahoo.searchdefinition.document.SDField.addSummaryFieldSources,config-model\src\main\java\com\yahoo\searchdefinition\document\SDField.java,9131,371,228
+136,com.yahoo.searchdefinition.document.SDField.addAttribute,config-model\src\main\java\com\yahoo\searchdefinition\document\SDField.java,24431,371,26
+137,com.yahoo.searchdefinition.document.SDDocumentType.validateId,config-model\src\main\java\com\yahoo\searchdefinition\document\SDDocumentType.java,7397,317,253
+138,com.yahoo.searchdefinition.Index.getStemming,config-model\src\main\java\com\yahoo\searchdefinition\Index.java,2572,37,253
+139,com.yahoo.searchdefinition.processing.TagType.implementTagType,config-model\src\main\java\com\yahoo\searchdefinition\processing\TagType.java,1276,160,371
+140,com.yahoo.searchdefinition.processing.TextMatch.findAnnotatorConfig,config-model\src\main\java\com\yahoo\searchdefinition\processing\TextMatch.java,3178,367,371 253
+141,com.yahoo.searchdefinition.processing.ExactMatch.exactMatchSettingsForField,config-model\src\main\java\com\yahoo\searchdefinition\processing\ExactMatch.java,3049,78,371
+142,com.yahoo.searchdefinition.processing.SetLanguage.fieldMustComeAfterLanguageSettingField,config-model\src\main\java\com\yahoo\searchdefinition\processing\SetLanguage.java,2244,135,371
+143,com.yahoo.searchdefinition.processing.LiteralBoost.checkRankModifierRankType,config-model\src\main\java\com\yahoo\searchdefinition\processing\LiteralBoost.java,1712,83,253
+144,com.yahoo.searchdefinition.processing.IndexFieldNames.legalDottedPositionField,config-model\src\main\java\com\yahoo\searchdefinition\processing\IndexFieldNames.java,1427,35,371
+145,com.yahoo.searchdefinition.processing.FieldSetSettings.checkFieldNames,config-model\src\main\java\com\yahoo\searchdefinition\processing\FieldSetSettings.java,1790,3,200 253
+146,com.yahoo.searchdefinition.processing.ImplicitSummaries.getOrCreateAttributePrefetchSummary,config-model\src\main\java\com\yahoo\searchdefinition\processing\ImplicitSummaries.java,4784,359,253
+147,com.yahoo.searchdefinition.processing.ImplicitSummaries.addToDestination,config-model\src\main\java\com\yahoo\searchdefinition\processing\ImplicitSummaries.java,10135,359,228 253
+148,com.yahoo.searchdefinition.processing.PredicateProcessor.makeSetPredicateVariablesScript,config-model\src\main\java\com\yahoo\searchdefinition\processing\PredicateProcessor.java,5693,150,320
+149,com.yahoo.searchdefinition.processing.SummaryConsistency.makeAttributeTransformIfAppropriate,config-model\src\main\java\com\yahoo\searchdefinition\processing\SummaryConsistency.java,2467,223,228 253
+150,com.yahoo.searchdefinition.processing.SummaryConsistency.assertEqualTransform,config-model\src\main\java\com\yahoo\searchdefinition\processing\SummaryConsistency.java,5095,223,228
+151,com.yahoo.searchdefinition.processing.CreatePositionZCurve.removeSummaryTo,config-model\src\main\java\com\yahoo\searchdefinition\processing\CreatePositionZCurve.java,6964,113,371
+152,com.yahoo.searchdefinition.processing.ImplicitSummaryFields.addField,config-model\src\main\java\com\yahoo\searchdefinition\processing\ImplicitSummaryFields.java,1520,297,410 228
+153,com.yahoo.searchdefinition.processing.AttributesImplicitWord.fieldImplicitlyWordMatch,config-model\src\main\java\com\yahoo\searchdefinition\processing\AttributesImplicitWord.java,1350,372,371
+154,com.yahoo.searchdefinition.processing.SummaryDiskAccessValidator.findFieldProducingSummaryField,config-model\src\main\java\com\yahoo\searchdefinition\processing\SummaryDiskAccessValidator.java,2753,196,253
+155,com.yahoo.searchdefinition.processing.StringSettingsOnNonStringFields.doCheck,config-model\src\main\java\com\yahoo\searchdefinition\processing\StringSettingsOnNonStringFields.java,1448,163,371
+156,com.yahoo.searchdefinition.Search.addType,config-model\src\main\java\com\yahoo\searchdefinition\Search.java,20396,253,317
+157,com.yahoo.searchdefinition.Search.addAnnotation,config-model\src\main\java\com\yahoo\searchdefinition\Search.java,20696,253,277
+158,com.yahoo.searchdefinition.RankProfile.compile,config-model\src\main\java\com\yahoo\searchdefinition\RankProfile.java,29551,115,215
+159,com.yahoo.searchdefinition.RankProfile.addAttributeFeatureTypes,config-model\src\main\java\com\yahoo\searchdefinition\RankProfile.java,33258,115,87
+160,com.yahoo.searchdefinition.expressiontransforms.FunctionInliner.transformFeatureNode,config-model\src\main\java\com\yahoo\searchdefinition\expressiontransforms\FunctionInliner.java,1032,88,151
+161,com.yahoo.searchdefinition.expressiontransforms.ConstantTensorTransformer.transformArguments,config-model\src\main\java\com\yahoo\searchdefinition\expressiontransforms\ConstantTensorTransformer.java,1799,206,151
+162,com.yahoo.searchdefinition.expressiontransforms.ConstantTensorTransformer.transformConstantReference,config-model\src\main\java\com\yahoo\searchdefinition\expressiontransforms\ConstantTensorTransformer.java,2260,206,151
+163,com.yahoo.searchdefinition.DefaultRankProfile.toRankSetting,config-model\src\main\java\com\yahoo\searchdefinition\DefaultRankProfile.java,1919,119,371
+164,com.yahoo.searchdefinition.DefaultRankProfile.addIndexSettings,config-model\src\main\java\com\yahoo\searchdefinition\DefaultRankProfile.java,4348,119,371
+165,com.yahoo.searchdefinition.FieldOperationApplierForStructs.copyFields,config-model\src\main\java\com\yahoo\searchdefinition\FieldOperationApplierForStructs.java,791,60,317
+166,com.yahoo.vespa.config.proxy.ProxyServer.createClient,config-proxy\src\main\java\com\yahoo\vespa\config\proxy\ProxyServer.java,7390,11,58
+167,com.yahoo.vespa.config.server.deploy.Deployment.validateSessionStatus,configserver\src\main\java\com\yahoo\vespa\config\server\deploy\Deployment.java,7569,36,50
+168,com.yahoo.vespa.config.server.deploy.Deployment.verifyApplicationIsPreparingSession,configserver\src\main\java\com\yahoo\vespa\config\server\deploy\Deployment.java,8046,36,50
+169,com.yahoo.vespa.config.server.deploy.Deployment.isValidSession,configserver\src\main\java\com\yahoo\vespa\config\server\deploy\Deployment.java,9287,36,50
+170,com.yahoo.vespa.config.server.session.SessionPreparer.writeStateToZooKeeper,configserver\src\main\java\com\yahoo\vespa\config\server\session\SessionPreparer.java,12235,25,85
+171,com.yahoo.vespa.config.server.session.LocalSessionRepo.isActiveSession,configserver\src\main\java\com\yahoo\vespa\config\server\session\LocalSessionRepo.java,4632,235,50
+172,com.yahoo.vespa.config.server.zookeeper.ZKApplicationPackage.readMetaDataFromLiveApp,configserver\src\main\java\com\yahoo\vespa\config\server\zookeeper\ZKApplicationPackage.java,4104,217,57
+173,com.yahoo.vespa.config.server.monitoring.MetricUpdater.createContext,configserver\src\main\java\com\yahoo\vespa\config\server\monitoring\MetricUpdater.java,4156,270,43
+174,com.yahoo.vespa.config.server.application.ConfigConvergenceChecker.hostInApplication,configserver\src\main\java\com\yahoo\vespa\config\server\application\ConfigConvergenceChecker.java,6800,409,281
+175,com.yahoo.vespa.config.server.ApplicationRepository.prepareAndActivate,configserver\src\main\java\com\yahoo\vespa\config\server\ApplicationRepository.java,9853,204,64 318
+176,com.yahoo.vespa.config.server.ApplicationRepository.getSessionIdForApplication,configserver\src\main\java\com\yahoo\vespa\config\server\ApplicationRepository.java,27288,204,318
+177,com.yahoo.vespa.config.server.ApplicationRepository.getLocalSession,configserver\src\main\java\com\yahoo\vespa\config\server\ApplicationRepository.java,33269,204,318
+178,com.yahoo.vespa.config.server.ApplicationRepository.getRemoteSession,configserver\src\main\java\com\yahoo\vespa\config\server\ApplicationRepository.java,33559,204,318
+179,com.yahoo.vespa.config.server.ApplicationRepository.decompressApplication,configserver\src\main\java\com\yahoo\vespa\config\server\ApplicationRepository.java,35121,204,350
+180,com.yahoo.vespa.config.server.ApplicationRepository.listApplicationIds,configserver\src\main\java\com\yahoo\vespa\config\server\ApplicationRepository.java,35403,204,318
+181,com.yahoo.vespa.config.server.ApplicationRepository.getActiveSession,configserver\src\main\java\com\yahoo\vespa\config\server\ApplicationRepository.java,36158,204,318
+182,com.yahoo.vespa.serviceview.ServiceModel.resolve,configserver\src\main\java\com\yahoo\vespa\serviceview\ServiceModel.java,8313,212,314
+183,com.yahoo.container.di.componentgraph.core.ComponentGraph.handleConfigParameter,container-di\src\main\java\com\yahoo\container\di\componentgraph\core\ComponentGraph.java,9764,72,400
+184,com.yahoo.container.di.Container.injectNodes,container-di\src\main\java\com\yahoo\container\di\Container.java,8259,65,72
+185,com.yahoo.container.di.Container.constructComponents,container-di\src\main\java\com\yahoo\container\di\Container.java,10711,65,72
+186,com.yahoo.container.di.Container.deconstructAllComponents,container-di\src\main\java\com\yahoo\container\di\Container.java,11331,65,72
+187,com.yahoo.vespa.hadoop.mapreduce.util.VespaHttpClient.createClient,vespa-hadoop\src\main\java\com\yahoo\vespa\hadoop\mapreduce\util\VespaHttpClient.java,2616,222,275
+188,ai.vespa.metricsproxy.rpc.RpcServer.addMethods,metrics-proxy\src\main\java\ai\vespa\metricsproxy\rpc\RpcServer.java,2107,100,265
+189,ai.vespa.metricsproxy.core.VespaMetrics.getMostRecentTimestamp,metrics-proxy\src\main\java\ai\vespa\metricsproxy\core\VespaMetrics.java,8718,221,96
+190,ai.vespa.metricsproxy.core.VespaMetrics.aggregateMetrics,metrics-proxy\src\main\java\ai\vespa\metricsproxy\core\VespaMetrics.java,9060,221,96
+191,com.yahoo.vespa.hosted.controller.api.integration.organization.MockIssueHandler.getContactUsers,controller-api\src\main\java\com\yahoo\vespa\hosted\controller\api\integration\organization\MockIssueHandler.java,3372,291,398
+192,com.yahoo.vespa.hosted.provision.node.filter.NodeHostFilter.membership,node-repository\src\main\java\com\yahoo\vespa\hosted\provision\node\filter\NodeHostFilter.java,1006,272,9
+193,com.yahoo.vespa.hosted.provision.node.Reports.withReport,node-repository\src\main\java\com\yahoo\vespa\hosted\provision\node\Reports.java,941,306,231
+194,com.yahoo.vespa.hosted.provision.restapi.v2.NodePatcher.nodeWithPatchedReports,node-repository\src\main\java\com\yahoo\vespa\hosted\provision\restapi\v2\NodePatcher.java,6875,346,9
+195,com.yahoo.vespa.hosted.provision.restapi.v2.NodeAclResponse.toSlime,node-repository\src\main\java\com\yahoo\vespa\hosted\provision\restapi\v2\NodeAclResponse.java,2124,404,311
+196,com.yahoo.vespa.hosted.provision.testutils.MockNodeRepository.activate,node-repository\src\main\java\com\yahoo\vespa\hosted\provision\testutils\MockNodeRepository.java,11270,288,278
+197,com.yahoo.vespa.hosted.provision.maintenance.NodeFailer.wasMadeReadyBefore,node-repository\src\main\java\com\yahoo\vespa\hosted\provision\maintenance\NodeFailer.java,12085,282,9
+198,com.yahoo.vespa.hosted.provision.maintenance.NodeFailer.hasRecordedRequestAfter,node-repository\src\main\java\com\yahoo\vespa\hosted\provision\maintenance\NodeFailer.java,12244,282,9
+199,com.yahoo.vespa.hosted.provision.maintenance.OperatorChangeApplicationMaintainer.hasManualStateChangeSince,node-repository\src\main\java\com\yahoo\vespa\hosted\provision\maintenance\OperatorChangeApplicationMaintainer.java,2411,190,9
+200,com.yahoo.vespa.hosted.provision.persistence.CuratorDatabaseClient.writeTo,node-repository\src\main\java\com\yahoo\vespa\hosted\provision\persistence\CuratorDatabaseClient.java,7614,334,9
+201,com.yahoo.vespa.hosted.provision.persistence.CuratorDatabaseClient.writeLoadBalancer,node-repository\src\main\java\com\yahoo\vespa\hosted\provision\persistence\CuratorDatabaseClient.java,21293,334,379
+202,com.yahoo.vespa.hosted.provision.provisioning.DockerHostCapacity.isInactiveOrRetired,node-repository\src\main\java\com\yahoo\vespa\hosted\provision\provisioning\DockerHostCapacity.java,6262,213,9
+203,com.yahoo.vespa.hosted.provision.NodeList.parentOf,node-repository\src\main\java\com\yahoo\vespa\hosted\provision\NodeList.java,3678,299,9
+204,com.yahoo.vespa.hosted.provision.NodeRepository.getNodeAcl,node-repository\src\main\java\com\yahoo\vespa\hosted\provision\NodeRepository.java,9469,157,9 299 143
+205,com.yahoo.vespa.hosted.provision.NodeRepository.addDockerNodes,node-repository\src\main\java\com\yahoo\vespa\hosted\provision\NodeRepository.java,14974,157,73
+206,com.yahoo.vespa.hosted.provision.NodeRepository.setDirty,node-repository\src\main\java\com\yahoo\vespa\hosted\provision\NodeRepository.java,20434,157,9
+207,com.yahoo.vespa.hosted.provision.NodeRepository.move,node-repository\src\main\java\com\yahoo\vespa\hosted\provision\NodeRepository.java,25207,157,9
+208,com.yahoo.vespa.hosted.provision.NodeRepository.canRemove,node-repository\src\main\java\com\yahoo\vespa\hosted\provision\NodeRepository.java,28432,157,9
+209,com.yahoo.vespa.hosted.provision.NodeRepository.write,node-repository\src\main\java\com\yahoo\vespa\hosted\provision\NodeRepository.java,31264,157,9
+210,com.yahoo.vespa.hosted.provision.NodeRepository.performOn,node-repository\src\main\java\com\yahoo\vespa\hosted\provision\NodeRepository.java,32163,157,101
+211,com.yahoo.vespa.hosted.provision.NodeRepository.lock,node-repository\src\main\java\com\yahoo\vespa\hosted\provision\NodeRepository.java,34430,157,9
+212,com.yahoo.config.application.api.ValidationOverrides.invalid,config-model-api\src\main\java\com\yahoo\config\application\api\ValidationOverrides.java,1813,389,296
+213,com.yahoo.text.interpretation.Span.hasClass,container-search\src\main\java\com\yahoo\text\interpretation\Span.java,5973,287,103
+214,com.yahoo.text.interpretation.Interpretation.annotate,container-search\src\main\java\com\yahoo\text\interpretation\Interpretation.java,4227,238,103
+215,com.yahoo.text.interpretation.Interpretation.annotate,container-search\src\main\java\com\yahoo\text\interpretation\Interpretation.java,6206,238,103
+216,com.yahoo.text.interpretation.Interpretation.getAll,container-search\src\main\java\com\yahoo\text\interpretation\Interpretation.java,7548,238,103
+217,com.yahoo.text.interpretation.Interpretation.get,container-search\src\main\java\com\yahoo\text\interpretation\Interpretation.java,9498,238,103
+218,com.yahoo.text.interpretation.Interpretation.dumpAnnotation,container-search\src\main\java\com\yahoo\text\interpretation\Interpretation.java,13695,238,377
+219,com.yahoo.vespa.streamingvisitors.VdsStreamingSearcher.buildSummaryHit,container-search\src\main\java\com\yahoo\vespa\streamingvisitors\VdsStreamingSearcher.java,10589,91,349
+220,com.yahoo.search.yql.FieldFilter.filter,container-search\src\main\java\com\yahoo\search\yql\FieldFilter.java,1429,10,195
+221,com.yahoo.search.query.profile.types.QueryProfileType.addField,container-search\src\main\java\com\yahoo\search\query\profile\types\QueryProfileType.java,9288,363,71
+222,com.yahoo.search.query.profile.config.QueryProfileXMLReader.readInheritedTypes,container-search\src\main\java\com\yahoo\search\query\profile\config\QueryProfileXMLReader.java,9247,129,363 164
+223,com.yahoo.search.query.profile.config.QueryProfileXMLReader.readInherited,container-search\src\main\java\com\yahoo\search\query\profile\config\QueryProfileXMLReader.java,11948,129,93 63 391
+224,com.yahoo.search.query.profile.config.QueryProfileXMLReader.readFieldValue,container-search\src\main\java\com\yahoo\search\query\profile\config\QueryProfileXMLReader.java,14473,129,63
+225,com.yahoo.search.query.ranking.Matching.prepare,container-search\src\main\java\com\yahoo\search\query\ranking\Matching.java,2595,176,47
+226,com.yahoo.search.query.ranking.Diversity.prepare,container-search\src\main\java\com\yahoo\search\query\ranking\Diversity.java,3183,358,47
+227,com.yahoo.search.query.ranking.MatchPhase.prepare,container-search\src\main\java\com\yahoo\search\query\ranking\MatchPhase.java,4350,169,47
+228,com.yahoo.search.query.ranking.SoftTimeout.prepare,container-search\src\main\java\com\yahoo\search\query\ranking\SoftTimeout.java,2505,224,47
+229,com.yahoo.search.query.ranking.RankFeatures.prepare,container-search\src\main\java\com\yahoo\search\query\ranking\RankFeatures.java,2982,252,47
+230,com.yahoo.search.query.Model.cloneFor,container-search\src\main\java\com\yahoo\search\query\Model.java,14425,337,349
+231,com.yahoo.search.query.Model.addLabels,container-search\src\main\java\com\yahoo\search\query\Model.java,18397,337,82
+232,com.yahoo.search.query.Model.addSignificances,container-search\src\main\java\com\yahoo\search\query\Model.java,19497,337,82
+233,com.yahoo.search.query.Ranking.prepareNow,container-search\src\main\java\com\yahoo\search\query\Ranking.java,10753,82,181
+234,com.yahoo.search.query.textserialize.item.AndNotRestConverter.addNegativeItems,container-search\src\main\java\com\yahoo\search\query\textserialize\item\AndNotRestConverter.java,947,338,373
+235,com.yahoo.search.query.textserialize.item.AndNotRestConverter.addItems,container-search\src\main\java\com\yahoo\search\query\textserialize\item\AndNotRestConverter.java,1199,338,373
+236,com.yahoo.search.query.QueryTree.and,container-search\src\main\java\com\yahoo\search\query\QueryTree.java,3751,54,61
+237,com.yahoo.search.intent.model.IntentModel.setTo,container-search\src\main\java\com\yahoo\search\intent\model\IntentModel.java,3195,14,349
+238,com.yahoo.search.result.HitGroup.merge,container-search\src\main\java\com\yahoo\search\result\HitGroup.java,14898,138,375
+239,com.yahoo.search.result.HitGroupsLastComparator.isHitGroup,container-search\src\main\java\com\yahoo\search\result\HitGroupsLastComparator.java,704,70,295
+240,com.yahoo.search.handler.SearchHandler.traceRequestAttributes,container-search\src\main\java\com\yahoo\search\handler\SearchHandler.java,15947,30,349
+241,com.yahoo.search.handler.SearchHandler.ensureQuerySet,container-search\src\main\java\com\yahoo\search\handler\SearchHandler.java,16646,30,195 349
+242,com.yahoo.search.handler.SearchHandler.validateQuery,container-search\src\main\java\com\yahoo\search\handler\SearchHandler.java,21147,30,349
+243,com.yahoo.search.handler.SearchHandler.traceExecutionTimes,container-search\src\main\java\com\yahoo\search\handler\SearchHandler.java,22316,30,195 349
+244,com.yahoo.search.dispatch.rpc.RpcResourcePool.compress,container-search\src\main\java\com\yahoo\search\dispatch\rpc\RpcResourcePool.java,2658,229,349
+245,com.yahoo.search.dispatch.Dispatcher.getSearchPathInvoker,container-search\src\main\java\com\yahoo\search\dispatch\Dispatcher.java,6213,233,256 349 237
+246,com.yahoo.search.dispatch.SearchInvoker.errorResult,container-search\src\main\java\com\yahoo\search\dispatch\SearchInvoker.java,1897,127,214 349
+247,com.yahoo.search.grouping.GroupingRequest.getResultGroup,container-search\src\main\java\com\yahoo\search\grouping\GroupingRequest.java,3780,408,195
+248,com.yahoo.search.rendering.Renderer.createWriter,container-search\src\main\java\com\yahoo\search\rendering\Renderer.java,2110,131,195
+249,com.yahoo.search.rendering.Renderer.getCharacterEncoding,container-search\src\main\java\com\yahoo\search\rendering\Renderer.java,2352,131,195
+250,com.yahoo.search.rendering.Renderer.getRequestedEncoding,container-search\src\main\java\com\yahoo\search\rendering\Renderer.java,2759,131,349
+251,com.yahoo.search.rendering.XmlRenderer.queryContext,container-search\src\main\java\com\yahoo\search\rendering\XmlRenderer.java,6839,66,185 349
+252,com.yahoo.search.rendering.XmlRenderer.simpleRenderHit,container-search\src\main\java\com\yahoo\search\rendering\XmlRenderer.java,11098,66,295
+253,com.yahoo.search.rendering.XmlRenderer.getRequestedEncoding,container-search\src\main\java\com\yahoo\search\rendering\XmlRenderer.java,14755,66,349
+254,com.yahoo.search.rendering.JsonRenderer.shouldRender,container-search\src\main\java\com\yahoo\search\rendering\JsonRenderer.java,17593,68,295
+255,com.yahoo.search.rendering.SyncDefaultRenderer.renderHitGroup,container-search\src\main\java\com\yahoo\search\rendering\SyncDefaultRenderer.java,7794,154,138
+256,com.yahoo.search.rendering.SyncDefaultRenderer.simpleRenderHit,container-search\src\main\java\com\yahoo\search\rendering\SyncDefaultRenderer.java,12872,154,295
+257,com.yahoo.search.federation.FederationSearcher.commentedSourceProviderSearchChains,container-search\src\main\java\com\yahoo\search\federation\FederationSearcher.java,17620,81,90 321
+258,com.yahoo.search.federation.FederationSearcher.propagateErrors,container-search\src\main\java\com\yahoo\search\federation\FederationSearcher.java,22398,81,195
+259,com.yahoo.search.federation.FederationSearcher.dirtyCopyIfModifiedOrderer,container-search\src\main\java\com\yahoo\search\federation\FederationSearcher.java,23556,81,138
+260,com.yahoo.search.federation.FederationSearcher.traceTargets,container-search\src\main\java\com\yahoo\search\federation\FederationSearcher.java,26021,81,349
+261,com.yahoo.search.federation.FederationSearcher.shouldExecuteTargetLongerThanThread,container-search\src\main\java\com\yahoo\search\federation\FederationSearcher.java,26274,81,349
+262,com.yahoo.search.federation.FederationSearcher.documentTypeIntersectionIsNonEmpty,container-search\src\main\java\com\yahoo\search\federation\FederationSearcher.java,30732,81,155
+263,com.yahoo.search.Query.setPropertiesFromRequestMap,container-search\src\main\java\com\yahoo\search\Query.java,19033,349,202
+264,com.yahoo.search.statistics.ElapsedTime.fetcher,container-search\src\main\java\com\yahoo\search\statistics\ElapsedTime.java,1289,240,396
+265,com.yahoo.search.statistics.TimeTracker.getElapsedTime,container-search\src\main\java\com\yahoo\search\statistics\TimeTracker.java,10911,396,195
+266,com.yahoo.search.statistics.TimeTracker.getElapsedTime,container-search\src\main\java\com\yahoo\search\statistics\TimeTracker.java,11023,396,300
+267,com.yahoo.search.searchchain.testutil.DocumentSourceSearcher.getQueryKeyClone,container-search\src\main\java\com\yahoo\search\searchchain\testutil\DocumentSourceSearcher.java,3798,18,349
+268,com.yahoo.search.searchchain.testutil.DocumentSourceSearcher.getMatchingFilledHit,container-search\src\main\java\com\yahoo\search\searchchain\testutil\DocumentSourceSearcher.java,5712,18,195
+269,com.yahoo.search.searchchain.testutil.DocumentSourceSearcher.copyFieldValuesThatExist,container-search\src\main\java\com\yahoo\search\searchchain\testutil\DocumentSourceSearcher.java,6069,18,295
+270,com.yahoo.search.searchchain.Execution.onInvokingFill,container-search\src\main\java\com\yahoo\search\searchchain\Execution.java,22869,327,174
+271,com.yahoo.search.searchchain.Execution.onReturningFill,container-search\src\main\java\com\yahoo\search\searchchain\Execution.java,23126,327,195 174
+272,com.yahoo.search.searchchain.Execution.invokePing,container-search\src\main\java\com\yahoo\search\searchchain\Execution.java,25364,327,92 174
+273,com.yahoo.search.pagetemplates.model.Source.assignRendererForIfNotSet,container-search\src\main\java\com\yahoo\search\pagetemplates\model\Source.java,3322,339,146
+274,com.yahoo.search.pagetemplates.engine.Organizer.setField,container-search\src\main\java\com\yahoo\search\pagetemplates\engine\Organizer.java,3985,230,295
+275,com.yahoo.search.pagetemplates.engine.Organizer.addHitsFromSource,container-search\src\main\java\com\yahoo\search\pagetemplates\engine\Organizer.java,4837,230,195 339 283
+276,com.yahoo.search.pagetemplates.engine.Organizer.assignOrderer,container-search\src\main\java\com\yahoo\search\pagetemplates\engine\Organizer.java,5839,230,145 110 138
+277,com.yahoo.search.pagetemplates.result.PageTemplatesXmlRenderer.queryContext,container-search\src\main\java\com\yahoo\search\pagetemplates\result\PageTemplatesXmlRenderer.java,4791,158,349
+278,com.yahoo.search.pagetemplates.result.PageTemplatesXmlRenderer.simpleRenderHit,container-search\src\main\java\com\yahoo\search\pagetemplates\result\PageTemplatesXmlRenderer.java,9359,158,295
+279,com.yahoo.search.pagetemplates.result.PageTemplatesXmlRenderer.getRequestedEncoding,container-search\src\main\java\com\yahoo\search\pagetemplates\result\PageTemplatesXmlRenderer.java,11741,158,349
+280,com.yahoo.search.pagetemplates.PageTemplateSearcher.addParameters,container-search\src\main\java\com\yahoo\search\pagetemplates\PageTemplateSearcher.java,9883,351,339 349
+281,com.yahoo.search.pagetemplates.PageTemplateSearcher.addErrorIfSameSourceMultipleTimes,container-search\src\main\java\com\yahoo\search\pagetemplates\PageTemplateSearcher.java,10235,351,349
+282,com.yahoo.search.Searcher.ensureFilled,container-search\src\main\java\com\yahoo\search\Searcher.java,7951,174,195 327
+283,com.yahoo.search.querytransform.WandSearcher.populate,container-search\src\main\java\com\yahoo\search\querytransform\WandSearcher.java,6480,23,40
+284,com.yahoo.search.querytransform.WandSearcher.populate,container-search\src\main\java\com\yahoo\search\querytransform\WandSearcher.java,6938,23,139
+285,com.yahoo.search.querytransform.NGramSearcher.replaceItemByGrams,container-search\src\main\java\com\yahoo\search\querytransform\NGramSearcher.java,6482,344,61
+286,com.yahoo.search.querytransform.SortingDegrader.shouldBeDegraded,container-search\src\main\java\com\yahoo\search\querytransform\SortingDegrader.java,2529,274,349
+287,com.yahoo.search.querytransform.SortingDegrader.decideDefaultMaxHits,container-search\src\main\java\com\yahoo\search\querytransform\SortingDegrader.java,3847,274,349
+288,com.yahoo.search.querytransform.LowercasingSearcher.lowerCase,container-search\src\main\java\com\yahoo\search\querytransform\LowercasingSearcher.java,2912,22,122
+289,com.yahoo.search.querytransform.LowercasingSearcher.lowerCase,container-search\src\main\java\com\yahoo\search\querytransform\LowercasingSearcher.java,3146,22,122
+290,com.yahoo.prelude.query.parser.AllParser.simplifyUnnecessaryComposites,container-search\src\main\java\com\yahoo\prelude\query\parser\AllParser.java,1939,385,61
+291,com.yahoo.prelude.query.parser.AllParser.addAnd,container-search\src\main\java\com\yahoo\prelude\query\parser\AllParser.java,2298,385,61
+292,com.yahoo.prelude.query.parser.AllParser.addOr,container-search\src\main\java\com\yahoo\prelude\query\parser\AllParser.java,2465,385,61
+293,com.yahoo.prelude.query.parser.AllParser.addNot,container-search\src\main\java\com\yahoo\prelude\query\parser\AllParser.java,2622,385,61
+294,com.yahoo.prelude.query.parser.AnyParser.addAndFilter,container-search\src\main\java\com\yahoo\prelude\query\parser\AnyParser.java,5531,294,61
+295,com.yahoo.prelude.query.parser.AnyParser.addNotFilter,container-search\src\main\java\com\yahoo\prelude\query\parser\AnyParser.java,6292,294,61
+296,com.yahoo.prelude.query.parser.AnyParser.addRankFilter,container-search\src\main\java\com\yahoo\prelude\query\parser\AnyParser.java,7365,294,61
+297,com.yahoo.prelude.query.parser.AbstractParser.is,container-search\src\main\java\com\yahoo\prelude\query\parser\AbstractParser.java,8593,381,140
+298,com.yahoo.prelude.query.parser.AdvancedParser.isTheWord,container-search\src\main\java\com\yahoo\prelude\query\parser\AdvancedParser.java,3768,284,61
+299,com.yahoo.prelude.query.NotItem.setPositiveItem,container-search\src\main\java\com\yahoo\prelude\query\NotItem.java,1376,373,61
+300,com.yahoo.prelude.query.NotItem.addPositiveItem,container-search\src\main\java\com\yahoo\prelude\query\NotItem.java,1784,373,61
+301,com.yahoo.prelude.query.Highlight.addHighlightItem,container-search\src\main\java\com\yahoo\prelude\query\Highlight.java,844,259,61
+302,com.yahoo.prelude.query.ItemHelper.getPositiveTerms,container-search\src\main\java\com\yahoo\prelude\query\ItemHelper.java,1932,245,61
+303,com.yahoo.prelude.query.PhraseItem.convertIntToWord,container-search\src\main\java\com\yahoo\prelude\query\PhraseItem.java,1773,74,61
+304,com.yahoo.prelude.query.CompositeItem.removing,container-search\src\main\java\com\yahoo\prelude\query\CompositeItem.java,4317,40,61
+305,com.yahoo.prelude.query.CompositeItem.find,container-search\src\main\java\com\yahoo\prelude\query\CompositeItem.java,8096,40,61
+306,com.yahoo.prelude.cluster.ClusterSearcher.createQueries,container-search\src\main\java\com\yahoo\prelude\cluster\ClusterSearcher.java,20321,207,349
+307,com.yahoo.prelude.cluster.ClusterSearcher.backendCanServeDocuments,container-search\src\main\java\com\yahoo\prelude\cluster\ClusterSearcher.java,22114,207,300
+308,com.yahoo.prelude.searcher.BlendingSearcher.sortAndTrimResults,container-search\src\main\java\com\yahoo\prelude\searcher\BlendingSearcher.java,4048,364,195 349 327
+309,com.yahoo.prelude.searcher.FieldCollapsingSearcher.search,container-search\src\main\java\com\yahoo\prelude\searcher\FieldCollapsingSearcher.java,5687,302,349 327
+310,com.yahoo.prelude.searcher.FieldCollapsingSearcher.collapse,container-search\src\main\java\com\yahoo\prelude\searcher\FieldCollapsingSearcher.java,5881,302,195
+311,com.yahoo.prelude.semantics.rule.Condition.matchesStartAnchor,container-search\src\main\java\com\yahoo\prelude\semantics\rule\Condition.java,4560,208,75
+312,com.yahoo.prelude.semantics.rule.Condition.matchesEndAnchor,container-search\src\main\java\com\yahoo\prelude\semantics\rule\Condition.java,4948,208,75
+313,com.yahoo.prelude.semantics.rule.Condition.labelMatches,container-search\src\main\java\com\yahoo\prelude\semantics\rule\Condition.java,8043,208,29 75
+314,com.yahoo.prelude.semantics.rule.NamedCondition.matches,container-search\src\main\java\com\yahoo\prelude\semantics\rule\NamedCondition.java,842,307,75
+315,com.yahoo.prelude.semantics.rule.TermProduction.insertMatch,container-search\src\main\java\com\yahoo\prelude\semantics\rule\TermProduction.java,1830,15,61 227 75
+316,com.yahoo.prelude.semantics.rule.EllipsisCondition.matchTerms,container-search\src\main\java\com\yahoo\prelude\semantics\rule\EllipsisCondition.java,2236,340,75
+317,com.yahoo.prelude.semantics.rule.CompositeCondition.allSubConditionsMatches,container-search\src\main\java\com\yahoo\prelude\semantics\rule\CompositeCondition.java,3654,32,75
+318,com.yahoo.prelude.semantics.rule.ReferenceTermProduction.addMatches,container-search\src\main\java\com\yahoo\prelude\semantics\rule\ReferenceTermProduction.java,3408,17,121 75
+319,com.yahoo.prelude.semantics.rule.ReplacingProductionRule.removeNonreferencedMatches,container-search\src\main\java\com\yahoo\prelude\semantics\rule\ReplacingProductionRule.java,794,111,75
+320,com.yahoo.prelude.semantics.engine.Evaluation.removeItem,container-search\src\main\java\com\yahoo\prelude\semantics\engine\Evaluation.java,4726,19,61
+321,com.yahoo.prelude.semantics.engine.Evaluation.findIndexByIdentity,container-search\src\main\java\com\yahoo\prelude\semantics\engine\Evaluation.java,5252,19,61
+322,com.yahoo.prelude.semantics.engine.Evaluation.removeItem,container-search\src\main\java\com\yahoo\prelude\semantics\engine\Evaluation.java,5579,19,61
+323,com.yahoo.prelude.semantics.engine.Evaluation.convertSegmentItem,container-search\src\main\java\com\yahoo\prelude\semantics\engine\Evaluation.java,6032,19,40
+324,com.yahoo.prelude.semantics.engine.Evaluation.insertMutableInTree,container-search\src\main\java\com\yahoo\prelude\semantics\engine\Evaluation.java,7024,19,40
+325,com.yahoo.prelude.semantics.engine.Evaluation.addItem,container-search\src\main\java\com\yahoo\prelude\semantics\engine\Evaluation.java,9474,19,40 61 188
+326,com.yahoo.prelude.semantics.engine.Evaluation.equalIndexNameIfParentIsPhrase,container-search\src\main\java\com\yahoo\prelude\semantics\engine\Evaluation.java,10996,19,61 40
+327,com.yahoo.prelude.semantics.engine.Evaluation.insertIncompatibleItem,container-search\src\main\java\com\yahoo\prelude\semantics\engine\Evaluation.java,11365,19,61 40 349 188
+328,com.yahoo.prelude.semantics.engine.Evaluation.createType,container-search\src\main\java\com\yahoo\prelude\semantics\engine\Evaluation.java,13740,19,188
+329,com.yahoo.prelude.semantics.engine.RuleEvaluation.removeMatches,container-search\src\main\java\com\yahoo\prelude\semantics\engine\RuleEvaluation.java,11524,75,121
+330,com.yahoo.prelude.semantics.RuleBase.annotatePhrase,container-search\src\main\java\com\yahoo\prelude\semantics\RuleBase.java,13128,31,349
+331,com.yahoo.prelude.fastsearch.FS4SearchInvoker.ensureResultHitCapacity,container-search\src\main\java\com\yahoo\prelude\fastsearch\FS4SearchInvoker.java,5475,388,195 182
+332,com.yahoo.prelude.fastsearch.FS4SearchInvoker.addBackendTrace,container-search\src\main\java\com\yahoo\prelude\fastsearch\FS4SearchInvoker.java,7199,388,349 182
+333,com.yahoo.prelude.fastsearch.DocsumDefinitionSet.lazyDecode,container-search\src\main\java\com\yahoo\prelude\fastsearch\DocsumDefinitionSet.java,2205,102,156
+334,com.yahoo.prelude.fastsearch.VespaBackEndSearcher.summaryNeedsQuery,container-search\src\main\java\com\yahoo\prelude\fastsearch\VespaBackEndSearcher.java,2880,237,349
+335,com.yahoo.prelude.fastsearch.VespaBackEndSearcher.resolveDocumentDatabase,container-search\src\main\java\com\yahoo\prelude\fastsearch\VespaBackEndSearcher.java,4387,237,349
+336,com.yahoo.prelude.fastsearch.VespaBackEndSearcher.mergeErrorsInto,container-search\src\main\java\com\yahoo\prelude\fastsearch\VespaBackEndSearcher.java,8462,237,195
+337,com.yahoo.prelude.fastsearch.VespaBackEndSearcher.getDocsumDefinitionSet,container-search\src\main\java\com\yahoo\prelude\fastsearch\VespaBackEndSearcher.java,14202,237,349
+338,com.yahoo.prelude.fastsearch.VespaBackEndSearcher.decodeSummary,container-search\src\main\java\com\yahoo\prelude\fastsearch\VespaBackEndSearcher.java,14692,237,156 102
+339,com.yahoo.prelude.querytransform.CJKSearcher.hasOverlappingTokens,container-search\src\main\java\com\yahoo\prelude\querytransform\CJKSearcher.java,3886,330,285
+340,com.yahoo.prelude.querytransform.StemmingSearcher.firstWord,container-search\src\main\java\com\yahoo\prelude\querytransform\StemmingSearcher.java,10299,402,40
+341,com.yahoo.prelude.querytransform.StemmingSearcher.lastWord,container-search\src\main\java\com\yahoo\prelude\querytransform\StemmingSearcher.java,10614,402,40
+342,com.yahoo.prelude.querytransform.StemmingSearcher.setConnectivity,container-search\src\main\java\com\yahoo\prelude\querytransform\StemmingSearcher.java,12895,402,61
+343,com.yahoo.prelude.querytransform.StemmingSearcher.getWeight,container-search\src\main\java\com\yahoo\prelude\querytransform\StemmingSearcher.java,15608,402,61
+344,com.yahoo.prelude.querytransform.StemmingSearcher.setWeight,container-search\src\main\java\com\yahoo\prelude\querytransform\StemmingSearcher.java,15898,402,61
+345,com.yahoo.prelude.querytransform.LiteralBoostSearcher.addTopLevelRankTerms,container-search\src\main\java\com\yahoo\prelude\querytransform\LiteralBoostSearcher.java,1880,106,368 349
+346,com.yahoo.prelude.querytransform.CollapsePhraseSearcher.collapsePhrase,container-search\src\main\java\com\yahoo\prelude\querytransform\CollapsePhraseSearcher.java,2068,258,74
+347,com.yahoo.vespa.indexinglanguage.expressions.ExecutionContext.execute,indexinglanguage\src\main\java\com\yahoo\vespa\indexinglanguage\expressions\ExecutionContext.java,973,403,97
+348,com.yahoo.vespa.indexinglanguage.expressions.VerificationContext.execute,indexinglanguage\src\main\java\com\yahoo\vespa\indexinglanguage\expressions\VerificationContext.java,705,80,97
+349,com.yahoo.vespa.indexinglanguage.expressions.OptimizePredicateExpression.checkVariable,indexinglanguage\src\main\java\com\yahoo\vespa\indexinglanguage\expressions\OptimizePredicateExpression.java,2302,170,80
+350,com.yahoo.vespa.indexinglanguage.ExpressionConverter.innerConvert,indexinglanguage\src\main\java\com\yahoo\vespa\indexinglanguage\ExpressionConverter.java,1787,193,219
+351,com.yahoo.vespa.indexinglanguage.ExpressionConverter.innerConvert,indexinglanguage\src\main\java\com\yahoo\vespa\indexinglanguage\ExpressionConverter.java,3717,193,77
+352,com.yahoo.search.predicate.serialization.PredicateQuerySerializer.toJSON,predicate-search\src\main\java\com\yahoo\search\predicate\serialization\PredicateQuerySerializer.java,1125,384,21
+353,com.yahoo.vespa.hosted.controller.restapi.deployment.DeploymentApiHandler.firstFailingOn,controller-server\src\main\java\com\yahoo\vespa\hosted\controller\restapi\deployment\DeploymentApiHandler.java,7775,142,355
+354,com.yahoo.vespa.hosted.controller.restapi.deployment.DeploymentApiHandler.productionJobsFor,controller-server\src\main\java\com\yahoo\vespa\hosted\controller\restapi\deployment\DeploymentApiHandler.java,8311,142,355
+355,com.yahoo.vespa.hosted.controller.restapi.deployment.DeploymentApiHandler.productionSuccessesFor,controller-server\src\main\java\com\yahoo\vespa\hosted\controller\restapi\deployment\DeploymentApiHandler.java,8549,142,355
+356,com.yahoo.vespa.hosted.controller.restapi.deployment.DeploymentApiHandler.lastDeployingTo,controller-server\src\main\java\com\yahoo\vespa\hosted\controller\restapi\deployment\DeploymentApiHandler.java,8898,142,355
+357,com.yahoo.vespa.hosted.controller.restapi.application.ApplicationApiHandler.toSlime,controller-server\src\main\java\com\yahoo\vespa\hosted\controller\restapi\application\ApplicationApiHandler.java,36658,362,331
+358,com.yahoo.vespa.hosted.controller.deployment.Run.with,controller-server\src\main\java\com\yahoo\vespa\hosted\controller\deployment\Run.java,2226,24,13
+359,com.yahoo.vespa.hosted.controller.deployment.DeploymentTrigger.successOn,controller-server\src\main\java\com\yahoo\vespa\hosted\controller\deployment\DeploymentTrigger.java,15353,209,355 168
+360,com.yahoo.vespa.hosted.controller.deployment.DeploymentTrigger.isTested,controller-server\src\main\java\com\yahoo\vespa\hosted\controller\deployment\DeploymentTrigger.java,28121,209,355 168
+361,com.yahoo.vespa.hosted.controller.deployment.DeploymentTrigger.alreadyTriggered,controller-server\src\main\java\com\yahoo\vespa\hosted\controller\deployment\DeploymentTrigger.java,28838,209,355 168
+362,com.yahoo.vespa.hosted.controller.deployment.DeploymentTrigger.remainingChange,controller-server\src\main\java\com\yahoo\vespa\hosted\controller\deployment\DeploymentTrigger.java,29880,209,355
+363,com.yahoo.vespa.hosted.controller.application.SystemApplication.configConvergedIn,controller-server\src\main\java\com\yahoo\vespa\hosted\controller\application\SystemApplication.java,2455,62,257
+364,com.yahoo.vespa.hosted.controller.Application.rotationStatus,controller-server\src\main\java\com\yahoo\vespa\hosted\controller\Application.java,10451,355,401
+365,com.yahoo.vespa.hosted.controller.ApplicationController.deploy,controller-server\src\main\java\com\yahoo\vespa\hosted\controller\ApplicationController.java,21958,45,62
+366,com.yahoo.vespa.hosted.controller.ApplicationController.deploy,controller-server\src\main\java\com\yahoo\vespa\hosted\controller\ApplicationController.java,23558,45,187
+367,com.yahoo.vespa.hosted.controller.ApplicationController.deactivate,controller-server\src\main\java\com\yahoo\vespa\hosted\controller\ApplicationController.java,35670,45,134
+368,com.yahoo.vespa.hosted.controller.ApplicationController.validateRun,controller-server\src\main\java\com\yahoo\vespa\hosted\controller\ApplicationController.java,38047,45,355
+369,ai.vespa.rankingexpression.importer.OrderedTensorType.rename,model-integration\src\main\java\ai\vespa\rankingexpression\importer\OrderedTensorType.java,4667,411,286
+370,com.yahoo.vespa.http.client.core.operationProcessor.OperationProcessor.postToCluster,vespa-http-client\src\main\java\com\yahoo\vespa\http\client\core\operationProcessor\OperationProcessor.java,10867,132,104 308
+371,com.yahoo.jdisc.http.filter.DiscFilterRequest.addCookie,jdisc_http_service\src\main\java\com\yahoo\jdisc\http\filter\DiscFilterRequest.java,11492,354,33
+372,com.yahoo.jdisc.http.filter.DiscFilterResponse.addCookie,jdisc_http_service\src\main\java\com\yahoo\jdisc\http\filter\DiscFilterResponse.java,3429,5,33
+373,com.yahoo.search.predicate.optimization.AndOrSimplifier.simplifySubTree,predicate-search-core\src\main\java\com\yahoo\search\predicate\optimization\AndOrSimplifier.java,706,319,313
+374,com.yahoo.search.predicate.optimization.NotNodeReorderer.processSubTree,predicate-search-core\src\main\java\com\yahoo\search\predicate\optimization\NotNodeReorderer.java,695,249,313
+375,com.yahoo.search.predicate.optimization.BooleanSimplifier.isFalse,predicate-search-core\src\main\java\com\yahoo\search\predicate\optimization\BooleanSimplifier.java,2915,177,313
+376,com.yahoo.search.predicate.optimization.BooleanSimplifier.isTrue,predicate-search-core\src\main\java\com\yahoo\search\predicate\optimization\BooleanSimplifier.java,3120,177,313
+377,com.yahoo.search.predicate.optimization.ComplexNodeTransformer.addEdgePartition,predicate-search-core\src\main\java\com\yahoo\search\predicate\optimization\ComplexNodeTransformer.java,3241,280,348
+378,com.yahoo.search.predicate.optimization.ComplexNodeTransformer.addPartitions,predicate-search-core\src\main\java\com\yahoo\search\predicate\optimization\ComplexNodeTransformer.java,4525,280,348
+379,com.yahoo.document.predicate.Conjunction.addOperand,predicate-search-core\src\main\java\com\yahoo\document\predicate\Conjunction.java,640,53,313
+380,com.yahoo.document.predicate.Disjunction.addOperand,predicate-search-core\src\main\java\com\yahoo\document\predicate\Disjunction.java,640,271,313
+381,com.yahoo.document.predicate.FeatureRange.addPartition,predicate-search-core\src\main\java\com\yahoo\document\predicate\FeatureRange.java,1740,348,179
+382,com.yahoo.vespa.clustercontroller.core.database.DatabaseHandler.shutdown,clustercontroller-core\src\main\java\com\yahoo\vespa\clustercontroller\core\database\DatabaseHandler.java,4138,178,98
+383,com.yahoo.vespa.clustercontroller.core.StateChangeHandler.reconfigureFromOptions,clustercontroller-core\src\main\java\com\yahoo\vespa\clustercontroller\core\StateChangeHandler.java,12963,0,356
+384,com.yahoo.vespa.clustercontroller.core.StateChangeHandler.nodeUpToDownEdge,clustercontroller-core\src\main\java\com\yahoo\vespa\clustercontroller\core\StateChangeHandler.java,26913,0,357
+385,com.yahoo.vespa.clustercontroller.core.NodeStateChangeChecker.canSetStateUp,clustercontroller-core\src\main\java\com\yahoo\vespa\clustercontroller\core\NodeStateChangeChecker.java,6770,325,357
+386,com.yahoo.vespa.clustercontroller.core.SystemStateBroadcaster.newestStateBundleAlreadySentToNode,clustercontroller-core\src\main\java\com\yahoo\vespa\clustercontroller\core\SystemStateBroadcaster.java,8993,312,357
+387,com.yahoo.vespa.clustercontroller.core.SystemStateBroadcaster.newestStateActivationAlreadySentToNode,clustercontroller-core\src\main\java\com\yahoo\vespa\clustercontroller\core\SystemStateBroadcaster.java,9164,312,357
+388,com.yahoo.vespa.clustercontroller.core.MaintenanceWhenPendingGlobalMerges.setNodesInMaintenance,clustercontroller-core\src\main\java\com\yahoo\vespa\clustercontroller\core\MaintenanceWhenPendingGlobalMerges.java,2760,332,241
+389,com.yahoo.vespa.clustercontroller.utils.staterestapi.server.JsonWriter.createJson,clustercontroller-utils\src\main\java\com\yahoo\vespa\clustercontroller\utils\staterestapi\server\JsonWriter.java,5316,183,328
+390,com.yahoo.vespa.clustercontroller.utils.staterestapi.server.RestApiHandler.createUnitPath,clustercontroller-utils\src\main\java\com\yahoo\vespa\clustercontroller\utils\staterestapi\server\RestApiHandler.java,7259,251,316
+391,com.yahoo.vespa.clustercontroller.utils.staterestapi.server.RestApiHandler.getRecursiveLevel,clustercontroller-utils\src\main\java\com\yahoo\vespa\clustercontroller\utils\staterestapi\server\RestApiHandler.java,7466,251,316
+392,com.yahoo.vespa.clustercontroller.utils.communication.http.JsonHttpResult.createErrorJson,clustercontroller-utils\src\main\java\com\yahoo\vespa\clustercontroller\utils\communication\http\JsonHttpResult.java,1165,323,171
+393,com.yahoo.container.logging.JSONFormatter.isSearchRequest,container-accesslogging\src\main\java\com\yahoo\container\logging\JSONFormatter.java,7927,184,55
+394,com.yahoo.container.logging.JSONFormatter.getTotalHitCount,container-accesslogging\src\main\java\com\yahoo\container\logging\JSONFormatter.java,8067,184,261
+395,com.yahoo.container.logging.JSONFormatter.getRetrievedHitCount,container-accesslogging\src\main\java\com\yahoo\container\logging\JSONFormatter.java,8233,184,261
+396,com.yahoo.documentapi.metrics.DocumentApiMetrics.reportSuccessful,vespaclient-container-plugin\src\main\java\com\yahoo\documentapi\metrics\DocumentApiMetrics.java,2143,198,324

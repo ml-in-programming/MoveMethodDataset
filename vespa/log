@@ -1,0 +1,71 @@
+2019-05-27 23:33:06,670 [INFO] Project C:/Dev/MoveMethodGenerator/../MoveMethodDataset/vespa/vespa is opened
+2019-05-27 23:35:19,243 [INFO] Total number of java files: 7730
+2019-05-27 23:35:19,243 [INFO] Total number of source java files: 7703
+2019-05-27 23:35:19,243 [INFO] Total number of classes: 3415
+2019-05-27 23:35:19,243 [INFO] Total number of methods: 30290
+2019-05-27 23:35:19,243 [INFO] StaticMethodsFilter filtered: 3934
+2019-05-27 23:35:19,243 [INFO] ConstructorsFilter filtered: 4025
+2019-05-27 23:35:19,243 [INFO] AbstractMethodsFilter filtered: 331
+2019-05-27 23:35:19,243 [INFO] GettersFilter filtered: 3638
+2019-05-27 23:35:19,243 [INFO] SettersFilter filtered: 662
+2019-05-27 23:35:19,243 [INFO] EmptyMethodsFilter filtered: 638
+2019-05-27 23:35:19,246 [INFO] ExceptionsThrowersFilter filtered: 231
+2019-05-27 23:35:19,246 [INFO] SingleMethodFilter filtered: 398
+2019-05-27 23:35:19,246 [INFO] SimpleDelegationsFilter filtered: 4295
+2019-05-27 23:35:19,246 [INFO] PrivateMethodsCallersFilter filtered: 3990
+2019-05-27 23:35:19,246 [INFO] PrivateFieldAccessorsFilter filtered: 4310
+2019-05-27 23:35:19,246 [INFO] OverridingMethodsFilter filtered: 1796
+2019-05-27 23:35:19,246 [INFO] OverriddenMethodsFilter filtered: 72
+2019-05-27 23:35:19,246 [INFO] MethodCallWithSuperFilter filtered: 27
+2019-05-27 23:35:19,246 [INFO] PrivateClassUserFilter filtered: 25
+2019-05-27 23:35:19,246 [INFO] GenericTypeUserFilter filtered: 0
+2019-05-27 23:35:19,246 [INFO] NoTargetsMethodsFilter filtered: 1521
+2019-05-27 23:35:19,246 [INFO] Number of methods after filtration: 397
+2019-05-27 23:38:38,678 [INFO] Project C:/Dev/MoveMethodGenerator/../MoveMethodDataset/vespa/vespa is opened
+2019-05-27 23:39:41,630 [ERROR] Exception occurred: Element: class com.intellij.psi.impl.source.tree.java.PsiReferenceExpressionImpl #JAVA  because: containing file is null
+invalidated at: see attachment [com.intellij.psi.PsiInvalidElementAccessException: Element: class com.intellij.psi.impl.source.tree.java.PsiReferenceExpressionImpl #JAVA  because: containing file is null
+invalidated at: see attachment]
+2019-05-27 23:39:41,630 [ERROR] com.intellij.psi.util.PsiUtilCore.ensureValid(PsiUtilCore.java:482)
+2019-05-27 23:39:41,630 [ERROR] com.intellij.psi.impl.PsiImplUtil.multiResolveImpl(PsiImplUtil.java:763)
+2019-05-27 23:39:41,630 [ERROR] com.intellij.psi.impl.source.tree.java.PsiReferenceExpressionImpl.multiResolve(PsiReferenceExpressionImpl.java:377)
+2019-05-27 23:39:41,630 [ERROR] com.intellij.psi.impl.source.tree.java.PsiReferenceExpressionImpl.advancedResolve(PsiReferenceExpressionImpl.java:539)
+2019-05-27 23:39:41,630 [ERROR] org.jetbrains.research.groups.ml_methods.move_method_gen.utils.MethodUtils.referencedNonPublicField(MethodUtils.java:193)
+2019-05-27 23:39:41,630 [ERROR] org.jetbrains.research.groups.ml_methods.move_method_gen.mover.MethodRewriter.encapsulateField(MethodRewriter.java:58)
+2019-05-27 23:39:41,630 [ERROR] org.jetbrains.research.groups.ml_methods.move_method_gen.mover.MethodRewriter.rewriteMethod(MethodRewriter.java:23)
+2019-05-27 23:39:41,630 [ERROR] org.jetbrains.research.groups.ml_methods.move_method_gen.mover.AppStarter.lambda$run$2(AppStarter.java:97)
+2019-05-27 23:39:41,630 [ERROR] com.intellij.openapi.command.WriteCommandAction.lambda$runWriteCommandAction$5(WriteCommandAction.java:361)
+2019-05-27 23:39:41,630 [ERROR] com.intellij.openapi.command.WriteCommandAction$BuilderImpl$1.run(WriteCommandAction.java:124)
+2019-05-27 23:39:41,631 [ERROR] com.intellij.openapi.application.RunResult.run(RunResult.java:35)
+2019-05-27 23:39:41,631 [ERROR] com.intellij.openapi.command.WriteCommandAction.lambda$null$1(WriteCommandAction.java:263)
+2019-05-27 23:39:41,631 [ERROR] com.intellij.openapi.application.impl.ApplicationImpl.runWriteAction(ApplicationImpl.java:1054)
+2019-05-27 23:39:41,631 [ERROR] com.intellij.openapi.command.WriteCommandAction.lambda$performWriteCommandAction$2(WriteCommandAction.java:262)
+2019-05-27 23:39:41,631 [ERROR] com.intellij.openapi.command.WriteCommandAction.lambda$doExecuteCommand$4(WriteCommandAction.java:319)
+2019-05-27 23:39:41,631 [ERROR] com.intellij.openapi.command.impl.CoreCommandProcessor.executeCommand(CoreCommandProcessor.java:220)
+2019-05-27 23:39:41,631 [ERROR] com.intellij.openapi.command.impl.CoreCommandProcessor.executeCommand(CoreCommandProcessor.java:188)
+2019-05-27 23:39:41,631 [ERROR] com.intellij.openapi.command.WriteCommandAction.doExecuteCommand(WriteCommandAction.java:321)
+2019-05-27 23:39:41,631 [ERROR] com.intellij.openapi.command.WriteCommandAction.performWriteCommandAction(WriteCommandAction.java:262)
+2019-05-27 23:39:41,631 [ERROR] com.intellij.openapi.command.WriteCommandAction.execute(WriteCommandAction.java:244)
+2019-05-27 23:39:41,631 [ERROR] com.intellij.openapi.command.WriteCommandAction$BuilderImpl.run(WriteCommandAction.java:126)
+2019-05-27 23:39:41,631 [ERROR] com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction(WriteCommandAction.java:361)
+2019-05-27 23:39:41,631 [ERROR] com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction(WriteCommandAction.java:353)
+2019-05-27 23:39:41,631 [ERROR] org.jetbrains.research.groups.ml_methods.move_method_gen.mover.AppStarter.run(AppStarter.java:95)
+2019-05-27 23:39:41,631 [ERROR] org.jetbrains.research.groups.ml_methods.move_method_gen.ProjectAppStarter.main(ProjectAppStarter.java:108)
+2019-05-27 23:39:41,632 [ERROR] com.intellij.idea.IdeaApplication.lambda$run$1(IdeaApplication.java:211)
+2019-05-27 23:39:41,632 [ERROR] com.intellij.openapi.application.TransactionGuardImpl.performUserActivity(TransactionGuardImpl.java:195)
+2019-05-27 23:39:41,632 [ERROR] com.intellij.idea.IdeaApplication.run(IdeaApplication.java:211)
+2019-05-27 23:39:41,632 [ERROR] com.intellij.idea.IdeaApplication.lambda$initApplication$0(IdeaApplication.java:74)
+2019-05-27 23:39:41,632 [ERROR] java.awt.event.InvocationEvent.dispatch(InvocationEvent.java:311)
+2019-05-27 23:39:41,632 [ERROR] java.awt.EventQueue.dispatchEventImpl(EventQueue.java:764)
+2019-05-27 23:39:41,632 [ERROR] java.awt.EventQueue.access$500(EventQueue.java:98)
+2019-05-27 23:39:41,632 [ERROR] java.awt.EventQueue$3.run(EventQueue.java:715)
+2019-05-27 23:39:41,632 [ERROR] java.awt.EventQueue$3.run(EventQueue.java:709)
+2019-05-27 23:39:41,632 [ERROR] java.security.AccessController.doPrivileged(Native Method)
+2019-05-27 23:39:41,632 [ERROR] java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:74)
+2019-05-27 23:39:41,632 [ERROR] java.awt.EventQueue.dispatchEvent(EventQueue.java:734)
+2019-05-27 23:39:41,632 [ERROR] com.intellij.ide.IdeEventQueue.dispatchEvent(IdeEventQueue.java:347)
+2019-05-27 23:39:41,632 [ERROR] java.awt.EventDispatchThread.pumpOneEventForFilters(EventDispatchThread.java:205)
+2019-05-27 23:39:41,632 [ERROR] java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:116)
+2019-05-27 23:39:41,632 [ERROR] java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:105)
+2019-05-27 23:39:41,632 [ERROR] java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:101)
+2019-05-27 23:39:41,632 [ERROR] java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:93)
+2019-05-27 23:39:41,632 [ERROR] java.awt.EventDispatchThread.run(EventDispatchThread.java:82)
