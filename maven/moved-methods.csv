@@ -1,0 +1,8 @@
+id,name,file,offset,original_class_id,target_class_id
+0,org.apache.maven.project.ProjectBuildingException.hasMissingParentPom,maven-core/src/main/java/org/apache/maven/project/ProjectBuildingException.java,4455,6,12
+1,org.apache.maven.project.MavenProject.addEdge,maven-core/src/main/java/org/apache/maven/project/MavenProject.java,58164,13,18
+2,org.apache.maven.execution.MavenSession.projectIsNotPresent,maven-core/src/main/java/org/apache/maven/execution/MavenSession.java,12744,5,10
+4,org.apache.maven.plugin.MojoExecution.addMojoExecution,maven-core/src/main/java/org/apache/maven/plugin/MojoExecution.java,1392,8,15
+7,org.apache.maven.repository.metadata.ArtifactMetadata.findVertex,maven-compat/src/main/java/org/apache/maven/repository/metadata/ArtifactMetadata.java,8690,3,2
+10,org.apache.maven.artifact.ArtifactScopeEnum.getClasspathTree,maven-compat/src/main/java/org/apache/maven/artifact/ArtifactScopeEnum.java,3602,4,7
+11,org.apache.maven.plugin.descriptor.MojoDescriptor.addMojo,maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/MojoDescriptor.java,19638,0,16

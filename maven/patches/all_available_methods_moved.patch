@@ -1,0 +1,538 @@
+diff --git a/maven-compat/src/main/java/org/apache/maven/artifact/ArtifactScopeEnum.java b/maven-compat/src/main/java/org/apache/maven/artifact/ArtifactScopeEnum.java
+index 83edd2b..59494d1 100644
+--- a/maven-compat/src/main/java/org/apache/maven/artifact/ArtifactScopeEnum.java
++++ b/maven-compat/src/main/java/org/apache/maven/artifact/ArtifactScopeEnum.java
+@@ -19,6 +19,8 @@
+  * under the License.
+  */
+ 
++import org.apache.maven.repository.metadata.*;
++
+ /**
+  * Type safe reincarnation of Artifact scope. Also supplies the {@code DEFAULT_SCOPE} as well
+  * as convenience method to deal with scope relationships.
+@@ -128,4 +130,17 @@ public boolean encloses( ArtifactScopeEnum scope )
+         }
+         return false;
+     }
++
++    //----------------------------------------------------------------------------
++    public MetadataTreeNode getClasspathTree(MetadataResolutionResult metadataResolutionResult)
++        throws MetadataGraphTransformationException, MetadataResolutionException
++    {
++        ClasspathContainer cpc = metadataResolutionResult.getClasspath(this);
++        if ( cpc == null )
++        {
++            return null;
++        }
++
++        return cpc.getClasspathAsTree();
++    }
+ }
+diff --git a/maven-compat/src/main/java/org/apache/maven/repository/metadata/ArtifactMetadata.java b/maven-compat/src/main/java/org/apache/maven/repository/metadata/ArtifactMetadata.java
+index 13b00c3..7fe4f5d 100644
+--- a/maven-compat/src/main/java/org/apache/maven/repository/metadata/ArtifactMetadata.java
++++ b/maven-compat/src/main/java/org/apache/maven/repository/metadata/ArtifactMetadata.java
+@@ -341,4 +341,27 @@ public String getDependencyConflictId()
+     {
+         return groupId + ":" + artifactId;
+     }
++
++    //------------------------------------------------------------------------
++    public MetadataGraphVertex findVertex(MetadataGraph metadataGraph)
++    {
++        if ( this == null || metadataGraph.getVertices() == null || metadataGraph.getVertices().size() < 1 )
++        {
++            return null;
++        }
++
++        MetadataGraphVertex v = new MetadataGraphVertex(this);
++        v.setCompareVersion(metadataGraph.isVersionedVertices());
++        v.setCompareScope(metadataGraph.isScopedVertices());
++
++        for ( MetadataGraphVertex gv : metadataGraph.getVertices())
++        {
++            if ( gv.equals( v ) )
++            {
++                return gv;
++            }
++        }
++
++        return null;
++    }
+ }
+diff --git a/maven-compat/src/main/java/org/apache/maven/repository/metadata/MetadataGraph.java b/maven-compat/src/main/java/org/apache/maven/repository/metadata/MetadataGraph.java
+index 1ae008a..79b1f5c 100644
+--- a/maven-compat/src/main/java/org/apache/maven/repository/metadata/MetadataGraph.java
++++ b/maven-compat/src/main/java/org/apache/maven/repository/metadata/MetadataGraph.java
+@@ -167,28 +167,7 @@ private void processTreeNodes( MetadataGraphVertex parentVertex, MetadataTreeNod
+             processTreeNodes( vertex, n, depth + 1, i );
+         }
+     }
+-    //------------------------------------------------------------------------
+-    public MetadataGraphVertex findVertex( ArtifactMetadata md )
+-    {
+-        if ( md == null || vertices == null || vertices.size() < 1 )
+-        {
+-            return null;
+-        }
+-
+-        MetadataGraphVertex v = new MetadataGraphVertex( md );
+-        v.setCompareVersion( versionedVertices );
+-        v.setCompareScope( scopedVertices );
+ 
+-        for ( MetadataGraphVertex gv : vertices )
+-        {
+-            if ( gv.equals( v ) )
+-            {
+-                return gv;
+-            }
+-        }
+-
+-        return null;
+-    }
+     //------------------------------------------------------------------------
+     public MetadataGraphVertex addVertex( ArtifactMetadata md )
+     {
+@@ -199,7 +178,7 @@ public MetadataGraphVertex addVertex( ArtifactMetadata md )
+ 
+         checkVertices();
+ 
+-        MetadataGraphVertex v = findVertex( md );
++        MetadataGraphVertex v = md.findVertex(this);
+         if ( v != null )
+         {
+             return v;
+diff --git a/maven-compat/src/main/java/org/apache/maven/repository/metadata/MetadataResolutionResult.java b/maven-compat/src/main/java/org/apache/maven/repository/metadata/MetadataResolutionResult.java
+index 74a3427..49e689e 100644
+--- a/maven-compat/src/main/java/org/apache/maven/repository/metadata/MetadataResolutionResult.java
++++ b/maven-compat/src/main/java/org/apache/maven/repository/metadata/MetadataResolutionResult.java
+@@ -152,17 +152,5 @@ public ClasspathContainer getClasspath( ArtifactScopeEnum scope )
+     }
+ 
+     //----------------------------------------------------------------------------
+-    public MetadataTreeNode getClasspathTree( ArtifactScopeEnum scope )
+-        throws MetadataGraphTransformationException, MetadataResolutionException
+-    {
+-        ClasspathContainer cpc = getClasspath( scope );
+-        if ( cpc == null )
+-        {
+-            return null;
+-        }
+-
+-        return cpc.getClasspathAsTree();
+-    }
+-    //----------------------------------------------------------------------------
+     //----------------------------------------------------------------------------
+ }
+diff --git a/maven-core/src/main/java/org/apache/maven/execution/MavenSession.java b/maven-core/src/main/java/org/apache/maven/execution/MavenSession.java
+index 5b56df3..c0bd29f 100644
+--- a/maven-core/src/main/java/org/apache/maven/execution/MavenSession.java
++++ b/maven-core/src/main/java/org/apache/maven/execution/MavenSession.java
+@@ -29,6 +29,7 @@
+ 
+ import org.apache.maven.artifact.repository.ArtifactRepository;
+ import org.apache.maven.artifact.repository.RepositoryCache;
++import org.apache.maven.lifecycle.internal.LifecycleStarter;
+ import org.apache.maven.monitor.event.EventDispatcher;
+ import org.apache.maven.plugin.descriptor.PluginDescriptor;
+ import org.apache.maven.project.MavenProject;
+@@ -436,7 +437,12 @@ public Object lookup( String role, String roleHint )
+         throws ComponentLookupException
+     {
+         return container.lookupMap( role );
+-    }   
+-    
++    }
++
++    public boolean projectIsNotPresent(LifecycleStarter lifecycleStarter)
++    {
++        return !getRequest().isProjectPresent();
++    }
++
+     /*end[MAVEN4]*/
+ }
+diff --git a/maven-core/src/main/java/org/apache/maven/lifecycle/internal/DefaultLifecycleMappingDelegate.java b/maven-core/src/main/java/org/apache/maven/lifecycle/internal/DefaultLifecycleMappingDelegate.java
+index 1ddee05..4138de9 100644
+--- a/maven-core/src/main/java/org/apache/maven/lifecycle/internal/DefaultLifecycleMappingDelegate.java
++++ b/maven-core/src/main/java/org/apache/maven/lifecycle/internal/DefaultLifecycleMappingDelegate.java
+@@ -103,7 +103,7 @@
+                         {
+                             MojoExecution mojoExecution = new MojoExecution( plugin, goal, execution.getId() );
+                             mojoExecution.setLifecyclePhase( execution.getPhase() );
+-                            addMojoExecution( phaseBindings, mojoExecution, execution.getPriority() );
++                            mojoExecution.addMojoExecution( phaseBindings, execution.getPriority(), this);
+                         }
+                     }
+                 }
+@@ -121,7 +121,7 @@
+                         {
+                             MojoExecution mojoExecution = new MojoExecution( mojoDescriptor, execution.getId() );
+                             mojoExecution.setLifecyclePhase( mojoDescriptor.getPhase() );
+-                            addMojoExecution( phaseBindings, mojoExecution, execution.getPriority() );
++                            mojoExecution.addMojoExecution( phaseBindings, execution.getPriority(), this);
+                         }
+                     }
+                 }
+@@ -146,18 +146,4 @@
+ 
+     }
+ 
+-    private void addMojoExecution( Map<Integer, List<MojoExecution>> phaseBindings, MojoExecution mojoExecution,
+-                                   int priority )
+-    {
+-        List<MojoExecution> mojoExecutions = phaseBindings.get( priority );
+-
+-        if ( mojoExecutions == null )
+-        {
+-            mojoExecutions = new ArrayList<>();
+-            phaseBindings.put( priority, mojoExecutions );
+-        }
+-
+-        mojoExecutions.add( mojoExecution );
+-    }
+-
+ }
+diff --git a/maven-core/src/main/java/org/apache/maven/lifecycle/internal/LifecycleStarter.java b/maven-core/src/main/java/org/apache/maven/lifecycle/internal/LifecycleStarter.java
+index cee8073..75cc473 100644
+--- a/maven-core/src/main/java/org/apache/maven/lifecycle/internal/LifecycleStarter.java
++++ b/maven-core/src/main/java/org/apache/maven/lifecycle/internal/LifecycleStarter.java
+@@ -79,7 +79,7 @@ public void execute( MavenSession session )
+ 
+         try
+         {
+-            if ( buildExecutionRequiresProject( session ) && projectIsNotPresent( session ) )
++            if ( buildExecutionRequiresProject( session ) && session.projectIsNotPresent(this) )
+             {
+                 throw new MissingProjectException( "The goal you specified requires a project to execute"
+                     + " but there is no POM in this directory (" + session.getExecutionRootDirectory() + ")."
+@@ -143,8 +143,4 @@ private boolean buildExecutionRequiresProject( MavenSession session )
+         return lifecycleTaskSegmentCalculator.requiresProject( session );
+     }
+ 
+-    private boolean projectIsNotPresent( MavenSession session )
+-    {
+-        return !session.getRequest().isProjectPresent();
+-    }
+ }
+diff --git a/maven-core/src/main/java/org/apache/maven/plugin/MojoExecution.java b/maven-core/src/main/java/org/apache/maven/plugin/MojoExecution.java
+index fa72c18..c4271e5 100644
+--- a/maven-core/src/main/java/org/apache/maven/plugin/MojoExecution.java
++++ b/maven-core/src/main/java/org/apache/maven/plugin/MojoExecution.java
+@@ -19,10 +19,12 @@
+  * under the License.
+  */
+ 
++import java.util.ArrayList;
+ import java.util.LinkedHashMap;
+ import java.util.List;
+ import java.util.Map;
+ 
++import org.apache.maven.lifecycle.internal.DefaultLifecycleMappingDelegate;
+ import org.apache.maven.model.Plugin;
+ import org.apache.maven.plugin.descriptor.MojoDescriptor;
+ import org.codehaus.plexus.util.xml.Xpp3Dom;
+@@ -43,6 +45,20 @@
+ 
+     private Xpp3Dom configuration;
+ 
++    public void addMojoExecution(Map<Integer, List<MojoExecution>> phaseBindings,
++                                 int priority, DefaultLifecycleMappingDelegate defaultLifecycleMappingDelegate)
++    {
++        List<MojoExecution> mojoExecutions = phaseBindings.get( priority );
++
++        if ( mojoExecutions == null )
++        {
++            mojoExecutions = new ArrayList<>();
++            phaseBindings.put( priority, mojoExecutions );
++        }
++
++        mojoExecutions.add(this);
++    }
++
+     /**
+      * Describes the source of an execution.
+      */
+diff --git a/maven-core/src/main/java/org/apache/maven/project/MavenProject.java b/maven-core/src/main/java/org/apache/maven/project/MavenProject.java
+index fd7ab40..cceecfc 100644
+--- a/maven-core/src/main/java/org/apache/maven/project/MavenProject.java
++++ b/maven-core/src/main/java/org/apache/maven/project/MavenProject.java
+@@ -68,6 +68,8 @@
+ import org.apache.maven.project.artifact.InvalidDependencyVersionException;
+ import org.apache.maven.project.artifact.MavenMetadataSource;
+ import org.codehaus.plexus.classworlds.realm.ClassRealm;
++import org.codehaus.plexus.util.dag.CycleDetectedException;
++import org.codehaus.plexus.util.dag.Vertex;
+ import org.codehaus.plexus.util.xml.Xpp3Dom;
+ import org.eclipse.aether.graph.DependencyFilter;
+ import org.eclipse.aether.repository.RemoteRepository;
+@@ -1973,4 +1975,37 @@ public void setProjectBuildingRequest( ProjectBuildingRequest projectBuildingReq
+     {
+         this.projectBuilderConfiguration = projectBuildingRequest;
+     }
++
++    public void addEdge(Vertex fromVertex, Vertex toVertex,
++                        Map<String, MavenProject> projectMap, boolean force, boolean safe, ProjectSorter projectSorter)
++        throws CycleDetectedException
++    {
++        if ( fromVertex.equals( toVertex ) )
++        {
++            return;
++        }
++
++        if ( this != null )
++        {
++            MavenProject toProject = projectMap.get( toVertex.getLabel() );
++            addProjectReference( toProject );
++        }
++
++        if ( force && toVertex.getChildren().contains( fromVertex ) )
++        {
++            projectSorter.getDAG().removeEdge( toVertex, fromVertex );
++        }
++
++        try
++        {
++            projectSorter.getDAG().addEdge( fromVertex, toVertex );
++        }
++        catch ( CycleDetectedException e )
++        {
++            if ( !safe )
++            {
++                throw e;
++            }
++        }
++    }
+ }
+diff --git a/maven-core/src/main/java/org/apache/maven/project/ProjectBuildingException.java b/maven-core/src/main/java/org/apache/maven/project/ProjectBuildingException.java
+index 7786c90..9239eee 100644
+--- a/maven-core/src/main/java/org/apache/maven/project/ProjectBuildingException.java
++++ b/maven-core/src/main/java/org/apache/maven/project/ProjectBuildingException.java
+@@ -19,8 +19,11 @@
+  * under the License.
+  */
+ 
++import org.apache.maven.model.building.ModelBuildingException;
+ import org.apache.maven.model.building.ModelProblem;
+ import org.apache.maven.model.building.ModelProblemUtils;
++import org.apache.maven.model.resolution.UnresolvableModelException;
++import org.apache.maven.project.artifact.MavenMetadataSource;
+ 
+ import java.io.File;
+ import java.io.PrintWriter;
+@@ -147,4 +150,20 @@ private static String createMessage( List<ProjectBuildingResult> results )
+         return buffer.toString();
+     }
+ 
++    public ModelProblem hasMissingParentPom(MavenMetadataSource mavenMetadataSource)
++    {
++        if ( getCause() instanceof ModelBuildingException)
++        {
++            ModelBuildingException mbe = (ModelBuildingException) getCause();
++            for ( ModelProblem problem : mbe.getProblems() )
++            {
++                if ( problem.getException() instanceof UnresolvableModelException)
++                {
++                    return problem;
++                }
++            }
++
++        }
++        return null;
++    }
+ }
+diff --git a/maven-core/src/main/java/org/apache/maven/project/ProjectSorter.java b/maven-core/src/main/java/org/apache/maven/project/ProjectSorter.java
+index e5abded..423035d 100644
+--- a/maven-core/src/main/java/org/apache/maven/project/ProjectSorter.java
++++ b/maven-core/src/main/java/org/apache/maven/project/ProjectSorter.java
+@@ -185,52 +185,19 @@ private void addEdge( Map<String, MavenProject> projectMap, Map<String, Map<Stri
+                 Vertex vertex = vertices.get( version );
+                 if ( vertex != null )
+                 {
+-                    addEdge( projectVertex, vertex, project, projectMap, force, safe );
++                    project.addEdge( projectVertex, vertex, projectMap, force, safe, this);
+                 }
+             }
+             else
+             {
+                 for ( Vertex vertex : vertices.values() )
+                 {
+-                    addEdge( projectVertex, vertex, project, projectMap, force, safe );
++                    project.addEdge( projectVertex, vertex, projectMap, force, safe, this);
+                 }
+             }
+         }
+     }
+ 
+-    private void addEdge( Vertex fromVertex, Vertex toVertex, MavenProject fromProject,
+-                          Map<String, MavenProject> projectMap, boolean force, boolean safe )
+-        throws CycleDetectedException
+-    {
+-        if ( fromVertex.equals( toVertex ) )
+-        {
+-            return;
+-        }
+-
+-        if ( fromProject != null )
+-        {
+-            MavenProject toProject = projectMap.get( toVertex.getLabel() );
+-            fromProject.addProjectReference( toProject );
+-        }
+-
+-        if ( force && toVertex.getChildren().contains( fromVertex ) )
+-        {
+-            dag.removeEdge( toVertex, fromVertex );
+-        }
+-
+-        try
+-        {
+-            dag.addEdge( fromVertex, toVertex );
+-        }
+-        catch ( CycleDetectedException e )
+-        {
+-            if ( !safe )
+-            {
+-                throw e;
+-            }
+-        }
+-    }
+-
+     private boolean isSpecificVersion( String version )
+     {
+         return !( StringUtils.isEmpty( version ) || version.startsWith( "[" ) || version.startsWith( "(" ) );
+diff --git a/maven-core/src/main/java/org/apache/maven/project/artifact/MavenMetadataSource.java b/maven-core/src/main/java/org/apache/maven/project/artifact/MavenMetadataSource.java
+index 2dc9372..3172f0d 100644
+--- a/maven-core/src/main/java/org/apache/maven/project/artifact/MavenMetadataSource.java
++++ b/maven-core/src/main/java/org/apache/maven/project/artifact/MavenMetadataSource.java
+@@ -57,10 +57,8 @@
+ import org.apache.maven.model.DistributionManagement;
+ import org.apache.maven.model.Exclusion;
+ import org.apache.maven.model.Relocation;
+-import org.apache.maven.model.building.ModelBuildingException;
+ import org.apache.maven.model.building.ModelBuildingRequest;
+ import org.apache.maven.model.building.ModelProblem;
+-import org.apache.maven.model.resolution.UnresolvableModelException;
+ import org.apache.maven.plugin.LegacySupport;
+ import org.apache.maven.project.DefaultProjectBuildingRequest;
+ import org.apache.maven.project.MavenProject;
+@@ -578,7 +576,7 @@ private ProjectRelocation retrieveRelocatedProject( Artifact artifact, MetadataR
+                 }
+                 catch ( ProjectBuildingException e )
+                 {
+-                    ModelProblem missingParentPom = hasMissingParentPom( e );
++                    ModelProblem missingParentPom = e.hasMissingParentPom(this);
+                     if ( missingParentPom != null )
+                     {
+                         throw new ArtifactMetadataRetrievalException( "Failed to process POM for "
+@@ -710,23 +708,6 @@ else if ( isNonTransferrablePom( e ) )
+         return rel;
+     }
+ 
+-    private ModelProblem hasMissingParentPom( ProjectBuildingException e )
+-    {
+-        if ( e.getCause() instanceof ModelBuildingException )
+-        {
+-            ModelBuildingException mbe = (ModelBuildingException) e.getCause();
+-            for ( ModelProblem problem : mbe.getProblems() )
+-            {
+-                if ( problem.getException() instanceof UnresolvableModelException )
+-                {
+-                    return problem;
+-                }
+-            }
+-
+-        }
+-        return null;
+-    }
+-
+     private boolean isMissingPom( Exception e )
+     {
+         if ( e.getCause() instanceof MultipleArtifactsNotFoundException )
+diff --git a/maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/MojoDescriptor.java b/maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/MojoDescriptor.java
+index a15bdcf..41615a1 100644
+--- a/maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/MojoDescriptor.java
++++ b/maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/MojoDescriptor.java
+@@ -715,4 +715,31 @@ public MojoDescriptor clone()
+         }
+     }
+ 
++    public void addMojo(PluginDescriptor pluginDescriptor)
++        throws DuplicateMojoDescriptorException
++    {
++        MojoDescriptor existing = null;
++        // this relies heavily on the equals() and hashCode() for ComponentDescriptor,
++        // which uses role:roleHint for identity...and roleHint == goalPrefix:goal.
++        // role does not vary for Mojos.
++        List<MojoDescriptor> mojos = pluginDescriptor.getMojos();
++
++        if ( mojos != null && mojos.contains(this) )
++        {
++            int indexOf = mojos.indexOf(this);
++
++            existing = mojos.get( indexOf );
++        }
++
++        if ( existing != null )
++        {
++            throw new DuplicateMojoDescriptorException( pluginDescriptor.getGoalPrefix(), getGoal(),
++                                                        existing.getImplementation(),
++                                                        getImplementation() );
++        }
++        else
++        {
++            pluginDescriptor.addComponentDescriptor(this);
++        }
++    }
+ }
+diff --git a/maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/PluginDescriptor.java b/maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/PluginDescriptor.java
+index e05d86a..7b60580 100644
+--- a/maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/PluginDescriptor.java
++++ b/maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/PluginDescriptor.java
+@@ -96,34 +96,6 @@
+         return (List) getComponents();
+     }
+ 
+-    public void addMojo( MojoDescriptor mojoDescriptor )
+-        throws DuplicateMojoDescriptorException
+-    {
+-        MojoDescriptor existing = null;
+-        // this relies heavily on the equals() and hashCode() for ComponentDescriptor,
+-        // which uses role:roleHint for identity...and roleHint == goalPrefix:goal.
+-        // role does not vary for Mojos.
+-        List<MojoDescriptor> mojos = getMojos();
+-
+-        if ( mojos != null && mojos.contains( mojoDescriptor ) )
+-        {
+-            int indexOf = mojos.indexOf( mojoDescriptor );
+-
+-            existing = mojos.get( indexOf );
+-        }
+-
+-        if ( existing != null )
+-        {
+-            throw new DuplicateMojoDescriptorException( getGoalPrefix(), mojoDescriptor.getGoal(),
+-                                                        existing.getImplementation(),
+-                                                        mojoDescriptor.getImplementation() );
+-        }
+-        else
+-        {
+-            addComponentDescriptor( mojoDescriptor );
+-        }
+-    }
+-
+     public String getGroupId()
+     {
+         return groupId;
+diff --git a/maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/PluginDescriptorBuilder.java b/maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/PluginDescriptorBuilder.java
+index 3df7ab4..0a4132d 100644
+--- a/maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/PluginDescriptorBuilder.java
++++ b/maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/PluginDescriptorBuilder.java
+@@ -83,7 +83,7 @@ public PluginDescriptor build( Reader reader, String source )
+         {
+             MojoDescriptor mojoDescriptor = buildComponentDescriptor( component, pluginDescriptor );
+ 
+-            pluginDescriptor.addMojo( mojoDescriptor );
++            mojoDescriptor.addMojo(pluginDescriptor);
+         }
+ 
+         // ----------------------------------------------------------------------

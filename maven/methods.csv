@@ -1,0 +1,13 @@
+id,name,file,offset,containing_class_id,target_ids
+0,org.apache.maven.project.artifact.MavenMetadataSource.hasMissingParentPom,maven-core/src/main/java/org/apache/maven/project/artifact/MavenMetadataSource.java,28579,6,12
+1,org.apache.maven.project.ProjectSorter.addEdge,maven-core/src/main/java/org/apache/maven/project/ProjectSorter.java,8024,13,18
+2,org.apache.maven.lifecycle.internal.LifecycleStarter.projectIsNotPresent,maven-core/src/main/java/org/apache/maven/lifecycle/internal/LifecycleStarter.java,5640,5,10
+3,org.apache.maven.lifecycle.internal.ReactorBuildStatus.isHaltedOrBlacklisted,maven-core/src/main/java/org/apache/maven/lifecycle/internal/ReactorBuildStatus.java,2403,17,18
+4,org.apache.maven.lifecycle.internal.DefaultLifecycleMappingDelegate.addMojoExecution,maven-core/src/main/java/org/apache/maven/lifecycle/internal/DefaultLifecycleMappingDelegate.java,6636,8,15
+5,org.apache.maven.lifecycle.internal.DefaultLifecycleExecutionPlanCalculator.setupMojoExecutions,maven-core/src/main/java/org/apache/maven/lifecycle/internal/DefaultLifecycleExecutionPlanCalculator.java,6247,1,18 10
+6,org.apache.maven.toolchain.DefaultToolchainManager.retrieveContext,maven-core/src/main/java/org/apache/maven/toolchain/DefaultToolchainManager.java,3764,9,10
+7,org.apache.maven.repository.metadata.MetadataGraph.findVertex,maven-compat/src/main/java/org/apache/maven/repository/metadata/MetadataGraph.java,5261,3,2
+8,org.apache.maven.repository.metadata.MetadataGraph.getEdgesBetween,maven-compat/src/main/java/org/apache/maven/repository/metadata/MetadataGraph.java,8346,3,11
+9,org.apache.maven.repository.metadata.ClasspathContainer.add,maven-compat/src/main/java/org/apache/maven/repository/metadata/ClasspathContainer.java,1994,14,2
+10,org.apache.maven.repository.metadata.MetadataResolutionResult.getClasspathTree,maven-compat/src/main/java/org/apache/maven/repository/metadata/MetadataResolutionResult.java,5308,4,7
+11,org.apache.maven.plugin.descriptor.PluginDescriptor.addMojo,maven-plugin-api/src/main/java/org/apache/maven/plugin/descriptor/PluginDescriptor.java,2895,0,16

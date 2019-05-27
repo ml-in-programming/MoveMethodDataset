@@ -1,0 +1,26 @@
+2019-05-27 23:22:38,735 [INFO] Project /home/mikhail/Documents/Development/MoveMethodGenerator/../MoveMethodDataset/maven/maven is opened
+2019-05-27 23:22:58,737 [INFO] Total number of java files: 970
+2019-05-27 23:22:58,737 [INFO] Total number of source java files: 970
+2019-05-27 23:22:58,737 [INFO] Total number of classes: 377
+2019-05-27 23:22:58,737 [INFO] Total number of methods: 3676
+2019-05-27 23:22:58,737 [INFO] StaticMethodsFilter filtered: 232
+2019-05-27 23:22:58,737 [INFO] ConstructorsFilter filtered: 413
+2019-05-27 23:22:58,737 [INFO] AbstractMethodsFilter filtered: 4
+2019-05-27 23:22:58,737 [INFO] GettersFilter filtered: 582
+2019-05-27 23:22:58,737 [INFO] SettersFilter filtered: 193
+2019-05-27 23:22:58,737 [INFO] EmptyMethodsFilter filtered: 131
+2019-05-27 23:22:58,737 [INFO] ExceptionsThrowersFilter filtered: 11
+2019-05-27 23:22:58,737 [INFO] SingleMethodFilter filtered: 38
+2019-05-27 23:22:58,737 [INFO] SimpleDelegationsFilter filtered: 446
+2019-05-27 23:22:58,737 [INFO] PrivateMethodsCallersFilter filtered: 462
+2019-05-27 23:22:58,737 [INFO] PrivateFieldAccessorsFilter filtered: 588
+2019-05-27 23:22:58,737 [INFO] OverridingMethodsFilter filtered: 162
+2019-05-27 23:22:58,737 [INFO] OverriddenMethodsFilter filtered: 23
+2019-05-27 23:22:58,737 [INFO] MethodCallWithSuperFilter filtered: 0
+2019-05-27 23:22:58,738 [INFO] PrivateClassUserFilter filtered: 0
+2019-05-27 23:22:58,738 [INFO] GenericTypeUserFilter filtered: 0
+2019-05-27 23:22:58,738 [INFO] NoTargetsMethodsFilter filtered: 379
+2019-05-27 23:22:58,738 [INFO] Number of methods after filtration: 12
+2019-05-27 23:28:02,314 [INFO] Project /home/mikhail/Documents/Development/MoveMethodGenerator/../MoveMethodDataset/maven/maven is opened
+2019-05-27 23:28:18,036 [INFO] 13 potential moves found
+2019-05-27 23:28:18,036 [INFO] 7 moves performed
