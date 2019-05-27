@@ -1,0 +1,3431 @@
+diff --git a/cayenne-cgen/src/main/java/org/apache/cayenne/gen/CgenConfiguration.java b/cayenne-cgen/src/main/java/org/apache/cayenne/gen/CgenConfiguration.java
+index e03598e..2316c58 100644
+--- a/cayenne-cgen/src/main/java/org/apache/cayenne/gen/CgenConfiguration.java
++++ b/cayenne-cgen/src/main/java/org/apache/cayenne/gen/CgenConfiguration.java
+@@ -21,6 +21,7 @@ package org.apache.cayenne.gen;
+ 
+ import org.apache.cayenne.configuration.ConfigurationNodeVisitor;
+ import org.apache.cayenne.gen.xml.CgenExtension;
++import org.apache.cayenne.gen.xml.CgenSaverDelegate;
+ import org.apache.cayenne.map.DataMap;
+ import org.apache.cayenne.map.Embeddable;
+ import org.apache.cayenne.map.ObjEntity;
+@@ -28,6 +29,8 @@ import org.apache.cayenne.util.XMLEncoder;
+ import org.apache.cayenne.util.XMLSerializable;
+ 
+ import java.io.Serializable;
++import java.net.URL;
++import java.nio.file.Files;
+ import java.nio.file.Path;
+ import java.nio.file.Paths;
+ import java.util.*;
+@@ -389,4 +392,30 @@ public class CgenConfiguration implements Serializable, XMLSerializable {
+                 .end();
+     }
+ 
++    public void resolveOutputDir(CgenSaverDelegate cgenSaverDelegate) {
++        if(getRootPath() == null) {
++            return;
++        }
++        Path prevPath = buildPath();
++        URL url = cgenSaverDelegate.getBaseDirectory().getURL();
++        if(url != null) {
++            Path resourcePath = Paths.get(url.getPath());
++            if(Files.isRegularFile(resourcePath)) {
++                resourcePath = resourcePath.getParent();
++            }
++            setRootPath(resourcePath);
++            if(prevPath != null) {
++                Path relPath = resourcePath.relativize(prevPath).normalize();
++                setRelPath(relPath);
++                Path templatePath = Paths.get(getTemplate());
++                if(templatePath.isAbsolute()) {
++                    setTemplate(resourcePath.relativize(templatePath).normalize().toString());
++                }
++                Path superTemplatePath = Paths.get(getSuperTemplate());
++                if(superTemplatePath.isAbsolute()) {
++                    setSuperTemplate(resourcePath.relativize(superTemplatePath).normalize().toString());
++                }
++            }
++        }
++    }
+ }
+diff --git a/cayenne-cgen/src/main/java/org/apache/cayenne/gen/ClassGenerationAction.java b/cayenne-cgen/src/main/java/org/apache/cayenne/gen/ClassGenerationAction.java
+index e149b34..0ccafbf 100644
+--- a/cayenne-cgen/src/main/java/org/apache/cayenne/gen/ClassGenerationAction.java
++++ b/cayenne-cgen/src/main/java/org/apache/cayenne/gen/ClassGenerationAction.java
+@@ -103,31 +103,6 @@ public class ClassGenerationAction {
+ 		}
+ 	}
+ 
+-	public String customTemplateName(TemplateType type) {
+-		switch (type) {
+-			case ENTITY_SINGLE_CLASS:
+-				return cgenConfiguration.getTemplate();
+-			case ENTITY_SUBCLASS:
+-				return cgenConfiguration.getTemplate();
+-			case ENTITY_SUPERCLASS:
+-				return cgenConfiguration.getSuperTemplate();
+-			case EMBEDDABLE_SINGLE_CLASS:
+-				return cgenConfiguration.getEmbeddableTemplate();
+-			case EMBEDDABLE_SUBCLASS:
+-				return cgenConfiguration.getEmbeddableTemplate();
+-			case EMBEDDABLE_SUPERCLASS:
+-				return cgenConfiguration.getEmbeddableSuperTemplate();
+-			case DATAMAP_SINGLE_CLASS:
+-				return cgenConfiguration.getQueryTemplate();
+-			case DATAMAP_SUPERCLASS:
+-				return cgenConfiguration.getQuerySuperTemplate();
+-			case DATAMAP_SUBCLASS:
+-				return cgenConfiguration.getQueryTemplate();
+-			default:
+-				throw new IllegalArgumentException("Invalid template type: " + type);
+-		}
+-	}
+-
+     /**
+      * VelocityContext initialization method called once per artifact.
+      */
+@@ -269,7 +244,7 @@ public class ClassGenerationAction {
+ 
+ 	private Template getTemplate(TemplateType type) {
+ 
+-		String templateName = customTemplateName(type);
++		String templateName = type.customTemplateName(this);
+ 		if (templateName == null) {
+ 			templateName = defaultTemplateName(type);
+ 		}
+diff --git a/cayenne-cgen/src/main/java/org/apache/cayenne/gen/TemplateType.java b/cayenne-cgen/src/main/java/org/apache/cayenne/gen/TemplateType.java
+index 109627e..9edaeeb 100644
+--- a/cayenne-cgen/src/main/java/org/apache/cayenne/gen/TemplateType.java
++++ b/cayenne-cgen/src/main/java/org/apache/cayenne/gen/TemplateType.java
+@@ -52,4 +52,29 @@ public enum TemplateType {
+     public boolean isSuperclass() {
+         return superclass;
+     }
++
++    public String customTemplateName(ClassGenerationAction classGenerationAction) {
++        switch (this) {
++            case ENTITY_SINGLE_CLASS:
++                return classGenerationAction.getCgenConfiguration().getTemplate();
++            case ENTITY_SUBCLASS:
++                return classGenerationAction.getCgenConfiguration().getTemplate();
++            case ENTITY_SUPERCLASS:
++                return classGenerationAction.getCgenConfiguration().getSuperTemplate();
++            case EMBEDDABLE_SINGLE_CLASS:
++                return classGenerationAction.getCgenConfiguration().getEmbeddableTemplate();
++            case EMBEDDABLE_SUBCLASS:
++                return classGenerationAction.getCgenConfiguration().getEmbeddableTemplate();
++            case EMBEDDABLE_SUPERCLASS:
++                return classGenerationAction.getCgenConfiguration().getEmbeddableSuperTemplate();
++            case DATAMAP_SINGLE_CLASS:
++                return classGenerationAction.getCgenConfiguration().getQueryTemplate();
++            case DATAMAP_SUPERCLASS:
++                return classGenerationAction.getCgenConfiguration().getQuerySuperTemplate();
++            case DATAMAP_SUBCLASS:
++                return classGenerationAction.getCgenConfiguration().getQueryTemplate();
++            default:
++                throw new IllegalArgumentException("Invalid template type: " + this);
++        }
++    }
+ }
+diff --git a/cayenne-cgen/src/main/java/org/apache/cayenne/gen/xml/CgenSaverDelegate.java b/cayenne-cgen/src/main/java/org/apache/cayenne/gen/xml/CgenSaverDelegate.java
+index 5f381ea..b9d9e1d 100644
+--- a/cayenne-cgen/src/main/java/org/apache/cayenne/gen/xml/CgenSaverDelegate.java
++++ b/cayenne-cgen/src/main/java/org/apache/cayenne/gen/xml/CgenSaverDelegate.java
+@@ -23,11 +23,6 @@ import org.apache.cayenne.gen.CgenConfiguration;
+ import org.apache.cayenne.map.DataMap;
+ import org.apache.cayenne.project.extension.BaseSaverDelegate;
+ 
+-import java.net.URL;
+-import java.nio.file.Files;
+-import java.nio.file.Path;
+-import java.nio.file.Paths;
+-
+ /**
+  * @since 4.1
+  */
+@@ -43,36 +38,10 @@ public class CgenSaverDelegate extends BaseSaverDelegate{
+     public Void visitDataMap(DataMap dataMap) {
+         CgenConfiguration cgen = metaData.get(dataMap, CgenConfiguration.class);
+         if(cgen != null){
+-            resolveOutputDir(cgen);
++            cgen.resolveOutputDir(this);
+             encoder.nested(cgen, getParentDelegate());
+         }
+         return null;
+     }
+ 
+-    private void resolveOutputDir(CgenConfiguration cgenConfiguration) {
+-        if(cgenConfiguration.getRootPath() == null) {
+-            return;
+-        }
+-        Path prevPath = cgenConfiguration.buildPath();
+-        URL url = getBaseDirectory().getURL();
+-        if(url != null) {
+-            Path resourcePath = Paths.get(url.getPath());
+-            if(Files.isRegularFile(resourcePath)) {
+-                resourcePath = resourcePath.getParent();
+-            }
+-            cgenConfiguration.setRootPath(resourcePath);
+-            if(prevPath != null) {
+-                Path relPath = resourcePath.relativize(prevPath).normalize();
+-                cgenConfiguration.setRelPath(relPath);
+-                Path templatePath = Paths.get(cgenConfiguration.getTemplate());
+-                if(templatePath.isAbsolute()) {
+-                    cgenConfiguration.setTemplate(resourcePath.relativize(templatePath).normalize().toString());
+-                }
+-                Path superTemplatePath = Paths.get(cgenConfiguration.getSuperTemplate());
+-                if(superTemplatePath.isAbsolute()) {
+-                    cgenConfiguration.setSuperTemplate(resourcePath.relativize(superTemplatePath).normalize().toString());
+-                }
+-            }
+-        }
+-    }
+ }
+diff --git a/cayenne-dbsync/src/main/java/org/apache/cayenne/dbsync/merge/context/MergerContext.java b/cayenne-dbsync/src/main/java/org/apache/cayenne/dbsync/merge/context/MergerContext.java
+index 6bc05fb..fb2e53f 100644
+--- a/cayenne-dbsync/src/main/java/org/apache/cayenne/dbsync/merge/context/MergerContext.java
++++ b/cayenne-dbsync/src/main/java/org/apache/cayenne/dbsync/merge/context/MergerContext.java
+@@ -24,15 +24,21 @@ import org.apache.cayenne.dba.DbAdapter;
+ import org.apache.cayenne.dbsync.filter.NameFilter;
+ import org.apache.cayenne.dbsync.filter.NamePatternMatcher;
+ import org.apache.cayenne.dbsync.merge.token.MergerToken;
++import org.apache.cayenne.dbsync.merge.token.db.AbstractToDbToken;
+ import org.apache.cayenne.dbsync.naming.DefaultObjectNameGenerator;
+ import org.apache.cayenne.dbsync.naming.NoStemStemmer;
+ import org.apache.cayenne.dbsync.naming.ObjectNameGenerator;
+ import org.apache.cayenne.dbsync.reverse.dbload.DefaultModelMergeDelegate;
+ import org.apache.cayenne.dbsync.reverse.dbload.ModelMergeDelegate;
++import org.apache.cayenne.log.JdbcEventLogger;
+ import org.apache.cayenne.map.DataMap;
++import org.apache.cayenne.validation.SimpleValidationFailure;
+ import org.apache.cayenne.validation.ValidationResult;
+ 
+ import javax.sql.DataSource;
++import java.sql.Connection;
++import java.sql.SQLException;
++import java.sql.Statement;
+ import java.util.Objects;
+ 
+ /**
+@@ -99,6 +105,20 @@ public class MergerContext {
+         return nameGenerator;
+     }
+ 
++    public void executeSql(String sql, AbstractToDbToken abstractToDbToken) {
++        JdbcEventLogger logger = getDataNode().getJdbcEventLogger();
++        logger.log(sql);
++
++        try (Connection conn = getDataNode().getDataSource().getConnection()) {
++            try (Statement st = conn.createStatement()) {
++                st.execute(sql);
++            }
++        } catch (SQLException e) {
++            getValidationResult().addFailure(new SimpleValidationFailure(sql, e.getMessage()));
++            logger.logQueryError(e);
++        }
++    }
++
+     public static class Builder {
+ 
+         private MergerContext context;
+diff --git a/cayenne-dbsync/src/main/java/org/apache/cayenne/dbsync/merge/token/db/AbstractToDbToken.java b/cayenne-dbsync/src/main/java/org/apache/cayenne/dbsync/merge/token/db/AbstractToDbToken.java
+index d336198..3ff7218 100644
+--- a/cayenne-dbsync/src/main/java/org/apache/cayenne/dbsync/merge/token/db/AbstractToDbToken.java
++++ b/cayenne-dbsync/src/main/java/org/apache/cayenne/dbsync/merge/token/db/AbstractToDbToken.java
+@@ -24,14 +24,9 @@ import org.apache.cayenne.dbsync.merge.context.MergeDirection;
+ import org.apache.cayenne.dbsync.merge.context.MergerContext;
+ import org.apache.cayenne.dbsync.merge.token.AbstractMergerToken;
+ import org.apache.cayenne.dbsync.merge.token.MergerToken;
+-import org.apache.cayenne.log.JdbcEventLogger;
+ import org.apache.cayenne.map.DbAttribute;
+ import org.apache.cayenne.map.DbEntity;
+-import org.apache.cayenne.validation.SimpleValidationFailure;
+ 
+-import java.sql.Connection;
+-import java.sql.SQLException;
+-import java.sql.Statement;
+ import java.util.List;
+ 
+ /**
+@@ -47,25 +42,11 @@ public abstract class AbstractToDbToken extends AbstractMergerToken {
+ 	@Override
+ 	public void execute(MergerContext mergerContext) {
+ 		for (String sql : createSql(mergerContext.getDataNode().getAdapter())) {
+-			executeSql(mergerContext, sql);
++			mergerContext.executeSql(sql, this);
+ 		}
+ 	}
+ 
+-	void executeSql(MergerContext mergerContext, String sql) {
+-		JdbcEventLogger logger = mergerContext.getDataNode().getJdbcEventLogger();
+-		logger.log(sql);
+-
+-		try (Connection conn = mergerContext.getDataNode().getDataSource().getConnection()) {
+-			try (Statement st = conn.createStatement()) {
+-				st.execute(sql);
+-			}
+-		} catch (SQLException e) {
+-			mergerContext.getValidationResult().addFailure(new SimpleValidationFailure(sql, e.getMessage()));
+-			logger.logQueryError(e);
+-		}
+-	}
+-
+-	public abstract List<String> createSql(DbAdapter adapter);
++    public abstract List<String> createSql(DbAdapter adapter);
+ 
+ 	@Override
+ 	public final MergeDirection getDirection() {
+diff --git a/cayenne-dbsync/src/main/java/org/apache/cayenne/dbsync/merge/token/db/CreateTableToDb.java b/cayenne-dbsync/src/main/java/org/apache/cayenne/dbsync/merge/token/db/CreateTableToDb.java
+index 29b6f5b..7ac48af 100644
+--- a/cayenne-dbsync/src/main/java/org/apache/cayenne/dbsync/merge/token/db/CreateTableToDb.java
++++ b/cayenne-dbsync/src/main/java/org/apache/cayenne/dbsync/merge/token/db/CreateTableToDb.java
+@@ -59,7 +59,7 @@ public class CreateTableToDb extends AbstractToDbToken.Entity {
+                         node,
+                         Collections.singletonList(getEntity()));
+             }
+-            executeSql(mergerContext, adapter.createTable(getEntity()));
++            mergerContext.executeSql(adapter.createTable(getEntity()), this);
+         }
+         catch (Exception e) {
+             mergerContext.getValidationResult().addFailure(
+diff --git a/cayenne-dbsync/src/main/java/org/apache/cayenne/dbsync/merge/token/model/AbstractToModelToken.java b/cayenne-dbsync/src/main/java/org/apache/cayenne/dbsync/merge/token/model/AbstractToModelToken.java
+index 5a6eb8e..22cb979 100644
+--- a/cayenne-dbsync/src/main/java/org/apache/cayenne/dbsync/merge/token/model/AbstractToModelToken.java
++++ b/cayenne-dbsync/src/main/java/org/apache/cayenne/dbsync/merge/token/model/AbstractToModelToken.java
+@@ -52,7 +52,7 @@ public abstract class AbstractToModelToken extends AbstractMergerToken {
+ 
+         DbEntity dbEntity = rel.getSourceEntity();
+         for (ObjEntity objEntity : dbEntity.mappedObjEntities()) {
+-            remove(mergerContext, objEntity.getRelationshipForDbRelationship(rel), true);
++            remove(mergerContext, rel.getRelationshipForDbRelationship(objEntity), true);
+         }
+ 
+         rel.getSourceEntity().removeRelationship(rel.getName());
+diff --git a/cayenne-dbsync/src/main/java/org/apache/cayenne/dbsync/reverse/dbimport/DbImportConfiguration.java b/cayenne-dbsync/src/main/java/org/apache/cayenne/dbsync/reverse/dbimport/DbImportConfiguration.java
+index 87d249f..2677d4a 100644
+--- a/cayenne-dbsync/src/main/java/org/apache/cayenne/dbsync/reverse/dbimport/DbImportConfiguration.java
++++ b/cayenne-dbsync/src/main/java/org/apache/cayenne/dbsync/reverse/dbimport/DbImportConfiguration.java
+@@ -36,6 +36,7 @@ import org.apache.cayenne.dbsync.reverse.dbload.DbLoaderDelegate;
+ import org.apache.cayenne.dbsync.reverse.dbload.DefaultDbLoaderDelegate;
+ import org.apache.cayenne.dbsync.reverse.dbload.LoggingDbLoaderDelegate;
+ import org.apache.cayenne.dbsync.reverse.filters.FiltersConfig;
++import org.apache.cayenne.dbsync.reverse.filters.FiltersConfigBuilder;
+ import org.slf4j.Logger;
+ 
+ import java.io.File;
+@@ -326,4 +327,19 @@ public class DbImportConfiguration {
+     public void setUseDataMapReverseEngineering(boolean useDataMapReverseEngineering) {
+         this.useDataMapReverseEngineering = useDataMapReverseEngineering;
+     }
++
++    public void putReverseEngineeringToConfig(ReverseEngineering reverseEngineering, DefaultDbImportAction defaultDbImportAction) {
++        setSkipRelationshipsLoading(reverseEngineering.getSkipRelationshipsLoading());
++        setSkipPrimaryKeyLoading(reverseEngineering.getSkipPrimaryKeyLoading());
++        setStripFromTableNames(reverseEngineering.getStripFromTableNames());
++        setTableTypes(reverseEngineering.getTableTypes());
++        setMeaningfulPkTables(reverseEngineering.getMeaningfulPkTables());
++        setNamingStrategy(reverseEngineering.getNamingStrategy());
++        setFiltersConfig(new FiltersConfigBuilder(reverseEngineering).build());
++        setForceDataMapCatalog(reverseEngineering.isForceDataMapCatalog());
++        setForceDataMapSchema(reverseEngineering.isForceDataMapSchema());
++        setDefaultPackage(reverseEngineering.getDefaultPackage());
++        setUsePrimitives(reverseEngineering.isUsePrimitives());
++        setUseJava7Types(reverseEngineering.isUseJava7Types());
++    }
+ }
+diff --git a/cayenne-dbsync/src/main/java/org/apache/cayenne/dbsync/reverse/dbimport/DefaultDbImportAction.java b/cayenne-dbsync/src/main/java/org/apache/cayenne/dbsync/reverse/dbimport/DefaultDbImportAction.java
+index 7785234..343c3e5 100644
+--- a/cayenne-dbsync/src/main/java/org/apache/cayenne/dbsync/reverse/dbimport/DefaultDbImportAction.java
++++ b/cayenne-dbsync/src/main/java/org/apache/cayenne/dbsync/reverse/dbimport/DefaultDbImportAction.java
+@@ -53,7 +53,6 @@ import org.apache.cayenne.dbsync.reverse.dbload.ModelMergeDelegate;
+ import org.apache.cayenne.dbsync.reverse.dbload.ProxyModelMergeDelegate;
+ import org.apache.cayenne.dbsync.reverse.filters.CatalogFilter;
+ import org.apache.cayenne.dbsync.reverse.filters.FiltersConfig;
+-import org.apache.cayenne.dbsync.reverse.filters.FiltersConfigBuilder;
+ import org.apache.cayenne.dbsync.reverse.filters.PatternFilter;
+ import org.apache.cayenne.di.Inject;
+ import org.apache.cayenne.map.DataMap;
+@@ -176,7 +175,7 @@ public class DefaultDbImportAction implements DbImportAction {
+ 
+         ReverseEngineering dataMapReverseEngineering = metaData.get(targetDataMap, ReverseEngineering.class);
+         if ((config.isUseDataMapReverseEngineering()) && (dataMapReverseEngineering != null)) {
+-            putReverseEngineeringToConfig(dataMapReverseEngineering, config);
++            config.putReverseEngineeringToConfig(dataMapReverseEngineering, this);
+         }
+         if ((dataMapReverseEngineering != null) && (!config.isUseDataMapReverseEngineering())) {
+             logger.warn("Found several dbimport configs. Configuration selected from 'build.gradle' file.");
+@@ -223,21 +222,6 @@ public class DefaultDbImportAction implements DbImportAction {
+         return sourceDataMap;
+     }
+ 
+-    private void putReverseEngineeringToConfig(ReverseEngineering reverseEngineering, DbImportConfiguration config) {
+-        config.setSkipRelationshipsLoading(reverseEngineering.getSkipRelationshipsLoading());
+-        config.setSkipPrimaryKeyLoading(reverseEngineering.getSkipPrimaryKeyLoading());
+-        config.setStripFromTableNames(reverseEngineering.getStripFromTableNames());
+-        config.setTableTypes(reverseEngineering.getTableTypes());
+-        config.setMeaningfulPkTables(reverseEngineering.getMeaningfulPkTables());
+-        config.setNamingStrategy(reverseEngineering.getNamingStrategy());
+-        config.setFiltersConfig(new FiltersConfigBuilder(reverseEngineering).build());
+-        config.setForceDataMapCatalog(reverseEngineering.isForceDataMapCatalog());
+-        config.setForceDataMapSchema(reverseEngineering.isForceDataMapSchema());
+-        config.setDefaultPackage(reverseEngineering.getDefaultPackage());
+-        config.setUsePrimitives(reverseEngineering.isUsePrimitives());
+-        config.setUseJava7Types(reverseEngineering.isUseJava7Types());
+-    }
+-
+     protected void transformSourceBeforeMerge(DataMap sourceDataMap, DataMap targetDataMap, DbImportConfiguration configuration) {
+         if (configuration.isForceDataMapCatalog()) {
+             String catalog = targetDataMap.getDefaultCatalog();
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/DataRow.java b/cayenne-server/src/main/java/org/apache/cayenne/DataRow.java
+index ed1cf57..721637a 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/DataRow.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/DataRow.java
+@@ -19,11 +19,16 @@
+ 
+ package org.apache.cayenne;
+ 
++import java.util.Collections;
+ import java.util.HashMap;
++import java.util.List;
+ import java.util.Map;
+ import java.util.concurrent.atomic.AtomicLong;
+ 
++import org.apache.cayenne.access.DataContext;
+ import org.apache.cayenne.map.DbRelationship;
++import org.apache.cayenne.map.ObjEntity;
++import org.apache.cayenne.reflect.ClassDescriptor;
+ import org.apache.cayenne.util.ToStringBuilder;
+ import org.apache.cayenne.util.Util;
+ 
+@@ -149,4 +154,24 @@ public class DataRow extends HashMap<String, Object> {
+     public void setEntityName(String entityName) {
+         this.entityName = entityName;
+     }
++
++    /**
++     * Creates a DataObject from DataRow.
++     *
++     * @see DataRow
++     * @since 3.1
++     * @param objectClass
++     * @param dataContext
++     */
++    public <T extends Persistent> T objectFromDataRow(Class<T> objectClass, DataContext dataContext) {
++        ObjEntity entity = dataContext.getEntityResolver().getObjEntity(objectClass);
++
++        if (entity == null) {
++            throw new CayenneRuntimeException("Unmapped Java class: %s", objectClass);
++        }
++
++        ClassDescriptor descriptor = dataContext.getEntityResolver().getClassDescriptor(entity.getName());
++        List<T> list = dataContext.objectsFromDataRows(descriptor, Collections.singletonList(this));
++        return list.get(0);
++    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/access/DataContext.java b/cayenne-server/src/main/java/org/apache/cayenne/access/DataContext.java
+index 57993f4..43cb5b6 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/access/DataContext.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/access/DataContext.java
+@@ -424,24 +424,6 @@ public class DataContext extends BaseContext {
+     }
+ 
+     /**
+-     * Creates a DataObject from DataRow.
+-     * 
+-     * @see DataRow
+-     * @since 3.1
+-     */
+-    public <T extends Persistent> T objectFromDataRow(Class<T> objectClass, DataRow dataRow) {
+-        ObjEntity entity = this.getEntityResolver().getObjEntity(objectClass);
+-
+-        if (entity == null) {
+-            throw new CayenneRuntimeException("Unmapped Java class: %s", objectClass);
+-        }
+-
+-        ClassDescriptor descriptor = getEntityResolver().getClassDescriptor(entity.getName());
+-        List<T> list = objectsFromDataRows(descriptor, Collections.singletonList(dataRow));
+-        return list.get(0);
+-    }
+-
+-    /**
+      * Creates a DataObject from DataRow. This variety of the
+      * 'objectFromDataRow' method is normally used for generic classes.
+      * 
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/access/DataNode.java b/cayenne-server/src/main/java/org/apache/cayenne/access/DataNode.java
+index 7609c95..083468c 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/access/DataNode.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/access/DataNode.java
+@@ -32,6 +32,7 @@ import org.apache.cayenne.access.translator.select.SelectTranslator;
+ import org.apache.cayenne.access.translator.select.SelectTranslatorFactory;
+ import org.apache.cayenne.dba.DbAdapter;
+ import org.apache.cayenne.dba.JdbcAdapter;
++import org.apache.cayenne.dba.JdbcPkGenerator;
+ import org.apache.cayenne.log.JdbcEventLogger;
+ import org.apache.cayenne.log.NoopJdbcEventLogger;
+ import org.apache.cayenne.map.DataMap;
+@@ -47,9 +48,7 @@ import org.apache.cayenne.util.ToStringBuilder;
+ 
+ import javax.sql.DataSource;
+ import java.io.PrintWriter;
+-import java.sql.Connection;
+-import java.sql.SQLException;
+-import java.sql.SQLFeatureNotSupportedException;
++import java.sql.*;
+ import java.util.Collection;
+ import java.util.Collections;
+ import java.util.HashMap;
+@@ -408,6 +407,20 @@ public class DataNode implements QueryEngine {
+ 		this.selectTranslatorFactory = selectTranslatorFactory;
+ 	}
+ 
++    /**
++     * Checks if AUTO_PK_TABLE already exists in the database.
++     * @param jdbcPkGenerator
++     */
++    public boolean autoPkTableExists(JdbcPkGenerator jdbcPkGenerator) throws SQLException {
++
++        try (Connection con = getDataSource().getConnection()) {
++            DatabaseMetaData md = con.getMetaData();
++            try (ResultSet tables = md.getTables(null, null, "AUTO_PK_SUPPORT", null)) {
++                return tables.next();
++            }
++        }
++    }
++
+     // a read-through DataSource that ensures returning the same connection
+     // within
+     // transaction.
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/access/jdbc/SQLStatement.java b/cayenne-server/src/main/java/org/apache/cayenne/access/jdbc/SQLStatement.java
+index 38c872c..53ad280 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/access/jdbc/SQLStatement.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/access/jdbc/SQLStatement.java
+@@ -19,6 +19,7 @@
+ 
+ package org.apache.cayenne.access.jdbc;
+ 
++import org.apache.cayenne.CayenneRuntimeException;
+ import org.apache.cayenne.access.translator.ParameterBinding;
+ 
+ /**
+@@ -80,4 +81,33 @@ public class SQLStatement {
+     public void setSql(String string) {
+         sql = string;
+     }
++
++    /**
++     * Creates column descriptors based on compiled statement and query metadata
++     * @param sqlTemplateAction
++     */
++    public ColumnDescriptor[] createColumnDescriptors(SQLTemplateAction sqlTemplateAction) {
++// SQLTemplate #result columns take precedence over other ways to determine the type
++        if (getResultColumns().length > 0) {
++            if(sqlTemplateAction.getQuery().getResultColumnsTypes() != null) {
++                throw new CayenneRuntimeException("Caused by setting return types by directives and by parameters in query.");
++            } else {
++                return getResultColumns();
++            }
++        }
++
++        // check explicitly set column types
++        if(sqlTemplateAction.getQuery().getResultColumnsTypes() == null) {
++            return null;
++        }
++
++        int size = sqlTemplateAction.getQuery().getResultColumnsTypes().size();
++        ColumnDescriptor[] columnDescriptors = new ColumnDescriptor[size];
++        for(int i = 0; i < size; i++) {
++            ColumnDescriptor columnDescriptor = new ColumnDescriptor();
++            columnDescriptor.setJavaClass(sqlTemplateAction.getQuery().getResultColumnsTypes().get(i).getName());
++            columnDescriptors[i] = columnDescriptor;
++        }
++        return columnDescriptors;
++    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/access/jdbc/SQLTemplateAction.java b/cayenne-server/src/main/java/org/apache/cayenne/access/jdbc/SQLTemplateAction.java
+index f8eb617..48d7091 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/access/jdbc/SQLTemplateAction.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/access/jdbc/SQLTemplateAction.java
+@@ -295,42 +295,14 @@ public class SQLTemplateAction implements SQLAction {
+ 		}
+ 	}
+ 
+-	/**
+-	 * Creates column descriptors based on compiled statement and query metadata
+-	 */
+-	private ColumnDescriptor[] createColumnDescriptors(SQLStatement compiled) {
+-		// SQLTemplate #result columns take precedence over other ways to determine the type
+-		if (compiled.getResultColumns().length > 0) {
+-			if(query.getResultColumnsTypes() != null) {
+-				throw new CayenneRuntimeException("Caused by setting return types by directives and by parameters in query.");
+-			} else {
+-				return compiled.getResultColumns();
+-			}
+-		}
+-
+-		// check explicitly set column types
+-		if(query.getResultColumnsTypes() == null) {
+-			return null;
+-		}
+-
+-		int size = query.getResultColumnsTypes().size();
+-		ColumnDescriptor[] columnDescriptors = new ColumnDescriptor[size];
+-		for(int i = 0; i < size; i++) {
+-			ColumnDescriptor columnDescriptor = new ColumnDescriptor();
+-			columnDescriptor.setJavaClass(query.getResultColumnsTypes().get(i).getName());
+-			columnDescriptors[i] = columnDescriptor;
+-		}
+-		return columnDescriptors;
+-	}
+-
+-	/**
++    /**
+ 	 * @since 3.0
+ 	 */
+ 	protected RowDescriptorBuilder configureRowDescriptorBuilder(SQLStatement compiled, ResultSet resultSet)
+ 			throws SQLException {
+ 		RowDescriptorBuilder builder = new RowDescriptorBuilder()
+ 				.setResultSet(resultSet)
+-				.setColumns(createColumnDescriptors(compiled))
++				.setColumns(compiled.createColumnDescriptors(this))
+ 				.validateDuplicateColumnNames();
+ 
+ 		if(query.getResultColumnsTypes() != null) {
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/FunctionNode.java b/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/FunctionNode.java
+index 3673ed0..8311141 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/FunctionNode.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/FunctionNode.java
+@@ -21,6 +21,7 @@ package org.apache.cayenne.access.sqlbuilder.sqltree;
+ 
+ import org.apache.cayenne.access.sqlbuilder.NodeTreeVisitor;
+ import org.apache.cayenne.access.sqlbuilder.QuotingAppendable;
++import org.apache.cayenne.dba.db2.DB2SQLTreeProcessor;
+ 
+ /**
+  * @since 4.2
+@@ -128,4 +129,24 @@ public class FunctionNode extends Node {
+         // has alias and not in result node
+         return alias != null && notInResultNode();
+     }
++
++    public Node getReplacementForFunction(DB2SQLTreeProcessor db2SQLTreeProcessor) {
++        switch (getFunctionName()) {
++            case "SUBSTRING":
++                return new FunctionNode("SUBSTR", getAlias(), true);
++            case "DAY_OF_MONTH":
++                return new FunctionNode("DAY", getAlias(), true);
++            case "DAY_OF_WEEK":
++                return new FunctionNode("DAYOFWEEK", getAlias(), true);
++            case "DAY_OF_YEAR":
++                return new FunctionNode("DAYOFYEAR", getAlias(), true);
++            case "CURRENT_DATE":
++            case "CURRENT_TIME":
++            case "CURRENT_TIMESTAMP":
++                return new FunctionNode(getFunctionName(), getAlias(), false);
++            case "CONCAT":
++                return new OpExpressionNode("||");
++        }
++        return null;
++    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/InNode.java b/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/InNode.java
+index fd08903..68a18d5 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/InNode.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/InNode.java
+@@ -20,6 +20,7 @@
+ package org.apache.cayenne.access.sqlbuilder.sqltree;
+ 
+ import org.apache.cayenne.access.sqlbuilder.QuotingAppendable;
++import org.apache.cayenne.dba.oracle.OracleSQLTreeProcessor;
+ 
+ /**
+  * @since 4.2
+@@ -62,4 +63,10 @@ public class InNode extends Node {
+         return not;
+     }
+ 
++    public InNode newSliceNode(Node arg, ValueNode valueNode, Object slice, OracleSQLTreeProcessor oracleSQLTreeProcessor) {
++        InNode nextNode = new InNode(isNot());
++        nextNode.addChild(arg.deepCopy());
++        nextNode.addChild(new ValueNode(slice, valueNode.isArray(), valueNode.getAttribute()));
++        return nextNode;
++    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/Node.java b/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/Node.java
+index 550425f..075204f 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/Node.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/Node.java
+@@ -22,6 +22,7 @@ package org.apache.cayenne.access.sqlbuilder.sqltree;
+ import org.apache.cayenne.access.sqlbuilder.NodeTreeVisitor;
+ import org.apache.cayenne.access.sqlbuilder.QuotingAppendable;
+ import org.apache.cayenne.access.sqlbuilder.StringBuilderAppendable;
++import org.apache.cayenne.dba.sqlite.SQLiteTreeProcessor;
+ 
+ /**
+  * @since 4.2
+@@ -149,4 +150,21 @@ public abstract class Node {
+ 
+     public void appendChildrenEnd(QuotingAppendable buffer) {
+     }
++
++    public void replaceExtractFunction(FunctionNode original, int index, String format, SQLiteTreeProcessor sqLiteTreeProcessor) {
++        Node replacement = new FunctionNode("cast", original.getAlias(), true) {
++            @Override
++            public void appendChildrenSeparator(QuotingAppendable buffer, int childIdx) {
++                buffer.append(" as ");
++            }
++        };
++
++        FunctionNode strftime = new FunctionNode("strftime", null, true);
++        strftime.addChild(new TextNode(format));
++        strftime.addChild(original.getChild(0));
++        replacement.addChild(strftime);
++        replacement.addChild(new TextNode("integer"));
++
++        replaceChild(index, replacement);
++    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/ValueNode.java b/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/ValueNode.java
+index 2911397..db6ae08 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/ValueNode.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/access/sqlbuilder/sqltree/ValueNode.java
+@@ -26,6 +26,7 @@ import org.apache.cayenne.access.sqlbuilder.SQLGenerationContext;
+ import org.apache.cayenne.access.translator.DbAttributeBinding;
+ import org.apache.cayenne.access.sqlbuilder.QuotingAppendable;
+ import org.apache.cayenne.access.types.ExtendedType;
++import org.apache.cayenne.dba.firebird.FirebirdSQLTreeProcessor;
+ import org.apache.cayenne.map.DbAttribute;
+ 
+ /**
+@@ -260,4 +261,11 @@ public class ValueNode extends Node {
+     public Node copy() {
+         return new ValueNode(value, isArray, attribute);
+     }
++
++    public InNode newSliceNode(InNode child, Node arg, Object slice, FirebirdSQLTreeProcessor firebirdSQLTreeProcessor) {
++        InNode nextNode = new InNode(child.isNot());
++        nextNode.addChild(arg.deepCopy());
++        nextNode.addChild(new ValueNode(slice, isArray(), getAttribute()));
++        return nextNode;
++    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/access/translator/ejbql/EJBQLJoinAppender.java b/cayenne-server/src/main/java/org/apache/cayenne/access/translator/ejbql/EJBQLJoinAppender.java
+index 59333c8..1e3c1dd 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/access/translator/ejbql/EJBQLJoinAppender.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/access/translator/ejbql/EJBQLJoinAppender.java
+@@ -25,10 +25,8 @@ import java.util.List;
+ import java.util.Map;
+ 
+ import org.apache.cayenne.dba.QuotingStrategy;
+-import org.apache.cayenne.ejbql.EJBQLBaseVisitor;
+ import org.apache.cayenne.ejbql.EJBQLException;
+ import org.apache.cayenne.ejbql.EJBQLExpression;
+-import org.apache.cayenne.ejbql.EJBQLParserFactory;
+ import org.apache.cayenne.exp.Expression;
+ import org.apache.cayenne.map.DbEntity;
+ import org.apache.cayenne.map.DbJoin;
+@@ -245,9 +243,8 @@ public class EJBQLJoinAppender {
+ 
+             if (qualifier != null) {
+ 
+-                EJBQLExpression ejbqlQualifier = ejbqlQualifierForEntityAndSubclasses(
+-                        qualifier,
+-                        id.getEntityId());
++                EJBQLExpression ejbqlQualifier = qualifier.ejbqlQualifierForEntityAndSubclasses(
++                        id.getEntityId(), this);
+ 
+                 context.pushMarker(context.makeWhereMarker(), true);
+                 context.append(" WHERE");
+@@ -327,22 +324,4 @@ public class EJBQLJoinAppender {
+         }
+     }
+ 
+-    private EJBQLExpression ejbqlQualifierForEntityAndSubclasses(Expression qualifier, String entityId) {
+-        // parser only works on full queries, so prepend a dummy query and then strip it out...
+-        String ejbqlChunk = qualifier.toEJBQL(entityId);
+-        EJBQLExpression expression = EJBQLParserFactory.getParser().parse(
+-                "DELETE FROM DUMMY WHERE " + ejbqlChunk);
+-
+-        final EJBQLExpression[] result = new EJBQLExpression[1];
+-        expression.visit(new EJBQLBaseVisitor() {
+-
+-            @Override
+-            public boolean visitWhere(EJBQLExpression expression) {
+-                result[0] = expression.getChild(0);
+-                return false;
+-            }
+-        });
+-
+-        return result[0];
+-    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/access/translator/ejbql/EJBQLPathTranslator.java b/cayenne-server/src/main/java/org/apache/cayenne/access/translator/ejbql/EJBQLPathTranslator.java
+index 75c0687..f738ab4 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/access/translator/ejbql/EJBQLPathTranslator.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/access/translator/ejbql/EJBQLPathTranslator.java
+@@ -232,7 +232,7 @@ public abstract class EJBQLPathTranslator extends EJBQLBaseVisitor {
+ 			this.innerJoin = false;
+ 			resolveJoin();
+ 
+-			DbRelationship dbRelationship = chooseDbRelationship(relationship);
++			DbRelationship dbRelationship = relationship.chooseDbRelationship(this);
+ 			DbEntity table = (DbEntity) dbRelationship.getTargetEntity();
+ 
+ 			String alias = this.lastAlias != null ? lastAlias : context.getTableAlias(idPath, context
+@@ -254,7 +254,7 @@ public abstract class EJBQLPathTranslator extends EJBQLBaseVisitor {
+ 		} else {
+ 			// match FK against the target object
+ 
+-			DbRelationship dbRelationship = chooseDbRelationship(relationship);
++			DbRelationship dbRelationship = relationship.chooseDbRelationship(this);
+ 			DbEntity table = (DbEntity) dbRelationship.getSourceEntity();
+ 
+ 			String alias = this.lastAlias != null ? lastAlias : context.getTableAlias(idPath, context
+@@ -283,35 +283,7 @@ public abstract class EJBQLPathTranslator extends EJBQLBaseVisitor {
+ 		}
+ 	}
+ 
+-	/**
+-	 * Checks if the object relationship is flattened and then chooses the
+-	 * corresponding db relationship. The last in idPath if isFlattened and the
+-	 * first in list otherwise.
+-	 * 
+-	 * @param relationship
+-	 *            the object relationship
+-	 * 
+-	 * @return {@link DbRelationship}
+-	 */
+-	protected DbRelationship chooseDbRelationship(ObjRelationship relationship) {
+-
+-		List<DbRelationship> dbRelationships = relationship.getDbRelationships();
+-		String dbRelationshipPath = relationship.getDbRelationshipPath();
+-
+-		if (dbRelationshipPath.contains(".")) {
+-			String dbRelName = dbRelationshipPath.substring(dbRelationshipPath.lastIndexOf(".") + 1);
+-			for (DbRelationship dbR : dbRelationships) {
+-				if (dbR.getName().equals(dbRelName)) {
+-					return dbR;
+-				}
+-
+-			}
+-		}
+-		return relationship.getDbRelationships().get(0);
+-
+-	}
+-
+-	public boolean isUsingAliases() {
++    public boolean isUsingAliases() {
+ 		return usingAliases;
+ 	}
+ 
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/access/translator/procedure/ProcedureTranslator.java b/cayenne-server/src/main/java/org/apache/cayenne/access/translator/procedure/ProcedureTranslator.java
+index 100e528..82983b4 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/access/translator/procedure/ProcedureTranslator.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/access/translator/procedure/ProcedureTranslator.java
+@@ -192,7 +192,7 @@ public class ProcedureTranslator {
+ 				// !Stored procedure parameter can be both in and out
+ 				// at the same time
+ 				if (param.isOutParam()) {
+-					setOutParam(stmt, param, i + 1);
++					param.setOutParam(stmt, i + 1, this);
+ 				}
+ 
+ 				if (param.isInParameter()) {
+@@ -238,17 +238,4 @@ public class ProcedureTranslator {
+ 		adapter.bindParameter(stmt, binding);
+ 	}
+ 
+-	/**
+-	 * Sets a single OUT parameter of the CallableStatement.
+-	 */
+-	protected void setOutParam(CallableStatement stmt, ProcedureParameter param, int pos)
+-			throws Exception {
+-
+-		int precision = param.getPrecision();
+-		if (precision >= 0) {
+-			stmt.registerOutParameter(pos, param.getType(), precision);
+-		} else {
+-			stmt.registerOutParameter(pos, param.getType());
+-		}
+-	}
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/ashwood/AshwoodEntitySorter.java b/cayenne-server/src/main/java/org/apache/cayenne/ashwood/AshwoodEntitySorter.java
+index 4c1a947..9f99e6e 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/ashwood/AshwoodEntitySorter.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/ashwood/AshwoodEntitySorter.java
+@@ -213,7 +213,7 @@ public class AshwoodEntitySorter implements EntitySorter {
+ 		String[] reflexiveRelNames = new String[reflexiveRels.size()];
+ 		for (int i = 0; i < reflexiveRelNames.length; i++) {
+ 			DbRelationship dbRel = reflexiveRels.get(i);
+-			ObjRelationship objRel = (dbRel != null ? objEntity.getRelationshipForDbRelationship(dbRel) : null);
++			ObjRelationship objRel = (dbRel != null ? dbRel.getRelationshipForDbRelationship(objEntity) : null);
+ 			reflexiveRelNames[i] = (objRel != null ? objRel.getName() : null);
+ 		}
+ 
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/configuration/DataChannelDescriptor.java b/cayenne-server/src/main/java/org/apache/cayenne/configuration/DataChannelDescriptor.java
+index 310fb69..3ffea86 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/configuration/DataChannelDescriptor.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/configuration/DataChannelDescriptor.java
+@@ -158,4 +158,22 @@ public class DataChannelDescriptor implements ConfigurationNode, Serializable, X
+ 	public void setDefaultNodeName(String defaultDataNodeName) {
+ 		this.defaultNodeName = defaultDataNodeName;
+ 	}
++
++    public DataNodeDescriptor cloneDataNodeDescriptor(
++            DataNodeDescriptor original, DefaultDataChannelDescriptorMerger defaultDataChannelDescriptorMerger) {
++        DataNodeDescriptor clone = new DataNodeDescriptor(original.getName());
++
++        // do not clone 'configurationSource' as we may change the structure of the node
++
++        clone.setAdapterType(original.getAdapterType());
++        clone.setDataChannelDescriptor(this);
++        clone.setDataSourceDescriptor(original.getDataSourceDescriptor());
++        clone.setDataSourceFactoryType(original.getDataSourceFactoryType());
++        clone.setParameters(original.getParameters());
++        clone.setSchemaUpdateStrategyType(original.getSchemaUpdateStrategyType());
++
++        clone.getDataMapNames().addAll(original.getDataMapNames());
++
++        return clone;
++    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/configuration/DataNodeDescriptor.java b/cayenne-server/src/main/java/org/apache/cayenne/configuration/DataNodeDescriptor.java
+index 6ece619..fab890f 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/configuration/DataNodeDescriptor.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/configuration/DataNodeDescriptor.java
+@@ -19,6 +19,7 @@
+ package org.apache.cayenne.configuration;
+ 
+ import org.apache.cayenne.access.DataNode;
++import org.apache.cayenne.configuration.server.DelegatingDataSourceFactory;
+ import org.apache.cayenne.configuration.server.XMLPoolingDataSourceFactory;
+ import org.apache.cayenne.conn.DataSourceInfo;
+ import org.apache.cayenne.resource.Resource;
+@@ -206,4 +207,11 @@ public class DataNodeDescriptor implements ConfigurationNode, XMLSerializable,
+         this.configurationSource = configurationResource;
+     }
+ 
++    public String getDataNodePropertyName(String propertyConstant, DelegatingDataSourceFactory delegatingDataSourceFactory) {
++        return propertyConstant
++                + "."
++                + getDataChannelDescriptor().getName()
++                + "."
++                + getName();
++    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/configuration/DefaultDataChannelDescriptorMerger.java b/cayenne-server/src/main/java/org/apache/cayenne/configuration/DefaultDataChannelDescriptorMerger.java
+index 675525a..6b25639 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/configuration/DefaultDataChannelDescriptorMerger.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/configuration/DefaultDataChannelDescriptorMerger.java
+@@ -120,7 +120,7 @@ public class DefaultDataChannelDescriptorMerger implements DataChannelDescriptor
+                             + "' in merged descriptor");
+                     merged
+                             .getNodeDescriptors()
+-                            .add(cloneDataNodeDescriptor(node, merged));
++                            .add(merged.cloneDataNodeDescriptor(node, this));
+                 }
+             }
+         }
+@@ -128,22 +128,4 @@ public class DefaultDataChannelDescriptorMerger implements DataChannelDescriptor
+         return merged;
+     }
+ 
+-    protected DataNodeDescriptor cloneDataNodeDescriptor(
+-            DataNodeDescriptor original,
+-            DataChannelDescriptor targetOwner) {
+-        DataNodeDescriptor clone = new DataNodeDescriptor(original.getName());
+-
+-        // do not clone 'configurationSource' as we may change the structure of the node
+-
+-        clone.setAdapterType(original.getAdapterType());
+-        clone.setDataChannelDescriptor(targetOwner);
+-        clone.setDataSourceDescriptor(original.getDataSourceDescriptor());
+-        clone.setDataSourceFactoryType(original.getDataSourceFactoryType());
+-        clone.setParameters(original.getParameters());
+-        clone.setSchemaUpdateStrategyType(original.getSchemaUpdateStrategyType());
+-
+-        clone.getDataMapNames().addAll(original.getDataMapNames());
+-
+-        return clone;
+-    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/configuration/server/DelegatingDataSourceFactory.java b/cayenne-server/src/main/java/org/apache/cayenne/configuration/server/DelegatingDataSourceFactory.java
+index 5381ca5..fd028df 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/configuration/server/DelegatingDataSourceFactory.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/configuration/server/DelegatingDataSourceFactory.java
+@@ -116,14 +116,6 @@ public class DelegatingDataSourceFactory implements DataSourceFactory {
+         return objectFactory.newInstance(DataSourceFactory.class, typeName);
+     }
+ 
+-    private String getDataNodePropertyName(DataNodeDescriptor nodeDescriptor, String propertyConstant) {
+-        return propertyConstant
+-                + "."
+-                + nodeDescriptor.getDataChannelDescriptor().getName()
+-                + "."
+-                + nodeDescriptor.getName();
+-    }
+-
+     private void findUnusedProperties(DataNodeDescriptor nodeDescriptor) {
+         if(!logger.isInfoEnabled() || nodeDescriptor.getDataChannelDescriptor() == null) {
+             return;
+@@ -140,9 +132,9 @@ public class DelegatingDataSourceFactory implements DataSourceFactory {
+                 Constants.JDBC_MAX_QUEUE_WAIT_TIME, Constants.JDBC_VALIDATION_QUERY_PROPERTY
+         };
+         for (String propertyConstant : verifiableProperties) {
+-            String property = properties.get(getDataNodePropertyName(nodeDescriptor, propertyConstant));
++            String property = properties.get(nodeDescriptor.getDataNodePropertyName(propertyConstant, this));
+             if (property != null) {
+-                logResult.append(getDataNodePropertyName(nodeDescriptor, propertyConstant)).append(", ");
++                logResult.append(nodeDescriptor.getDataNodePropertyName(propertyConstant, this)).append(", ");
+                 found = true;
+             }
+             property = properties.get(propertyConstant);
+@@ -169,7 +161,7 @@ public class DelegatingDataSourceFactory implements DataSourceFactory {
+         String driver = properties.get(Constants.JDBC_DRIVER_PROPERTY);
+ 
+         if (driver == null && channelName != null) {
+-            driver = properties.get(getDataNodePropertyName(nodeDescriptor, Constants.JDBC_DRIVER_PROPERTY));
++            driver = properties.get(nodeDescriptor.getDataNodePropertyName(Constants.JDBC_DRIVER_PROPERTY, this));
+         }
+ 
+         if (driver == null) {
+@@ -180,7 +172,7 @@ public class DelegatingDataSourceFactory implements DataSourceFactory {
+         String url = properties.get(Constants.JDBC_URL_PROPERTY);
+ 
+         if (url == null && channelName != null) {
+-            url = properties.get(getDataNodePropertyName(nodeDescriptor, Constants.JDBC_URL_PROPERTY));
++            url = properties.get(nodeDescriptor.getDataNodePropertyName(Constants.JDBC_URL_PROPERTY, this));
+         }
+ 
+         if (url == null) {
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/dba/JdbcPkGenerator.java b/cayenne-server/src/main/java/org/apache/cayenne/dba/JdbcPkGenerator.java
+index 329caed..17fa780 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/dba/JdbcPkGenerator.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/dba/JdbcPkGenerator.java
+@@ -33,8 +33,6 @@ import org.apache.cayenne.query.SQLTemplate;
+ import org.apache.cayenne.util.IDUtil;
+ 
+ import java.sql.Connection;
+-import java.sql.DatabaseMetaData;
+-import java.sql.ResultSet;
+ import java.sql.SQLException;
+ import java.sql.Statement;
+ import java.sql.Types;
+@@ -77,7 +75,7 @@ public class JdbcPkGenerator implements PkGenerator {
+         // check if a table exists
+ 
+         // create AUTO_PK_SUPPORT table
+-        if (!autoPkTableExists(node)) {
++        if (!node.autoPkTableExists(this)) {
+             runUpdate(node, pkTableCreateString());
+         }
+ 
+@@ -109,7 +107,7 @@ public class JdbcPkGenerator implements PkGenerator {
+      * Drops table named "AUTO_PK_SUPPORT" if it exists in the database.
+      */
+     public void dropAutoPk(DataNode node, List<DbEntity> dbEntities) throws Exception {
+-        if (autoPkTableExists(node)) {
++        if (node.autoPkTableExists(this)) {
+             runUpdate(node, dropAutoPkString());
+         }
+     }
+@@ -157,19 +155,6 @@ public class JdbcPkGenerator implements PkGenerator {
+     }
+ 
+     /**
+-     * Checks if AUTO_PK_TABLE already exists in the database.
+-     */
+-    protected boolean autoPkTableExists(DataNode node) throws SQLException {
+-
+-        try (Connection con = node.getDataSource().getConnection()) {
+-            DatabaseMetaData md = con.getMetaData();
+-            try (ResultSet tables = md.getTables(null, null, "AUTO_PK_SUPPORT", null)) {
+-                return tables.next();
+-            }
+-        }
+-    }
+-
+-    /**
+      * Runs JDBC update over a Connection obtained from DataNode. Returns a
+      * number of objects returned from update.
+      *
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/dba/db2/DB2SQLTreeProcessor.java b/cayenne-server/src/main/java/org/apache/cayenne/dba/db2/DB2SQLTreeProcessor.java
+index 7b31a2c..77d9c05 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/dba/db2/DB2SQLTreeProcessor.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/dba/db2/DB2SQLTreeProcessor.java
+@@ -20,7 +20,6 @@
+ package org.apache.cayenne.dba.db2;
+ 
+ import org.apache.cayenne.access.sqlbuilder.sqltree.ColumnNode;
+-import org.apache.cayenne.access.sqlbuilder.sqltree.OpExpressionNode;
+ import org.apache.cayenne.access.sqlbuilder.sqltree.FunctionNode;
+ import org.apache.cayenne.access.sqlbuilder.sqltree.LimitOffsetNode;
+ import org.apache.cayenne.access.sqlbuilder.sqltree.Node;
+@@ -56,30 +55,10 @@ public class DB2SQLTreeProcessor extends BaseSQLTreeProcessor {
+ 
+     @Override
+     protected void onFunctionNode(Node parent, FunctionNode child, int index) {
+-        Node replacement = getReplacementForFunction(child);
++        Node replacement = child.getReplacementForFunction(this);
+         if(replacement != null) {
+             replaceChild(parent, index, replacement);
+         }
+     }
+ 
+-    private Node getReplacementForFunction(FunctionNode child) {
+-        switch (child.getFunctionName()) {
+-            case "SUBSTRING":
+-                return new FunctionNode("SUBSTR", child.getAlias(), true);
+-            case "DAY_OF_MONTH":
+-                return new FunctionNode("DAY", child.getAlias(), true);
+-            case "DAY_OF_WEEK":
+-                return new FunctionNode("DAYOFWEEK", child.getAlias(), true);
+-            case "DAY_OF_YEAR":
+-                return new FunctionNode("DAYOFYEAR", child.getAlias(), true);
+-            case "CURRENT_DATE":
+-            case "CURRENT_TIME":
+-            case "CURRENT_TIMESTAMP":
+-                return new FunctionNode(child.getFunctionName(), child.getAlias(), false);
+-            case "CONCAT":
+-                return new OpExpressionNode("||");
+-        }
+-        return null;
+-    }
+-
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/dba/firebird/FirebirdSQLTreeProcessor.java b/cayenne-server/src/main/java/org/apache/cayenne/dba/firebird/FirebirdSQLTreeProcessor.java
+index e97fd2e..aaf6470 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/dba/firebird/FirebirdSQLTreeProcessor.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/dba/firebird/FirebirdSQLTreeProcessor.java
+@@ -88,39 +88,39 @@ public class FirebirdSQLTreeProcessor extends BaseSQLTreeProcessor {
+         // need to slice for batches of 1500 values
+         if(value instanceof Object[]) {
+             for(Object[] slice : ArrayUtil.sliceArray((Object[])value, FIREBIRD_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(valueNode.newSliceNode(child, arg, slice, this));
+             }
+         } else if(value instanceof int[]) {
+             for(int[] slice : ArrayUtil.sliceArray((int[])value, FIREBIRD_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(valueNode.newSliceNode(child, arg, slice, this));
+             }
+         } else if(value instanceof long[]) {
+             for(long[] slice : ArrayUtil.sliceArray((long[])value, FIREBIRD_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(valueNode.newSliceNode(child, arg, slice, this));
+             }
+         } else if(value instanceof float[]) {
+             for(float[] slice : ArrayUtil.sliceArray((float[])value, FIREBIRD_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(valueNode.newSliceNode(child, arg, slice, this));
+             }
+         } else if(value instanceof double[]) {
+             for(double[] slice : ArrayUtil.sliceArray((double[])value, FIREBIRD_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(valueNode.newSliceNode(child, arg, slice, this));
+             }
+         } else if(value instanceof short[]) {
+             for(short[] slice : ArrayUtil.sliceArray((short[])value, FIREBIRD_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(valueNode.newSliceNode(child, arg, slice, this));
+             }
+         } else if(value instanceof char[]) {
+             for(char[] slice : ArrayUtil.sliceArray((char[])value, FIREBIRD_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(valueNode.newSliceNode(child, arg, slice, this));
+             }
+         } else if(value instanceof boolean[]) {
+             for(boolean[] slice : ArrayUtil.sliceArray((boolean[])value, FIREBIRD_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(valueNode.newSliceNode(child, arg, slice, this));
+             }
+         } else if(value instanceof byte[]) {
+             for(byte[] slice : ArrayUtil.sliceArray((byte[])value, FIREBIRD_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(valueNode.newSliceNode(child, arg, slice, this));
+             }
+         }
+ 
+@@ -131,13 +131,6 @@ public class FirebirdSQLTreeProcessor extends BaseSQLTreeProcessor {
+         parent.replaceChild(index, exp.build());
+     }
+ 
+-    private InNode newSliceNode(InNode child, Node arg, ValueNode valueNode, Object slice) {
+-        InNode nextNode = new InNode(child.isNot());
+-        nextNode.addChild(arg.deepCopy());
+-        nextNode.addChild(new ValueNode(slice, valueNode.isArray(), valueNode.getAttribute()));
+-        return nextNode;
+-    }
+-
+     @Override
+     protected void onFunctionNode(Node parent, FunctionNode child, int index) {
+         switch (child.getFunctionName()) {
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/dba/openbase/OpenBasePkGenerator.java b/cayenne-server/src/main/java/org/apache/cayenne/dba/openbase/OpenBasePkGenerator.java
+index 53e3bc6..af101d1 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/dba/openbase/OpenBasePkGenerator.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/dba/openbase/OpenBasePkGenerator.java
+@@ -99,7 +99,7 @@ public class OpenBasePkGenerator extends JdbcPkGenerator {
+     @Override
+     protected long longPkFromDatabase(DataNode node, DbEntity entity) throws Exception {
+ 
+-        String sql = newIDString(entity);
++        String sql = entity.newIDString(this);
+         adapter.getJdbcEventLogger().log(sql);
+ 
+         try (Connection con = node.getDataSource().getConnection()) {
+@@ -115,23 +115,6 @@ public class OpenBasePkGenerator extends JdbcPkGenerator {
+         }
+     }
+ 
+-    /**
+-     * Returns SQL string that can generate new (unique and non-repeating)
+-     * primary key for specified DbEntity. No actual database operations are
+-     * performed.
+-     *
+-     * @since 1.2
+-     */
+-    protected String newIDString(DbEntity ent) {
+-        if (ent.getPrimaryKeys() == null || ent.getPrimaryKeys().size() != 1) {
+-            throw new CayenneRuntimeException("Error generating pk for DbEntity %s"
+-                    + ": pk must be single attribute", ent.getName());
+-        }
+-        DbAttribute primaryKeyAttribute = ent.getPrimaryKeys().iterator().next();
+-
+-        return "NEWID FOR " + ent.getName() + ' ' + primaryKeyAttribute.getName();
+-    }
+-
+     @Override
+     public void createAutoPk(DataNode node, List<DbEntity> dbEntities) throws Exception {
+         // looks like generating a PK on top of an existing one does not
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/dba/oracle/OracleSQLTreeProcessor.java b/cayenne-server/src/main/java/org/apache/cayenne/dba/oracle/OracleSQLTreeProcessor.java
+index ba84579..23291d5 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/dba/oracle/OracleSQLTreeProcessor.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/dba/oracle/OracleSQLTreeProcessor.java
+@@ -108,39 +108,39 @@ public class OracleSQLTreeProcessor extends BaseSQLTreeProcessor {
+         // need to slice for batches of 1000 values
+         if(value instanceof Object[]) {
+             for(Object[] slice : ArrayUtil.sliceArray((Object[])value, ORACLE_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(child.newSliceNode(arg, valueNode, slice, this));
+             }
+         } else if(value instanceof int[]) {
+             for(int[] slice : ArrayUtil.sliceArray((int[])value, ORACLE_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(child.newSliceNode(arg, valueNode, slice, this));
+             }
+         } else if(value instanceof long[]) {
+             for(long[] slice : ArrayUtil.sliceArray((long[])value, ORACLE_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(child.newSliceNode(arg, valueNode, slice, this));
+             }
+         } else if(value instanceof float[]) {
+             for(float[] slice : ArrayUtil.sliceArray((float[])value, ORACLE_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(child.newSliceNode(arg, valueNode, slice, this));
+             }
+         } else if(value instanceof double[]) {
+             for(double[] slice : ArrayUtil.sliceArray((double[])value, ORACLE_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(child.newSliceNode(arg, valueNode, slice, this));
+             }
+         } else if(value instanceof short[]) {
+             for(short[] slice : ArrayUtil.sliceArray((short[])value, ORACLE_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(child.newSliceNode(arg, valueNode, slice, this));
+             }
+         } else if(value instanceof char[]) {
+             for(char[] slice : ArrayUtil.sliceArray((char[])value, ORACLE_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(child.newSliceNode(arg, valueNode, slice, this));
+             }
+         } else if(value instanceof boolean[]) {
+             for(boolean[] slice : ArrayUtil.sliceArray((boolean[])value, ORACLE_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(child.newSliceNode(arg, valueNode, slice, this));
+             }
+         } else if(value instanceof byte[]) {
+             for(byte[] slice : ArrayUtil.sliceArray((byte[])value, ORACLE_IN_BATCH_SIZE)) {
+-                newChildren.add(newSliceNode(child, arg, valueNode, slice));
++                newChildren.add(child.newSliceNode(arg, valueNode, slice, this));
+             }
+         }
+ 
+@@ -155,13 +155,6 @@ public class OracleSQLTreeProcessor extends BaseSQLTreeProcessor {
+         parent.replaceChild(index, exp.build());
+     }
+ 
+-    private InNode newSliceNode(InNode child, Node arg, ValueNode valueNode, Object slice) {
+-        InNode nextNode = new InNode(child.isNot());
+-        nextNode.addChild(arg.deepCopy());
+-        nextNode.addChild(new ValueNode(slice, valueNode.isArray(), valueNode.getAttribute()));
+-        return nextNode;
+-    }
+-
+     @Override
+     protected void onFunctionNode(Node parent, FunctionNode child, int index) {
+         String functionName = child.getFunctionName();
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/dba/postgres/PostgresAdapter.java b/cayenne-server/src/main/java/org/apache/cayenne/dba/postgres/PostgresAdapter.java
+index 24033e1..1c68305 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/dba/postgres/PostgresAdapter.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/dba/postgres/PostgresAdapter.java
+@@ -19,7 +19,6 @@
+ 
+ package org.apache.cayenne.dba.postgres;
+ 
+-import org.apache.cayenne.CayenneRuntimeException;
+ import org.apache.cayenne.access.DataNode;
+ import org.apache.cayenne.access.sqlbuilder.sqltree.Node;
+ import org.apache.cayenne.access.translator.ParameterBinding;
+@@ -33,7 +32,6 @@ import org.apache.cayenne.configuration.RuntimeProperties;
+ import org.apache.cayenne.dba.JdbcAdapter;
+ import org.apache.cayenne.dba.PkGenerator;
+ import org.apache.cayenne.dba.QuotingStrategy;
+-import org.apache.cayenne.dba.TypesMapping;
+ import org.apache.cayenne.di.Inject;
+ import org.apache.cayenne.map.DbAttribute;
+ import org.apache.cayenne.map.DbEntity;
+@@ -176,7 +174,7 @@ public class PostgresAdapter extends JdbcAdapter {
+ 				buf.append(", ");
+ 			}
+ 
+-			createAttribute(ent, context, buf, it.next());
++			it.next().createAttribute(ent, context, buf, this);
+ 		}
+ 
+ 		// primary key clause
+@@ -206,28 +204,7 @@ public class PostgresAdapter extends JdbcAdapter {
+ 		return buf.toString();
+ 	}
+ 
+-	private void createAttribute(DbEntity ent, QuotingStrategy context, StringBuilder buf, DbAttribute at) {
+-		// attribute may not be fully valid, do a simple check
+-		if (at.getType() == TypesMapping.NOT_DEFINED) {
+-			throw new CayenneRuntimeException("Undefined type for attribute '%s.%s'"
+-					, ent.getFullyQualifiedName(), at.getName());
+-		}
+-
+-		String[] types = externalTypesForJdbcType(at.getType());
+-		if (types == null || types.length == 0) {
+-			throw new CayenneRuntimeException("Undefined type for attribute '%s.%s': %s"
+-					, ent.getFullyQualifiedName(), at.getName(), at.getType());
+-		}
+-
+-		// Checking that attribute is generated and we have alternative types in types.xml.
+-		// If so, use those autoincremented types. For example serial, bigserial, smallserial.
+-		String type = (at.isGenerated() && types.length > 1) ? types[1] : types[0];
+-
+-		buf.append(context.quotedName(at)).append(' ').append(type).append(sizeAndPrecision(this, at))
+-				.append(at.isMandatory() ? " NOT" : "").append(" NULL");
+-	}
+-
+-	@Override
++    @Override
+ 	public boolean typeSupportsLength(int type) {
+ 		// "bytea" type does not support length
+ 		if(Types.DOUBLE == type || Types.REAL == type){
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/dba/sqlite/SQLiteTreeProcessor.java b/cayenne-server/src/main/java/org/apache/cayenne/dba/sqlite/SQLiteTreeProcessor.java
+index d20bc66..f7b8dfa 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/dba/sqlite/SQLiteTreeProcessor.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/dba/sqlite/SQLiteTreeProcessor.java
+@@ -1,11 +1,9 @@
+ package org.apache.cayenne.dba.sqlite;
+ 
+-import org.apache.cayenne.access.sqlbuilder.QuotingAppendable;
+ import org.apache.cayenne.access.sqlbuilder.sqltree.FunctionNode;
+ import org.apache.cayenne.access.sqlbuilder.sqltree.LimitOffsetNode;
+ import org.apache.cayenne.access.sqlbuilder.sqltree.Node;
+ import org.apache.cayenne.access.sqlbuilder.sqltree.OpExpressionNode;
+-import org.apache.cayenne.access.sqlbuilder.sqltree.TextNode;
+ import org.apache.cayenne.access.translator.select.BaseSQLTreeProcessor;
+ import org.apache.cayenne.dba.mysql.sqltree.MysqlLimitOffsetNode;
+ 
+@@ -32,32 +30,32 @@ public class SQLiteTreeProcessor extends BaseSQLTreeProcessor {
+                 parent.replaceChild(index, replacement);
+                 return;
+             case "DAY_OF_YEAR":
+-                replaceExtractFunction(parent, child, index, "'%j'");
++                parent.replaceExtractFunction(child, index, "'%j'", this);
+                 return;
+             case "DAY_OF_WEEK":
+-                replaceExtractFunction(parent, child, index, "'%w'");
++                parent.replaceExtractFunction(child, index, "'%w'", this);
+                 return;
+             case "WEEK":
+-                replaceExtractFunction(parent, child, index, "'%W'");
++                parent.replaceExtractFunction(child, index, "'%W'", this);
+                 return;
+             case "YEAR":
+-                replaceExtractFunction(parent, child, index, "'%Y'");
++                parent.replaceExtractFunction(child, index, "'%Y'", this);
+                 return;
+             case "MONTH":
+-                replaceExtractFunction(parent, child, index, "'%m'");
++                parent.replaceExtractFunction(child, index, "'%m'", this);
+                 return;
+             case "DAY":
+             case "DAY_OF_MONTH":
+-                replaceExtractFunction(parent, child, index, "'%d'");
++                parent.replaceExtractFunction(child, index, "'%d'", this);
+                 return;
+             case "HOUR":
+-                replaceExtractFunction(parent, child, index, "'%H'");
++                parent.replaceExtractFunction(child, index, "'%H'", this);
+                 return;
+             case "MINUTE":
+-                replaceExtractFunction(parent, child, index, "'%M'");
++                parent.replaceExtractFunction(child, index, "'%M'", this);
+                 return;
+             case "SECOND":
+-                replaceExtractFunction(parent, child, index, "'%S'");
++                parent.replaceExtractFunction(child, index, "'%S'", this);
+                 return;
+ 
+             case "SUBSTRING":
+@@ -81,20 +79,4 @@ public class SQLiteTreeProcessor extends BaseSQLTreeProcessor {
+         }
+     }
+ 
+-    private void replaceExtractFunction(Node parent, FunctionNode original, int index, String format) {
+-        Node replacement = new FunctionNode("cast", original.getAlias(), true) {
+-            @Override
+-            public void appendChildrenSeparator(QuotingAppendable buffer, int childIdx) {
+-                buffer.append(" as ");
+-            }
+-        };
+-
+-        FunctionNode strftime = new FunctionNode("strftime", null, true);
+-        strftime.addChild(new TextNode(format));
+-        strftime.addChild(original.getChild(0));
+-        replacement.addChild(strftime);
+-        replacement.addChild(new TextNode("integer"));
+-
+-        parent.replaceChild(index, replacement);
+-    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/exp/Expression.java b/cayenne-server/src/main/java/org/apache/cayenne/exp/Expression.java
+index 0e099d7..e8e6891 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/exp/Expression.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/exp/Expression.java
+@@ -29,7 +29,11 @@ import java.util.Map;
+ import java.util.function.Function;
+ 
+ import org.apache.cayenne.CayenneRuntimeException;
++import org.apache.cayenne.access.translator.ejbql.EJBQLJoinAppender;
+ import org.apache.cayenne.configuration.ConfigurationNodeVisitor;
++import org.apache.cayenne.ejbql.EJBQLBaseVisitor;
++import org.apache.cayenne.ejbql.EJBQLExpression;
++import org.apache.cayenne.ejbql.EJBQLParserFactory;
+ import org.apache.cayenne.exp.parser.ASTScalar;
+ import org.apache.cayenne.util.ConversionUtil;
+ import org.apache.cayenne.util.HashCodeBuilder;
+@@ -732,7 +736,26 @@ public abstract class Expression implements Serializable, XMLSerializable {
+ 		return toEJBQL(null, rootId);
+ 	}
+ 
+-	final class NamedParamTransformer implements Function<Object, Object> {
++    public EJBQLExpression ejbqlQualifierForEntityAndSubclasses(String entityId, EJBQLJoinAppender ejbqlJoinAppender) {
++        // parser only works on full queries, so prepend a dummy query and then strip it out...
++        String ejbqlChunk = toEJBQL(entityId);
++        EJBQLExpression expression = EJBQLParserFactory.getParser().parse(
++                "DELETE FROM DUMMY WHERE " + ejbqlChunk);
++
++        final EJBQLExpression[] result = new EJBQLExpression[1];
++        expression.visit(new EJBQLBaseVisitor() {
++
++            @Override
++            public boolean visitWhere(EJBQLExpression expression) {
++                result[0] = expression.getChild(0);
++                return false;
++            }
++        });
++
++        return result[0];
++    }
++
++    final class NamedParamTransformer implements Function<Object, Object> {
+ 
+ 		private Map<String, ?> parameters;
+ 		private boolean pruneMissing;
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/exp/parser/ExpressionParserTokenManager.java b/cayenne-server/src/main/java/org/apache/cayenne/exp/parser/ExpressionParserTokenManager.java
+index f8d9ac3..451b8ea 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/exp/parser/ExpressionParserTokenManager.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/exp/parser/ExpressionParserTokenManager.java
+@@ -22,7 +22,6 @@
+ package org.apache.cayenne.exp.parser;
+ import java.math.BigDecimal;
+ import java.math.BigInteger;
+-import org.apache.cayenne.exp.Expression;
+ 
+ /** Token Manager. */
+ public class ExpressionParserTokenManager implements ExpressionParserConstants
+@@ -2549,14 +2548,7 @@ private void ReInitRounds()
+       jjrounds[i] = 0x80000000;
+ }
+ 
+-/** Reinitialise parser. */
+-public void ReInit(JavaCharStream stream, int lexState)
+-{
+-   ReInit(stream);
+-   SwitchTo(lexState);
+-}
+-
+-/** Switch to specified lex state. */
++    /** Switch to specified lex state. */
+ public void SwitchTo(int lexState)
+ {
+    if (lexState >= 3 || lexState < 0)
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/exp/parser/JavaCharStream.java b/cayenne-server/src/main/java/org/apache/cayenne/exp/parser/JavaCharStream.java
+index f481e13..e495543 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/exp/parser/JavaCharStream.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/exp/parser/JavaCharStream.java
+@@ -619,5 +619,13 @@ public class JavaCharStream {
+         column = bufcolumn[j];
+     }
+ 
++    /** Reinitialise parser.
++     * @param lexState
++     * @param expressionParserTokenManager*/
++    public void ReInitOther(int lexState, ExpressionParserTokenManager expressionParserTokenManager)
++    {
++        expressionParserTokenManager.ReInit(this);
++       expressionParserTokenManager.SwitchTo(lexState);
++    }
+ }
+ /* JavaCC - OriginalChecksum=42728d5d6de379c28d8e61854c22fc66 (do not edit this line) */
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/map/Attribute.java b/cayenne-server/src/main/java/org/apache/cayenne/map/Attribute.java
+index 8c8a48e..43a8824 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/map/Attribute.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/map/Attribute.java
+@@ -91,4 +91,14 @@ public abstract class Attribute implements CayenneMapEntry, XMLSerializable, Ser
+ 
+         setEntity((Entity) parent);
+     }
++
++    /**
++     *
++     * @since 4.0
++     * @param entity
++     */
++    public void updateAttribute(Entity entity) {
++        entity.removeAttribute(getName());
++        entity.addAttribute(this);
++    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/map/DataMap.java b/cayenne-server/src/main/java/org/apache/cayenne/map/DataMap.java
+index 5f78888..248cf22 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/map/DataMap.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/map/DataMap.java
+@@ -264,37 +264,7 @@ public class DataMap implements Serializable, ConfigurationNode, XMLSerializable
+ 		this.defaultClientSuperclass = (clientSuperclass != null) ? clientSuperclass.toString() : null;
+ 	}
+ 
+-	/**
+-	 * Returns a DataMap stripped of any server-side information, such as
+-	 * DbEntity mapping, or ObjEntities that are not allowed in the client tier.
+-	 * Returns null if this DataMap as a whole does not support client tier
+-	 * persistence.
+-	 * 
+-	 * @since 1.2
+-	 */
+-	public DataMap getClientDataMap(EntityResolver serverResolver) {
+-		if (!isClientSupported()) {
+-			return null;
+-		}
+-
+-		DataMap clientMap = new DataMap(getName());
+-
+-		// create client entities for entities
+-		for (ObjEntity entity : getObjEntities()) {
+-			if (entity.isClientAllowed()) {
+-				clientMap.addObjEntity(entity.getClientEntity());
+-			}
+-		}
+-
+-		// create proxies for named queries
+-		for (QueryDescriptor q : getQueryDescriptors()) {
+-			clientMap.addQueryDescriptor(q);
+-		}
+-
+-		return clientMap;
+-	}
+-
+-	/**
++    /**
+ 	 * Prints itself as XML to the provided PrintWriter.
+ 	 * 
+ 	 * @since 1.1
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/map/DbAttribute.java b/cayenne-server/src/main/java/org/apache/cayenne/map/DbAttribute.java
+index 37bbc60..1937b18 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/map/DbAttribute.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/map/DbAttribute.java
+@@ -19,9 +19,12 @@
+ 
+ package org.apache.cayenne.map;
+ 
++import org.apache.cayenne.CayenneRuntimeException;
+ import org.apache.cayenne.configuration.ConfigurationNode;
+ import org.apache.cayenne.configuration.ConfigurationNodeVisitor;
++import org.apache.cayenne.dba.QuotingStrategy;
+ import org.apache.cayenne.dba.TypesMapping;
++import org.apache.cayenne.dba.postgres.PostgresAdapter;
+ import org.apache.cayenne.map.event.AttributeEvent;
+ import org.apache.cayenne.map.event.DbAttributeListener;
+ import org.apache.cayenne.util.XMLEncoder;
+@@ -305,4 +308,25 @@ public class DbAttribute extends Attribute implements ConfigurationNode {
+ 
+         return res;
+     }
++
++    public void createAttribute(DbEntity ent, QuotingStrategy context, StringBuilder buf, PostgresAdapter postgresAdapter) {
++// attribute may not be fully valid, do a simple check
++        if (getType() == TypesMapping.NOT_DEFINED) {
++            throw new CayenneRuntimeException("Undefined type for attribute '%s.%s'"
++                    , ent.getFullyQualifiedName(), getName());
++        }
++
++        String[] types = postgresAdapter.externalTypesForJdbcType(getType());
++        if (types == null || types.length == 0) {
++            throw new CayenneRuntimeException("Undefined type for attribute '%s.%s': %s"
++                    , ent.getFullyQualifiedName(), getName(), getType());
++        }
++
++        // Checking that attribute is generated and we have alternative types in types.xml.
++        // If so, use those autoincremented types. For example serial, bigserial, smallserial.
++        String type = (isGenerated() && types.length > 1) ? types[1] : types[0];
++
++        buf.append(context.quotedName(this)).append(' ').append(type).append(postgresAdapter.sizeAndPrecision(postgresAdapter, this))
++                .append(isMandatory() ? " NOT" : "").append(" NULL");
++    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/map/DbEntity.java b/cayenne-server/src/main/java/org/apache/cayenne/map/DbEntity.java
+index 0626655..cf162eb 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/map/DbEntity.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/map/DbEntity.java
+@@ -23,6 +23,7 @@ import org.apache.cayenne.CayenneRuntimeException;
+ import org.apache.cayenne.ObjectId;
+ import org.apache.cayenne.configuration.ConfigurationNode;
+ import org.apache.cayenne.configuration.ConfigurationNodeVisitor;
++import org.apache.cayenne.dba.openbase.OpenBasePkGenerator;
+ import org.apache.cayenne.exp.Expression;
+ import org.apache.cayenne.exp.ExpressionException;
+ import org.apache.cayenne.exp.ExpressionFactory;
+@@ -631,6 +632,24 @@ public class DbEntity extends Entity implements ConfigurationNode, DbEntityListe
+         return expression.transform(new RelationshipPathConverter(relationshipPath));
+     }
+ 
++    /**
++     * Returns SQL string that can generate new (unique and non-repeating)
++     * primary key for specified DbEntity. No actual database operations are
++     * performed.
++     *
++     * @since 1.2
++     * @param openBasePkGenerator
++     */
++    public String newIDString(OpenBasePkGenerator openBasePkGenerator) {
++        if (getPrimaryKeys() == null || getPrimaryKeys().size() != 1) {
++            throw new CayenneRuntimeException("Error generating pk for DbEntity %s"
++                    + ": pk must be single attribute", getName());
++        }
++        DbAttribute primaryKeyAttribute = getPrimaryKeys().iterator().next();
++
++        return "NEWID FOR " + getName() + ' ' + primaryKeyAttribute.getName();
++    }
++
+     final class RelationshipPathConverter implements Function<Object, Object> {
+ 
+         String relationshipPath;
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/map/DbRelationship.java b/cayenne-server/src/main/java/org/apache/cayenne/map/DbRelationship.java
+index ae2ee61..0e51392 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/map/DbRelationship.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/map/DbRelationship.java
+@@ -492,6 +492,27 @@ public class DbRelationship extends Relationship implements ConfigurationNode {
+         return false;
+     }
+ 
++    /**
++     * Returns ObjRelationship of this entity that maps to
++     * <code>dbRelationship</code> parameter. Returns null if no such
++     * relationship is found.
++     * @param objEntity
++     */
++    public ObjRelationship getRelationshipForDbRelationship(ObjEntity objEntity) {
++
++        for (ObjRelationship objRel : objEntity.getRelationshipMap().values()) {
++            List<DbRelationship> relList = objRel.getDbRelationships();
++            if (relList.size() != 1) {
++                continue;
++            }
++
++            if (relList.get(0) == this) {
++                return objRel;
++            }
++        }
++        return null;
++    }
++
+     // a join used for comparison
+     static final class TestJoin extends DbJoin {
+ 
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/map/EJBQLQueryDescriptor.java b/cayenne-server/src/main/java/org/apache/cayenne/map/EJBQLQueryDescriptor.java
+index 987d1db..4047f35 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/map/EJBQLQueryDescriptor.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/map/EJBQLQueryDescriptor.java
+@@ -22,8 +22,6 @@ import org.apache.cayenne.configuration.ConfigurationNodeVisitor;
+ import org.apache.cayenne.query.EJBQLQuery;
+ import org.apache.cayenne.util.XMLEncoder;
+ 
+-import java.util.Map;
+-
+ /**
+  * @since 4.0
+  */
+@@ -62,7 +60,7 @@ public class EJBQLQueryDescriptor extends QueryDescriptor {
+         encoder.start("query").attribute("name", getName()).attribute("type", type);
+ 
+         // print properties
+-        encodeProperties(encoder);
++        encoder.encodeProperties(EJBQLQueryDescriptor.this);
+ 
+         if (ejbql != null) {
+             encoder.start("ejbql").cdata(ejbql, true).end();
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/map/EmbeddableAttribute.java b/cayenne-server/src/main/java/org/apache/cayenne/map/EmbeddableAttribute.java
+index 197b7dc..11dd12c 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/map/EmbeddableAttribute.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/map/EmbeddableAttribute.java
+@@ -95,4 +95,16 @@ public class EmbeddableAttribute implements ConfigurationNode, XMLSerializable,
+     public void setEmbeddable(Embeddable embeddable) {
+         this.embeddable = embeddable;
+     }
++
++    public ObjAttribute makeObjAttribute(
++            String dbPath, EmbeddedAttribute embeddedAttribute) {
++        String fullName = embeddedAttribute.getName() + "." + getName();
++
++        ObjAttribute oa = new ObjAttribute(
++                fullName,
++                getType(),
++                (ObjEntity) embeddedAttribute.getEntity());
++        oa.setDbAttributePath(dbPath);
++        return oa;
++    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/map/EmbeddedAttribute.java b/cayenne-server/src/main/java/org/apache/cayenne/map/EmbeddedAttribute.java
+index 8c3e378..62bfb89 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/map/EmbeddedAttribute.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/map/EmbeddedAttribute.java
+@@ -88,20 +88,7 @@ public class EmbeddedAttribute extends ObjAttribute {
+             dbPath = embeddableAttribute.getDbAttributeName();
+         }
+ 
+-        return makeObjAttribute(embeddableAttribute, dbPath);
+-    }
+-
+-    private ObjAttribute makeObjAttribute(
+-            EmbeddableAttribute embeddableAttribute,
+-            String dbPath) {
+-        String fullName = getName() + "." + embeddableAttribute.getName();
+-
+-        ObjAttribute oa = new ObjAttribute(
+-                fullName,
+-                embeddableAttribute.getType(),
+-                (ObjEntity) getEntity());
+-        oa.setDbAttributePath(dbPath);
+-        return oa;
++        return embeddableAttribute.makeObjAttribute(dbPath, this);
+     }
+ 
+     /**
+@@ -129,7 +116,7 @@ public class EmbeddedAttribute extends ObjAttribute {
+         }
+ 
+         if (ea != null) {
+-            return makeObjAttribute(ea, dbPath);
++            return ea.makeObjAttribute(dbPath, this);
+         }
+ 
+         return null;
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/map/Entity.java b/cayenne-server/src/main/java/org/apache/cayenne/map/Entity.java
+index db68fea..260ee99 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/map/Entity.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/map/Entity.java
+@@ -27,12 +27,10 @@ import org.apache.cayenne.util.ToStringBuilder;
+ import org.apache.cayenne.util.XMLSerializable;
+ 
+ import java.io.Serializable;
+-import java.util.ArrayList;
+ import java.util.Collection;
+ import java.util.Collections;
+ import java.util.Iterator;
+ import java.util.LinkedHashMap;
+-import java.util.List;
+ import java.util.Map;
+ import java.util.StringTokenizer;
+ 
+@@ -163,15 +161,6 @@ public abstract class Entity implements CayenneMapEntry, XMLSerializable, Serial
+         attributes.remove(attrName);
+     }
+ 
+-    /**
+-     *
+-     * @since 4.0
+-     */
+-    public void updateAttribute(Attribute attribute) {
+-        removeAttribute(attribute.getName());
+-        addAttribute(attribute);
+-    }
+-
+     public void clearAttributes() {
+         attributes.clear();
+     }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/map/EntityResolver.java b/cayenne-server/src/main/java/org/apache/cayenne/map/EntityResolver.java
+index 45f74e9..4387abb 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/map/EntityResolver.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/map/EntityResolver.java
+@@ -19,10 +19,8 @@
+ 
+ package org.apache.cayenne.map;
+ 
+-import org.apache.cayenne.ObjectId;
+ import org.apache.cayenne.Persistent;
+ import org.apache.cayenne.access.types.ValueObjectTypeRegistry;
+-import org.apache.cayenne.query.Query;
+ import org.apache.cayenne.reflect.ClassDescriptor;
+ import org.apache.cayenne.reflect.ClassDescriptorMap;
+ import org.apache.cayenne.reflect.FaultFactory;
+@@ -39,7 +37,6 @@ import java.io.Serializable;
+ import java.util.ArrayList;
+ import java.util.Collection;
+ import java.util.Collections;
+-import java.util.List;
+ import java.util.concurrent.atomic.AtomicLong;
+ 
+ /**
+@@ -198,7 +195,7 @@ public class EntityResolver implements MappingNamespace, Serializable {
+ 
+                     // translate to client DataMaps
+                     for (DataMap map : getDataMaps()) {
+-                        DataMap clientMap = map.getClientDataMap(this);
++                        DataMap clientMap = getClientDataMap(map);
+ 
+                         if (clientMap != null) {
+                             resolver.addDataMap(clientMap);
+@@ -559,4 +556,35 @@ public class EntityResolver implements MappingNamespace, Serializable {
+     public void setValueObjectTypeRegistry(ValueObjectTypeRegistry valueObjectTypeRegistry) {
+         this.valueObjectTypeRegistry = valueObjectTypeRegistry;
+     }
++
++    /**
++     * Returns a DataMap stripped of any server-side information, such as
++     * DbEntity mapping, or ObjEntities that are not allowed in the client tier.
++     * Returns null if this DataMap as a whole does not support client tier
++     * persistence.
++     *
++     * @since 1.2
++     * @param dataMap
++     */
++    public DataMap getClientDataMap(DataMap dataMap) {
++        if (!dataMap.isClientSupported()) {
++            return null;
++        }
++
++        DataMap clientMap = new DataMap(dataMap.getName());
++
++        // create client entities for entities
++        for (ObjEntity entity : dataMap.getObjEntities()) {
++            if (entity.isClientAllowed()) {
++                clientMap.addObjEntity(entity.getClientEntity());
++            }
++        }
++
++        // create proxies for named queries
++        for (QueryDescriptor q : dataMap.getQueryDescriptors()) {
++            clientMap.addQueryDescriptor(q);
++        }
++
++        return clientMap;
++    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/map/ObjEntity.java b/cayenne-server/src/main/java/org/apache/cayenne/map/ObjEntity.java
+index d9ddca3..42cce2b 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/map/ObjEntity.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/map/ObjEntity.java
+@@ -39,7 +39,6 @@ import java.util.Collections;
+ import java.util.HashMap;
+ import java.util.Iterator;
+ import java.util.LinkedHashSet;
+-import java.util.List;
+ import java.util.Map;
+ import java.util.Set;
+ import java.util.TreeMap;
+@@ -825,26 +824,6 @@ public class ObjEntity extends Entity implements ObjEntityListener, Configuratio
+     }
+ 
+     /**
+-     * Returns ObjRelationship of this entity that maps to
+-     * <code>dbRelationship</code> parameter. Returns null if no such
+-     * relationship is found.
+-     */
+-    public ObjRelationship getRelationshipForDbRelationship(DbRelationship dbRelationship) {
+-
+-        for (ObjRelationship objRel : getRelationshipMap().values()) {
+-            List<DbRelationship> relList = objRel.getDbRelationships();
+-            if (relList.size() != 1) {
+-                continue;
+-            }
+-
+-            if (relList.get(0) == dbRelationship) {
+-                return objRel;
+-            }
+-        }
+-        return null;
+-    }
+-
+-    /**
+      * Clears all the mapping between this obj entity and its current db entity.
+      * Clears mapping between entities, attributes and relationships.
+      */
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/map/ObjRelationship.java b/cayenne-server/src/main/java/org/apache/cayenne/map/ObjRelationship.java
+index 0fa0812..319f9b4 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/map/ObjRelationship.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/map/ObjRelationship.java
+@@ -20,6 +20,7 @@
+ package org.apache.cayenne.map;
+ 
+ import org.apache.cayenne.CayenneRuntimeException;
++import org.apache.cayenne.access.translator.ejbql.EJBQLPathTranslator;
+ import org.apache.cayenne.configuration.ConfigurationNode;
+ import org.apache.cayenne.configuration.ConfigurationNodeVisitor;
+ import org.apache.cayenne.exp.ExpressionException;
+@@ -796,4 +797,30 @@ public class ObjRelationship extends Relationship implements ConfigurationNode {
+ 
+         return dbRelationships.get(0).isMandatory();
+     }
++
++    /**
++     * Checks if the object relationship is flattened and then chooses the
++     * corresponding db relationship. The last in idPath if isFlattened and the
++     * first in list otherwise.
++     *
++     *
++     * @param ejbqlPathTranslator@return {@link DbRelationship}
++     */
++    public DbRelationship chooseDbRelationship(EJBQLPathTranslator ejbqlPathTranslator) {
++
++        List<DbRelationship> dbRelationships = getDbRelationships();
++        String dbRelationshipPath = getDbRelationshipPath();
++
++        if (dbRelationshipPath.contains(".")) {
++            String dbRelName = dbRelationshipPath.substring(dbRelationshipPath.lastIndexOf(".") + 1);
++            for (DbRelationship dbR : dbRelationships) {
++                if (dbR.getName().equals(dbRelName)) {
++                    return dbR;
++                }
++
++            }
++        }
++        return getDbRelationships().get(0);
++
++    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/map/ProcedureParameter.java b/cayenne-server/src/main/java/org/apache/cayenne/map/ProcedureParameter.java
+index b9fb55a..e5fff86 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/map/ProcedureParameter.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/map/ProcedureParameter.java
+@@ -20,7 +20,9 @@
+ package org.apache.cayenne.map;
+ 
+ import java.io.Serializable;
++import java.sql.CallableStatement;
+ 
++import org.apache.cayenne.access.translator.procedure.ProcedureTranslator;
+ import org.apache.cayenne.configuration.ConfigurationNode;
+ import org.apache.cayenne.configuration.ConfigurationNodeVisitor;
+ import org.apache.cayenne.dba.TypesMapping;
+@@ -190,4 +192,21 @@ public class ProcedureParameter implements ConfigurationNode, CayenneMapEntry,
+     public void setProcedure(Procedure procedure) {
+         this.procedure = procedure;
+     }
++
++    /**
++     * Sets a single OUT parameter of the CallableStatement.
++     * @param stmt
++     * @param pos
++     * @param procedureTranslator
++     */
++    public void setOutParam(CallableStatement stmt, int pos, ProcedureTranslator procedureTranslator)
++            throws Exception {
++
++        int precision = getPrecision();
++        if (precision >= 0) {
++            stmt.registerOutParameter(pos, getType(), precision);
++        } else {
++            stmt.registerOutParameter(pos, getType());
++        }
++    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/map/ProcedureQueryDescriptor.java b/cayenne-server/src/main/java/org/apache/cayenne/map/ProcedureQueryDescriptor.java
+index 0d1044b..90fb269 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/map/ProcedureQueryDescriptor.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/map/ProcedureQueryDescriptor.java
+@@ -22,8 +22,6 @@ import org.apache.cayenne.configuration.ConfigurationNodeVisitor;
+ import org.apache.cayenne.query.ProcedureQuery;
+ import org.apache.cayenne.util.XMLEncoder;
+ 
+-import java.util.Map;
+-
+ /**
+  * @since 4.0
+  */
+@@ -81,7 +79,7 @@ public class ProcedureQueryDescriptor extends QueryDescriptor {
+                 .attribute("result-entity", resultEntityName);
+ 
+         // print properties
+-        encodeProperties(encoder);
++        encoder.encodeProperties(ProcedureQueryDescriptor.this);
+ 
+         delegate.visitQuery(this);
+         encoder.end();
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/map/QueryDescriptor.java b/cayenne-server/src/main/java/org/apache/cayenne/map/QueryDescriptor.java
+index 335f109..89fedf7 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/map/QueryDescriptor.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/map/QueryDescriptor.java
+@@ -240,19 +240,10 @@ public class QueryDescriptor implements Serializable, ConfigurationNode, XMLSeri
+         if (rootType != null) {
+             encoder.attribute("root", rootType).attribute("root-name", rootString);
+         }
+-        encodeProperties(encoder);
++        encoder.encodeProperties(this);
+ 
+         delegate.visitQuery(this);
+         encoder.end();
+     }
+ 
+-    void encodeProperties(XMLEncoder encoder) {
+-        for (Map.Entry<String, String> property : properties.entrySet()) {
+-            String value = property.getValue();
+-            if(value == null || value.isEmpty()) {
+-                continue;
+-            }
+-            encoder.property(property.getKey(), value);
+-        }
+-    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/map/SQLTemplateDescriptor.java b/cayenne-server/src/main/java/org/apache/cayenne/map/SQLTemplateDescriptor.java
+index 5f8f25c..086913f 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/map/SQLTemplateDescriptor.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/map/SQLTemplateDescriptor.java
+@@ -167,7 +167,7 @@ public class SQLTemplateDescriptor extends QueryDescriptor {
+         }
+ 
+         // print properties
+-        encodeProperties(encoder);
++        encoder.encodeProperties(SQLTemplateDescriptor.this);
+         // encode default SQL
+         if (sql != null) {
+             encoder.start("sql").cdata(sql, true).end();
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/map/SelectQueryDescriptor.java b/cayenne-server/src/main/java/org/apache/cayenne/map/SelectQueryDescriptor.java
+index c91fe3e..19a481a 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/map/SelectQueryDescriptor.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/map/SelectQueryDescriptor.java
+@@ -219,7 +219,7 @@ public class SelectQueryDescriptor extends QueryDescriptor {
+         }
+ 
+         // print properties
+-        encodeProperties(encoder);
++        encoder.encodeProperties(SelectQueryDescriptor.this);
+ 
+         // encode qualifier
+         if (qualifier != null) {
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/query/Ordering.java b/cayenne-server/src/main/java/org/apache/cayenne/query/Ordering.java
+index 85ad2cc..728c407 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/query/Ordering.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/query/Ordering.java
+@@ -484,21 +484,7 @@ public class Ordering implements Comparator<Object>, Serializable, XMLSerializab
+ 	 	return new Orderings(this, nextOrdering);
+ 	 }
+ 
+-	 /**
+-	  * Returns Orderings with this Ordering followed by the provided
+-	  * list of next Orderings.
+-	  * 
+-	  * @param nextOrderings the next Orderings to chain to this
+-	  * @return an array of sort orderings
+-	  * @since 4.1
+-	  */
+-	 public Orderings then(Orderings nextOrderings) {
+-	 	Orderings newOrderings = new Orderings(this);
+-	 	
+-	 	return newOrderings.then(nextOrderings);
+-	 }
+-	 
+-	 /**
++    /**
+ 	  * @see Orderings#then(Orderings)
+ 	  * @param nextOrderings the next Orderings to chain to this
+ 	  * @return an array of sort orderings
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/query/Orderings.java b/cayenne-server/src/main/java/org/apache/cayenne/query/Orderings.java
+index 46f60e1..dbe2ab3 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/query/Orderings.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/query/Orderings.java
+@@ -111,4 +111,18 @@ public class Orderings extends ArrayList<Ordering> {
+ 	 public <T> void orderList(List<T> list) {
+ 	 	Ordering.orderList(list, this);
+ 	 }
++
++    /**
++     * Returns Orderings with this Ordering followed by the provided
++     * list of next Orderings.
++     *
++     *
++     * @param ordering@return an array of sort orderings
++     * @since 4.1
++     */
++    public Orderings thenOther(Ordering ordering) {
++        Orderings newOrderings = new Orderings(ordering);
++
++        return newOrderings.then(this);
++    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/query/SQLTemplate.java b/cayenne-server/src/main/java/org/apache/cayenne/query/SQLTemplate.java
+index 55a590d..96c2abf 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/query/SQLTemplate.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/query/SQLTemplate.java
+@@ -684,4 +684,15 @@ public class SQLTemplate extends AbstractQuery implements ParameterizedQuery {
+ 	public boolean isUseScalar() {
+ 		return useScalar;
+ 	}
++
++    public void buildResultSetMappingForColumns(SQLTemplateMetadata sqlTemplateMetadata) {
++        if(getResultColumnsTypes() == null || getResultColumnsTypes().isEmpty() || !isUseScalar()) {
++            return;
++        }
++        SQLResult result = new SQLResult();
++        for(int i = 0; i < getResultColumnsTypes().size(); i++) {
++            result.addColumnResult(String.valueOf(i));
++        }
++        setResult(result);
++    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/query/SQLTemplateMetadata.java b/cayenne-server/src/main/java/org/apache/cayenne/query/SQLTemplateMetadata.java
+index 3cd99a4..7ff3a1c 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/query/SQLTemplateMetadata.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/query/SQLTemplateMetadata.java
+@@ -21,7 +21,6 @@ package org.apache.cayenne.query;
+ import org.apache.cayenne.CayenneRuntimeException;
+ import org.apache.cayenne.map.EntityResolver;
+ import org.apache.cayenne.map.ObjEntity;
+-import org.apache.cayenne.map.SQLResult;
+ 
+ import java.util.ArrayList;
+ import java.util.Collections;
+@@ -56,7 +55,7 @@ public class SQLTemplateMetadata extends BaseQueryMetadata {
+ 				throw new CayenneRuntimeException("Can't set both use scalar and fetching data rows.");
+ 			}
+ 
+-			buildResultSetMappingForColumns(query);
++			query.buildResultSetMappingForColumns(this);
+ 			resultSetMapping = query.getResult() != null ?
+ 					query.getResult().getResolvedComponents(resolver) :
+ 					query.isUseScalar() ? new ArrayList<>() : null;
+@@ -115,14 +114,4 @@ public class SQLTemplateMetadata extends BaseQueryMetadata {
+ 		return false;
+ 	}
+ 
+-	private void buildResultSetMappingForColumns(SQLTemplate query) {
+-		if(query.getResultColumnsTypes() == null || query.getResultColumnsTypes().isEmpty() || !query.isUseScalar()) {
+-			return;
+-		}
+-		SQLResult result = new SQLResult();
+-		for(int i = 0; i < query.getResultColumnsTypes().size(); i++) {
+-			result.addColumnResult(String.valueOf(i));
+-		}
+-		query.setResult(result);
+-	}
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/reflect/PersistentDescriptor.java b/cayenne-server/src/main/java/org/apache/cayenne/reflect/PersistentDescriptor.java
+index ba17201..845a574 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/reflect/PersistentDescriptor.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/reflect/PersistentDescriptor.java
+@@ -460,4 +460,15 @@ public class PersistentDescriptor implements ClassDescriptor {
+ 	public boolean hasSubclasses() {
+ 		return entityInheritanceTree != null && !entityInheritanceTree.getChildren().isEmpty();
+ 	}
++
++    public void appendDeclaredRootDbEntity(ObjEntity entity, PersistentDescriptorFactory persistentDescriptorFactory) {
++
++        DbEntity dbEntity = entity.getDbEntity();
++        if (dbEntity != null) {
++            // descriptor takes care of weeding off duplicates, which are likely
++            // in cases
++            // of non-horizontal inheritance
++            addRootDbEntity(dbEntity);
++        }
++    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/reflect/PersistentDescriptorFactory.java b/cayenne-server/src/main/java/org/apache/cayenne/reflect/PersistentDescriptorFactory.java
+index b2e2e87..f65a9d7 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/reflect/PersistentDescriptorFactory.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/reflect/PersistentDescriptorFactory.java
+@@ -113,7 +113,7 @@ public abstract class PersistentDescriptorFactory implements ClassDescriptorFact
+         indexSubclassDescriptors(descriptor, inheritanceTree);
+         indexQualifiers(descriptor, inheritanceTree);
+ 
+-        appendDeclaredRootDbEntity(descriptor, descriptor.getEntity());
++        descriptor.appendDeclaredRootDbEntity(descriptor.getEntity(), this);
+         indexRootDbEntities(descriptor, inheritanceTree);
+ 
+         indexSuperclassProperties(descriptor);
+@@ -187,23 +187,12 @@ public abstract class PersistentDescriptorFactory implements ClassDescriptorFact
+ 
+             for (EntityInheritanceTree child : inheritanceTree.getChildren()) {
+                 ObjEntity childEntity = child.getEntity();
+-                appendDeclaredRootDbEntity(descriptor, childEntity);
++                descriptor.appendDeclaredRootDbEntity(childEntity, this);
+                 indexRootDbEntities(descriptor, child);
+             }
+         }
+     }
+ 
+-    private void appendDeclaredRootDbEntity(PersistentDescriptor descriptor, ObjEntity entity) {
+-
+-        DbEntity dbEntity = entity.getDbEntity();
+-        if (dbEntity != null) {
+-            // descriptor takes care of weeding off duplicates, which are likely
+-            // in cases
+-            // of non-horizontal inheritance
+-            descriptor.addRootDbEntity(dbEntity);
+-        }
+-    }
+-
+     protected void indexQualifiers(final PersistentDescriptor descriptor, EntityInheritanceTree inheritanceTree) {
+ 
+         Expression qualifier;
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/template/Context.java b/cayenne-server/src/main/java/org/apache/cayenne/template/Context.java
+index 31d3c1f..b1831e2 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/template/Context.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/template/Context.java
+@@ -28,6 +28,8 @@ import org.apache.cayenne.CayenneRuntimeException;
+ import org.apache.cayenne.access.jdbc.ColumnDescriptor;
+ import org.apache.cayenne.access.translator.ParameterBinding;
+ import org.apache.cayenne.template.directive.Directive;
++import org.apache.cayenne.template.parser.ASTArray;
++import org.apache.cayenne.template.parser.ExpressionNode;
+ 
+ /**
+  * @since 4.1
+@@ -125,4 +127,13 @@ public class Context {
+         }
+         return parameterBindings.toArray(new ParameterBinding[parameterBindings.size()]);
+     }
++
++    public Object[] evaluateAsArray(ASTArray astArray) {
++        Object[] evaluated = new Object[astArray.jjtGetNumChildren()];
++        for(int i = 0; i< astArray.jjtGetNumChildren(); i++) {
++            ExpressionNode node = (ExpressionNode) astArray.jjtGetChild(i);
++            evaluated[i] = node.evaluateAsObject(this);
++        }
++        return evaluated;
++    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/template/parser/ASTArray.java b/cayenne-server/src/main/java/org/apache/cayenne/template/parser/ASTArray.java
+index dbb9299..0a69a8b 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/template/parser/ASTArray.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/template/parser/ASTArray.java
+@@ -36,20 +36,12 @@ public class ASTArray extends ASTExpression {
+ 
+     @Override
+     public String evaluateAsString(Context context) {
+-        return Arrays.toString(evaluateAsArray(context));
++        return Arrays.toString(context.evaluateAsArray(this));
+     }
+ 
+     @Override
+     public Object evaluateAsObject(Context context) {
+-        return evaluateAsArray(context);
++        return context.evaluateAsArray(this);
+     }
+ 
+-    protected Object[] evaluateAsArray(Context context) {
+-        Object[] evaluated = new Object[jjtGetNumChildren()];
+-        for(int i=0; i<jjtGetNumChildren(); i++) {
+-            ExpressionNode node = (ExpressionNode)jjtGetChild(i);
+-            evaluated[i] = node.evaluateAsObject(context);
+-        }
+-        return evaluated;
+-    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/template/parser/JavaCharStream.java b/cayenne-server/src/main/java/org/apache/cayenne/template/parser/JavaCharStream.java
+index 3373be4..54fc93a 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/template/parser/JavaCharStream.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/template/parser/JavaCharStream.java
+@@ -614,4 +614,12 @@ public class JavaCharStream {
+         column = bufcolumn[j];
+     }
+ 
++    /** Reinitialise parser.
++     * @param lexState
++     * @param sqlTemplateParserTokenManager*/
++    public void ReInitOther(int lexState, SQLTemplateParserTokenManager sqlTemplateParserTokenManager)
++    {
++        sqlTemplateParserTokenManager.ReInit(this);
++       sqlTemplateParserTokenManager.SwitchTo(lexState);
++    }
+ }
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/template/parser/SQLTemplateParserTokenManager.java b/cayenne-server/src/main/java/org/apache/cayenne/template/parser/SQLTemplateParserTokenManager.java
+index 3bbf6f2..7900d16 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/template/parser/SQLTemplateParserTokenManager.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/template/parser/SQLTemplateParserTokenManager.java
+@@ -1327,14 +1327,7 @@ private void ReInitRounds()
+       jjrounds[i] = 0x80000000;
+ }
+ 
+-/** Reinitialise parser. */
+-public void ReInit(JavaCharStream stream, int lexState)
+-{
+-   ReInit(stream);
+-   SwitchTo(lexState);
+-}
+-
+-/** Switch to specified lex state. */
++    /** Switch to specified lex state. */
+ public void SwitchTo(int lexState)
+ {
+    if (lexState >= 6 || lexState < 0)
+diff --git a/cayenne-server/src/main/java/org/apache/cayenne/util/XMLEncoder.java b/cayenne-server/src/main/java/org/apache/cayenne/util/XMLEncoder.java
+index 039ca4d..b6f9275 100644
+--- a/cayenne-server/src/main/java/org/apache/cayenne/util/XMLEncoder.java
++++ b/cayenne-server/src/main/java/org/apache/cayenne/util/XMLEncoder.java
+@@ -26,6 +26,7 @@ import java.util.LinkedList;
+ import java.util.Map;
+ 
+ import org.apache.cayenne.configuration.ConfigurationNodeVisitor;
++import org.apache.cayenne.map.QueryDescriptor;
+ 
+ /**
+  * <p>
+@@ -345,4 +346,14 @@ public class XMLEncoder {
+     public XMLEncoder projectVersion() {
+         return attribute("project-version", projectVersion, true);
+     }
++
++    public void encodeProperties(QueryDescriptor queryDescriptor) {
++        for (Map.Entry<String, String> property : queryDescriptor.getProperties().entrySet()) {
++            String value = property.getValue();
++            if(value == null || value.isEmpty()) {
++                continue;
++            }
++            property(property.getKey(), value);
++        }
++    }
+ }
+diff --git a/cayenne-server/src/test/java/org/apache/cayenne/access/DataContextExtrasIT.java b/cayenne-server/src/test/java/org/apache/cayenne/access/DataContextExtrasIT.java
+index 2e9a148..f09468e 100644
+--- a/cayenne-server/src/test/java/org/apache/cayenne/access/DataContextExtrasIT.java
++++ b/cayenne-server/src/test/java/org/apache/cayenne/access/DataContextExtrasIT.java
+@@ -212,7 +212,7 @@ public class DataContextExtrasIT extends ServerCase {
+ 
+         DataRow row = new DataRow(10);
+         row.put("ARTIST_ID", 100000);
+-        DataObject obj = context.objectFromDataRow(Artist.class, row);
++        DataObject obj = row.objectFromDataRow(Artist.class, context);
+         assertNotNull(obj);
+         assertTrue(context.getGraphManager().registeredNodes().contains(obj));
+         assertEquals(PersistenceState.HOLLOW, obj.getPersistenceState());
+@@ -226,7 +226,7 @@ public class DataContextExtrasIT extends ServerCase {
+         DataRow row = new DataRow(10);
+         row.put("ARTIST_ID", 100001);
+         row.put("ARTIST_NAME", "ArtistXYZ");
+-        DataObject obj = context.objectFromDataRow(Artist.class, row);
++        DataObject obj = row.objectFromDataRow(Artist.class, context);
+         assertNotNull(obj);
+         assertTrue(context.getGraphManager().registeredNodes().contains(obj));
+         assertEquals(PersistenceState.HOLLOW, obj.getPersistenceState());
+@@ -240,7 +240,7 @@ public class DataContextExtrasIT extends ServerCase {
+         row.put("ARTIST_ID", 123456);
+         row.put("ARTIST_NAME", "ArtistXYZ");
+         row.put("DATE_OF_BIRTH", new Date());
+-        Artist obj = context.objectFromDataRow(Artist.class, row);
++        Artist obj = row.objectFromDataRow(Artist.class, context);
+ 
+         assertTrue(context.getGraphManager().registeredNodes().contains(obj));
+         assertEquals(PersistenceState.COMMITTED, obj.getPersistenceState());
+diff --git a/cayenne-server/src/test/java/org/apache/cayenne/access/DataContextIT.java b/cayenne-server/src/test/java/org/apache/cayenne/access/DataContextIT.java
+index eaf4b02..343930c 100644
+--- a/cayenne-server/src/test/java/org/apache/cayenne/access/DataContextIT.java
++++ b/cayenne-server/src/test/java/org/apache/cayenne/access/DataContextIT.java
+@@ -641,7 +641,7 @@ public class DataContextIT extends ServerCase {
+ 		row.put("ARTIST_ID", new Integer(1));
+ 		row.put("ARTIST_NAME", "ArtistXYZ");
+ 		row.put("DATE_OF_BIRTH", new Date());
+-		DataObject object = context.objectFromDataRow(Artist.class, row);
++		DataObject object = row.objectFromDataRow(Artist.class, context);
+ 		ObjectId oid = object.getObjectId();
+ 
+ 		// insert object into the ObjectStore
+@@ -664,7 +664,7 @@ public class DataContextIT extends ServerCase {
+ 		row.put("ARTIST_ID", new Integer(1));
+ 		row.put("ARTIST_NAME", "ArtistXYZ");
+ 		row.put("DATE_OF_BIRTH", new Date());
+-		DataObject object = context.objectFromDataRow(Artist.class, row);
++		DataObject object = row.objectFromDataRow(Artist.class, context);
+ 		ObjectId oid = object.getObjectId();
+ 
+ 		// insert object into the ObjectStore
+diff --git a/cayenne-server/src/test/java/org/apache/cayenne/access/DataContextIteratedQueryIT.java b/cayenne-server/src/test/java/org/apache/cayenne/access/DataContextIteratedQueryIT.java
+index ff5f65e..559195e 100644
+--- a/cayenne-server/src/test/java/org/apache/cayenne/access/DataContextIteratedQueryIT.java
++++ b/cayenne-server/src/test/java/org/apache/cayenne/access/DataContextIteratedQueryIT.java
+@@ -201,7 +201,7 @@ public class DataContextIteratedQueryIT extends ServerCase {
+                 DataRow row = (DataRow) it.nextRow();
+ 
+                 // try instantiating an object and fetching its relationships
+-                Artist artist = context.objectFromDataRow(Artist.class, row);
++                Artist artist = row.objectFromDataRow(Artist.class, context);
+                 List<Painting> paintings = artist.getPaintingArray();
+                 assertNotNull(paintings);
+                 assertEquals("Expected one painting for artist: " + artist, 1, paintings.size());
+@@ -219,7 +219,7 @@ public class DataContextIteratedQueryIT extends ServerCase {
+             while (it.hasNextRow()) {
+                 DataRow row = (DataRow) it.nextRow();
+ 
+-                Artist artist = context.objectFromDataRow(Artist.class, row);
++                Artist artist = row.objectFromDataRow(Artist.class, context);
+ 
+                 Painting painting = context.newObject(Painting.class);
+                 painting.setPaintingTitle("P_" + artist.getArtistName());
+diff --git a/cayenne-server/src/test/java/org/apache/cayenne/access/DataContextObjectTrackingIT.java b/cayenne-server/src/test/java/org/apache/cayenne/access/DataContextObjectTrackingIT.java
+index 8ce1415..74a75c8 100644
+--- a/cayenne-server/src/test/java/org/apache/cayenne/access/DataContextObjectTrackingIT.java
++++ b/cayenne-server/src/test/java/org/apache/cayenne/access/DataContextObjectTrackingIT.java
+@@ -102,7 +102,7 @@ public class DataContextObjectTrackingIT extends ServerCase {
+         row.put("ARTIST_ID", new Integer(1));
+         row.put("ARTIST_NAME", "ArtistXYZ");
+         row.put("DATE_OF_BIRTH", new Date());
+-        DataObject obj = context.objectFromDataRow(Artist.class, row);
++        DataObject obj = row.objectFromDataRow(Artist.class, context);
+         ObjectId oid = obj.getObjectId();
+ 
+         assertEquals(PersistenceState.COMMITTED, obj.getPersistenceState());
+@@ -125,7 +125,7 @@ public class DataContextObjectTrackingIT extends ServerCase {
+         row.put("ARTIST_ID", new Integer(1));
+         row.put("ARTIST_NAME", "ArtistXYZ");
+         row.put("DATE_OF_BIRTH", new Date());
+-        DataObject obj = context.objectFromDataRow(Artist.class, row);
++        DataObject obj = row.objectFromDataRow(Artist.class, context);
+         ObjectId oid = obj.getObjectId();
+ 
+         assertEquals(PersistenceState.COMMITTED, obj.getPersistenceState());
+diff --git a/cayenne-server/src/test/java/org/apache/cayenne/access/DataContextProcedureQueryIT.java b/cayenne-server/src/test/java/org/apache/cayenne/access/DataContextProcedureQueryIT.java
+index 2009911..d38fbee 100644
+--- a/cayenne-server/src/test/java/org/apache/cayenne/access/DataContextProcedureQueryIT.java
++++ b/cayenne-server/src/test/java/org/apache/cayenne/access/DataContextProcedureQueryIT.java
+@@ -156,7 +156,7 @@ public class DataContextProcedureQueryIT extends ServerCase {
+         assertNotNull("Null result from StoredProcedure.", artists);
+         assertEquals(1, artists.size());
+         DataRow artistRow = (DataRow) artists.get(0);
+-        Artist a = context.objectFromDataRow(Artist.class, uppercaseConverter(artistRow));
++        Artist a = uppercaseConverter(artistRow).objectFromDataRow(Artist.class, context);
+         Painting p = a.getPaintingArray().get(0);
+ 
+         // invalidate painting, it may have been updated in the proc
+@@ -183,7 +183,7 @@ public class DataContextProcedureQueryIT extends ServerCase {
+         assertNotNull("Null result from StoredProcedure.", artists);
+         assertEquals(1, artists.size());
+         DataRow artistRow = (DataRow) artists.get(0);
+-        Artist a = context.objectFromDataRow(Artist.class, uppercaseConverter(artistRow));
++        Artist a = uppercaseConverter(artistRow).objectFromDataRow(Artist.class, context);
+         Painting p = a.getPaintingArray().get(0);
+ 
+         // invalidate painting, it may have been updated in the proc
+@@ -212,7 +212,7 @@ public class DataContextProcedureQueryIT extends ServerCase {
+         assertNotNull("Null result from StoredProcedure.", artists);
+         assertEquals(1, artists.size());
+         DataRow artistRow = (DataRow) artists.get(0);
+-        Artist a = context.objectFromDataRow(Artist.class, uppercaseConverter(artistRow));
++        Artist a = uppercaseConverter(artistRow).objectFromDataRow(Artist.class, context);
+         Painting p = a.getPaintingArray().get(0);
+ 
+         // invalidate painting, it may have been updated in the proc
+diff --git a/cayenne-server/src/test/java/org/apache/cayenne/access/NestedDataContextReadIT.java b/cayenne-server/src/test/java/org/apache/cayenne/access/NestedDataContextReadIT.java
+index 6137dd3..04e53a0 100644
+--- a/cayenne-server/src/test/java/org/apache/cayenne/access/NestedDataContextReadIT.java
++++ b/cayenne-server/src/test/java/org/apache/cayenne/access/NestedDataContextReadIT.java
+@@ -357,7 +357,7 @@ public class NestedDataContextReadIT extends ServerCase {
+         row.put("ARTIST_NAME", "A");
+         row.put("DATE_OF_BIRTH", new Date());
+ 
+-        Artist artist = childContext.objectFromDataRow(Artist.class, row);
++        Artist artist = row.objectFromDataRow(Artist.class, childContext);
+         assertNotNull(artist);
+         assertEquals(PersistenceState.COMMITTED, artist.getPersistenceState());
+         assertSame(childContext, artist.getObjectContext());
+diff --git a/cayenne-server/src/test/java/org/apache/cayenne/access/ObjectStoreIT.java b/cayenne-server/src/test/java/org/apache/cayenne/access/ObjectStoreIT.java
+index 2a48aa8..1bcfcbd 100644
+--- a/cayenne-server/src/test/java/org/apache/cayenne/access/ObjectStoreIT.java
++++ b/cayenne-server/src/test/java/org/apache/cayenne/access/ObjectStoreIT.java
+@@ -77,7 +77,7 @@ public class ObjectStoreIT extends ServerCase {
+         row.put("ARTIST_ID", new Integer(1));
+         row.put("ARTIST_NAME", "ArtistXYZ");
+         row.put("DATE_OF_BIRTH", new Date());
+-        DataObject object = context.objectFromDataRow(Artist.class, row);
++        DataObject object = row.objectFromDataRow(Artist.class, context);
+         ObjectId oid = object.getObjectId();
+ 
+         // insert object into the ObjectStore
+diff --git a/cayenne-server/src/test/java/org/apache/cayenne/map/ObjEntityIT.java b/cayenne-server/src/test/java/org/apache/cayenne/map/ObjEntityIT.java
+index eb86ca2..94cc71d 100644
+--- a/cayenne-server/src/test/java/org/apache/cayenne/map/ObjEntityIT.java
++++ b/cayenne-server/src/test/java/org/apache/cayenne/map/ObjEntityIT.java
+@@ -372,8 +372,8 @@ public class ObjEntityIT extends ServerCase {
+         ObjEntity ae = runtime.getDataDomain().getEntityResolver().getObjEntity("Artist");
+         DbEntity dae = ae.getDbEntity();
+ 
+-        assertNull(ae.getRelationshipForDbRelationship(new DbRelationship()));
+-        assertNotNull(ae.getRelationshipForDbRelationship(dae.getRelationship("paintingArray")));
++        assertNull(new DbRelationship().getRelationshipForDbRelationship(ae));
++        assertNotNull(dae.getRelationship("paintingArray").getRelationshipForDbRelationship(ae));
+     }
+ 
+     @Test
+diff --git a/cayenne-server/src/test/java/org/apache/cayenne/map/ObjEntitySingleTableInheritanceTest.java b/cayenne-server/src/test/java/org/apache/cayenne/map/ObjEntitySingleTableInheritanceTest.java
+index bf8a6e8..dd02b4b 100644
+--- a/cayenne-server/src/test/java/org/apache/cayenne/map/ObjEntitySingleTableInheritanceTest.java
++++ b/cayenne-server/src/test/java/org/apache/cayenne/map/ObjEntitySingleTableInheritanceTest.java
+@@ -157,13 +157,10 @@ public class ObjEntitySingleTableInheritanceTest {
+         relationship1.addDbRelationship(dbRelationship1);
+         relationship2.addDbRelationship(dbRelationship2);
+ 
+-        assertNull(entity2.getRelationshipForDbRelationship(dbRelationship1));
+-        assertSame(relationship2, entity2
+-                .getRelationshipForDbRelationship(dbRelationship2));
+-
+-        assertSame(relationship1, entity1
+-                .getRelationshipForDbRelationship(dbRelationship1));
+-        assertSame(relationship2, entity1
+-                .getRelationshipForDbRelationship(dbRelationship2));
++        assertNull(dbRelationship1.getRelationshipForDbRelationship(entity2));
++        assertSame(relationship2, dbRelationship2.getRelationshipForDbRelationship(entity2));
++
++        assertSame(relationship1, dbRelationship1.getRelationshipForDbRelationship(entity1));
++        assertSame(relationship2, dbRelationship2.getRelationshipForDbRelationship(entity1));
+     }
+ }
+diff --git a/cayenne-server/src/test/java/org/apache/cayenne/query/ProcedureCallIT.java b/cayenne-server/src/test/java/org/apache/cayenne/query/ProcedureCallIT.java
+index 43c558e..c0d5b5b 100644
+--- a/cayenne-server/src/test/java/org/apache/cayenne/query/ProcedureCallIT.java
++++ b/cayenne-server/src/test/java/org/apache/cayenne/query/ProcedureCallIT.java
+@@ -123,7 +123,7 @@ public class ProcedureCallIT extends ServerCase {
+         assertNotNull("Null result from StoredProcedure.", artists);
+         assertEquals(1, artists.size());
+         DataRow artistRow = (DataRow) artists.get(0);
+-        Artist a = context.objectFromDataRow(Artist.class, uppercaseConverter(artistRow));
++        Artist a = uppercaseConverter(artistRow).objectFromDataRow(Artist.class, context);
+         Painting p = a.getPaintingArray().get(0);
+ 
+         // invalidate painting, it may have been updated in the proc
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/Application.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/Application.java
+index 8bd18b4..b229769 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/Application.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/Application.java
+@@ -21,6 +21,7 @@ package org.apache.cayenne.modeler;
+ 
+ import org.apache.cayenne.configuration.DataChannelDescriptor;
+ import org.apache.cayenne.configuration.xml.DataChannelMetaData;
++import org.apache.cayenne.dbsync.naming.ObjectNameGenerator;
+ import org.apache.cayenne.di.Inject;
+ import org.apache.cayenne.di.Injector;
+ import org.apache.cayenne.modeler.action.ActionManager;
+@@ -28,6 +29,7 @@ import org.apache.cayenne.modeler.dialog.LogConsole;
+ import org.apache.cayenne.modeler.dialog.pref.ClasspathPreferences;
+ import org.apache.cayenne.modeler.undo.CayenneUndoManager;
+ import org.apache.cayenne.modeler.util.AdapterMapping;
++import org.apache.cayenne.modeler.util.NameGeneratorPreferences;
+ import org.apache.cayenne.modeler.util.WidgetFactory;
+ import org.apache.cayenne.pref.CayennePreference;
+ import org.apache.cayenne.pref.CayenneProjectPreferences;
+@@ -280,4 +282,11 @@ public class Application {
+     protected void initPreferences() {
+         this.cayenneProjectPreferences = new CayenneProjectPreferences();
+     }
++
++    public ObjectNameGenerator createNamingStrategy(NameGeneratorPreferences nameGeneratorPreferences)
++            throws ClassNotFoundException, IllegalAccessException, InstantiationException {
++
++        return getClassLoadingService()
++                .loadClass(ObjectNameGenerator.class, nameGeneratorPreferences.getLastUsedStrategies().get(0)).newInstance();
++    }
+ }
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/CayenneModelerController.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/CayenneModelerController.java
+index 3c1549b..a4ad6ce 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/CayenneModelerController.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/CayenneModelerController.java
+@@ -31,7 +31,9 @@ import org.apache.cayenne.modeler.util.CayenneController;
+ import org.apache.cayenne.modeler.util.FileFilters;
+ import org.apache.cayenne.modeler.util.state.ProjectStateUtil;
+ import org.apache.cayenne.project.Project;
++import org.apache.cayenne.project.ProjectLoader;
+ import org.apache.cayenne.project.validation.ProjectValidator;
++import org.apache.cayenne.resource.Resource;
+ import org.apache.cayenne.validation.ValidationFailure;
+ import org.apache.cayenne.validation.ValidationResult;
+ 
+@@ -305,6 +307,12 @@ public class CayenneModelerController extends CayenneController {
+         return dbImportController;
+     }
+ 
++    public Project openProjectResourse(Resource resource, OpenProjectAction openProjectAction) {
++        Project project = openProjectAction.getApplication().getInjector().getInstance(ProjectLoader.class).loadProject(resource);
++        projectOpenedAction(project);
++        return project;
++    }
++
+     class ExpireThread extends Thread {
+ 
+         int seconds;
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/ProjectController.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/ProjectController.java
+index b442daf..1080d8a 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/ProjectController.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/ProjectController.java
+@@ -62,11 +62,8 @@ import org.apache.cayenne.map.event.ObjAttributeListener;
+ import org.apache.cayenne.map.event.ObjEntityListener;
+ import org.apache.cayenne.map.event.ObjRelationshipListener;
+ import org.apache.cayenne.map.event.RelationshipEvent;
+-import org.apache.cayenne.modeler.action.NavigateBackwardAction;
+-import org.apache.cayenne.modeler.action.NavigateForwardAction;
+-import org.apache.cayenne.modeler.action.RevertAction;
+-import org.apache.cayenne.modeler.action.SaveAction;
+-import org.apache.cayenne.modeler.action.SaveAsAction;
++import org.apache.cayenne.modeler.action.*;
++import org.apache.cayenne.modeler.dialog.ConfirmRemoveDialog;
+ import org.apache.cayenne.modeler.editor.CallbackType;
+ import org.apache.cayenne.modeler.editor.ObjCallbackMethod;
+ import org.apache.cayenne.modeler.event.AttributeDisplayEvent;
+@@ -108,9 +105,11 @@ import org.apache.cayenne.modeler.event.RelationshipDisplayEvent;
+ import org.apache.cayenne.modeler.pref.DataMapDefaults;
+ import org.apache.cayenne.modeler.pref.DataNodeDefaults;
+ import org.apache.cayenne.modeler.pref.ProjectStatePreferences;
++import org.apache.cayenne.modeler.undo.RemoveRelationshipUndoableEdit;
+ import org.apache.cayenne.modeler.util.CayenneController;
+ import org.apache.cayenne.modeler.util.CircularArray;
+ import org.apache.cayenne.modeler.util.Comparators;
++import org.apache.cayenne.modeler.util.ProjectUtil;
+ import org.apache.cayenne.project.ConfigurationNodeParentGetter;
+ import org.apache.cayenne.project.Project;
+ import org.apache.cayenne.util.IDUtil;
+@@ -135,6 +134,25 @@ import java.util.prefs.Preferences;
+  */
+ public class ProjectController extends CayenneController {
+ 
++    public void removeDBRelationships(ConfirmRemoveDialog dialog,
++                                      DbRelationship[] dbRels, RemoveAction removeAction) {
++        if (dbRels != null && dbRels.length > 0) {
++			if ((dbRels.length == 1 && dialog.shouldDelete("DbRelationship", dbRels[0].getName()))
++					|| (dbRels.length > 1 && dialog.shouldDelete("selected DbRelationships"))) {
++				DbEntity entity = getCurrentDbEntity();
++
++				for (DbRelationship rel : dbRels) {
++					entity.removeRelationship(rel.getName());
++					RelationshipEvent e = new RelationshipEvent(Application.getFrame(), rel, entity, MapEvent.REMOVE);
++					fireDbRelationshipEvent(e);
++				}
++
++				ProjectUtil.cleanObjMappings(getCurrentDataMap());
++				Application.getInstance().getUndoManager().addEdit(new RemoveRelationshipUndoableEdit(entity, dbRels));
++			}
++		}
++	}
++
+     /*
+      * A snapshot of the current state of the project controller. This was added
+      * so that we could support history of recent objects.
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/CreateCallbackMethodAction.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/CreateCallbackMethodAction.java
+index dc4c286..df5dc45 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/CreateCallbackMethodAction.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/CreateCallbackMethodAction.java
+@@ -21,10 +21,8 @@ package org.apache.cayenne.modeler.action;
+ import org.apache.cayenne.dbsync.naming.NameBuilder;
+ import org.apache.cayenne.map.CallbackMap;
+ import org.apache.cayenne.map.LifecycleEvent;
+-import org.apache.cayenne.map.event.MapEvent;
+ import org.apache.cayenne.modeler.Application;
+ import org.apache.cayenne.modeler.editor.CallbackType;
+-import org.apache.cayenne.modeler.event.CallbackMethodEvent;
+ import org.apache.cayenne.modeler.undo.CreateCallbackMethodUndoableEdit;
+ import org.apache.cayenne.modeler.util.CayenneAction;
+ import org.apache.cayenne.util.Util;
+@@ -91,27 +89,13 @@ public class CreateCallbackMethodAction extends CayenneAction {
+                 .baseName(toMethodName(callbackType.getType()))
+                 .name();
+ 
+-        createCallbackMethod(callbackType, methodName);
++        callbackType.createCallbackMethod(methodName, this);
+         application.getUndoManager().addEdit(
+                 new CreateCallbackMethodUndoableEdit(
+                         callbackType,
+                         methodName));
+     }
+ 
+-    public void createCallbackMethod(
+-            CallbackType callbackType,
+-            String methodName) {
+-        getCallbackMap().getCallbackDescriptor(callbackType.getType()).addCallbackMethod(methodName);
+-
+-        CallbackMethodEvent ce = new CallbackMethodEvent(
+-                this,
+-                null,
+-                methodName,
+-                MapEvent.ADD);
+-
+-        getProjectController().fireCallbackMethodEvent(ce);
+-    }
+-
+     private String toMethodName(LifecycleEvent event) {
+         return "on" + Util.underscoredToJava(event.name(), true);
+     }
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/LoadDbSchemaAction.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/LoadDbSchemaAction.java
+index da0c659..7f52c50 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/LoadDbSchemaAction.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/LoadDbSchemaAction.java
+@@ -80,7 +80,7 @@ public class LoadDbSchemaAction extends CayenneAction {
+                         return;
+                     }
+                     connectionInfo = connectWizard.getConnectionInfo();
+-                    saveConnectionInfo(connectWizard);
++                    connectWizard.saveConnectionInfo(this);
+                 } else {
+                     connectionInfo = getConnectionInfoFromPreferences();
+                 }
+@@ -135,16 +135,6 @@ public class LoadDbSchemaAction extends CayenneAction {
+         return connectionInfo;
+     }
+ 
+-    private void saveConnectionInfo(DataSourceWizard connectWizard) {
+-        DataMapDefaults dataMapDefaults = getProjectController().
+-                getDataMapPreferences(getProjectController().getCurrentDataMap());
+-        dataMapDefaults.getCurrentPreference().put(DB_ADAPTER_PROPERTY, connectWizard.getConnectionInfo().getDbAdapter());
+-        dataMapDefaults.getCurrentPreference().put(URL_PROPERTY, connectWizard.getConnectionInfo().getUrl());
+-        dataMapDefaults.getCurrentPreference().put(USER_NAME_PROPERTY, connectWizard.getConnectionInfo().getUserName());
+-        dataMapDefaults.getCurrentPreference().put(PASSWORD_PROPERTY, connectWizard.getConnectionInfo().getPassword());
+-        dataMapDefaults.getCurrentPreference().put(JDBC_DRIVER_PROPERTY, connectWizard.getConnectionInfo().getJdbcDriver());
+-    }
+-
+     public void setDraggableTreePanel(DraggableTreePanel draggableTreePanel) {
+         this.draggableTreePanel = draggableTreePanel;
+     }
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/OpenProjectAction.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/OpenProjectAction.java
+index 4f9271d..ccc1e10 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/OpenProjectAction.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/OpenProjectAction.java
+@@ -22,8 +22,6 @@ package org.apache.cayenne.modeler.action;
+ import org.apache.cayenne.modeler.Application;
+ import org.apache.cayenne.modeler.CayenneModelerController;
+ import org.apache.cayenne.modeler.dialog.ErrorDebugDialog;
+-import org.apache.cayenne.project.Project;
+-import org.apache.cayenne.project.ProjectLoader;
+ import org.apache.cayenne.project.upgrade.UpgradeMetaData;
+ import org.apache.cayenne.project.upgrade.UpgradeService;
+ import org.apache.cayenne.resource.Resource;
+@@ -172,19 +170,13 @@ public class OpenProjectAction extends ProjectAction {
+                     break;
+             }
+ 
+-            openProjectResourse(rootSource, controller);
++            controller.openProjectResourse(rootSource, this);
+         } catch (Exception ex) {
+             logObj.warn("Error loading project file.", ex);
+             ErrorDebugDialog.guiWarning(ex, "Error loading project");
+         }
+     }
+ 
+-    private Project openProjectResourse(Resource resource, CayenneModelerController controller) {
+-        Project project = getApplication().getInjector().getInstance(ProjectLoader.class).loadProject(resource);
+-        controller.projectOpenedAction(project);
+-        return project;
+-    }
+-
+     private boolean processUpgrades() {
+         // need an upgrade
+         int returnCode = JOptionPane.showConfirmDialog(
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/RemoveAction.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/RemoveAction.java
+index ce5228c..7a43d6c 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/RemoveAction.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/RemoveAction.java
+@@ -32,7 +32,6 @@ import org.apache.cayenne.map.CallbackMap;
+ import org.apache.cayenne.map.DataMap;
+ import org.apache.cayenne.map.DbAttribute;
+ import org.apache.cayenne.map.DbEntity;
+-import org.apache.cayenne.map.DbRelationship;
+ import org.apache.cayenne.map.Embeddable;
+ import org.apache.cayenne.map.EmbeddableAttribute;
+ import org.apache.cayenne.map.Entity;
+@@ -61,7 +60,6 @@ import org.apache.cayenne.modeler.undo.RemoveRelationshipUndoableEdit;
+ import org.apache.cayenne.modeler.undo.RemoveUndoableEdit;
+ import org.apache.cayenne.modeler.util.CayenneAction;
+ import org.apache.cayenne.modeler.util.ProjectUtil;
+-import org.apache.cayenne.query.Query;
+ import org.apache.cayenne.map.QueryDescriptor;
+ 
+ import javax.swing.KeyStroke;
+@@ -73,7 +71,6 @@ import java.awt.event.KeyEvent;
+ import java.net.URL;
+ import java.util.ArrayList;
+ import java.util.Collection;
+-import java.util.Iterator;
+ 
+ /**
+  * Removes currently selected object from the project. This can be Domain, DataNode,
+@@ -204,7 +201,7 @@ public class RemoveAction extends CayenneAction {
+         } else if(mediator.getCurrentObjRelationships().length > 0) {
+       		removeObjRelationships(mediator, dialog, getProjectController().getCurrentObjRelationships());
+         } else if(mediator.getCurrentDbRelationships().length > 0) {
+-      		removeDBRelationships(mediator, dialog, getProjectController().getCurrentDbRelationships());
++      		mediator.removeDBRelationships(dialog, getProjectController().getCurrentDbRelationships(), this);
+         } else if(mediator.getCurrentObjAttributes().length > 0) {
+       		removeObjAttributes(mediator, dialog, getProjectController().getCurrentObjAttributes());
+         } else if(mediator.getCurrentEmbAttributes().length > 0) {
+@@ -291,27 +288,8 @@ public class RemoveAction extends CayenneAction {
+         	}
+     	}
+     }
+-    
+-    private void removeDBRelationships(ProjectController mediator, ConfirmRemoveDialog dialog,
+-                                       DbRelationship[] dbRels) {
+-		if (dbRels != null && dbRels.length > 0) {
+-			if ((dbRels.length == 1 && dialog.shouldDelete("DbRelationship", dbRels[0].getName()))
+-					|| (dbRels.length > 1 && dialog.shouldDelete("selected DbRelationships"))) {
+-				DbEntity entity = mediator.getCurrentDbEntity();
+-				
+-				for (DbRelationship rel : dbRels) {
+-					entity.removeRelationship(rel.getName());
+-					RelationshipEvent e = new RelationshipEvent(Application.getFrame(), rel, entity, MapEvent.REMOVE);
+-					mediator.fireDbRelationshipEvent(e);
+-				}
+-
+-				ProjectUtil.cleanObjMappings(mediator.getCurrentDataMap());
+-				Application.getInstance().getUndoManager().addEdit(new RemoveRelationshipUndoableEdit(entity, dbRels));
+-			}
+-		}
+-	}
+ 
+-	private void removeObjRelationships(ProjectController mediator, ConfirmRemoveDialog dialog,
++    private void removeObjRelationships(ProjectController mediator, ConfirmRemoveDialog dialog,
+                                         ObjRelationship[] rels) {
+ 		if ((rels.length == 1 && dialog.shouldDelete("ObjRelationship", rels[0].getName()))
+ 				|| (rels.length > 1 && dialog.shouldDelete("selected ObjRelationships"))) {
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/ReverseEngineeringAction.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/ReverseEngineeringAction.java
+index 80d8288..899968c 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/ReverseEngineeringAction.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/ReverseEngineeringAction.java
+@@ -26,14 +26,12 @@ import org.apache.cayenne.modeler.dialog.db.DataSourceWizard;
+ import org.apache.cayenne.modeler.dialog.db.DbActionOptionsDialog;
+ import org.apache.cayenne.modeler.dialog.db.load.DbLoadResultDialog;
+ import org.apache.cayenne.modeler.dialog.db.load.DbLoaderContext;
+-import org.apache.cayenne.modeler.dialog.db.load.LoadDataMapTask;
+ import org.apache.cayenne.modeler.editor.DbImportController;
+ import org.apache.cayenne.modeler.editor.dbimport.DbImportView;
+ import org.apache.cayenne.modeler.pref.DBConnectionInfo;
+ import org.apache.cayenne.modeler.pref.DataMapDefaults;
+ 
+ import javax.swing.JOptionPane;
+-import javax.swing.SwingUtilities;
+ import java.awt.event.ActionEvent;
+ import java.sql.SQLException;
+ import java.util.Collection;
+@@ -111,7 +109,7 @@ public class ReverseEngineeringAction extends DBWizardAction<DbActionOptionsDial
+             return;
+         }
+ 
+-        runLoaderInThread(context, () -> {
++        context.runLoaderInThread(() -> {
+             application.getUndoManager().discardAllEdits();
+             try {
+                 context.getConnection().close();
+@@ -123,7 +121,7 @@ public class ReverseEngineeringAction extends DBWizardAction<DbActionOptionsDial
+                     }
+                 }
+             } catch (SQLException ignored) {}
+-        });
++        }, this);
+     }
+ 
+     /**
+@@ -170,15 +168,6 @@ public class ReverseEngineeringAction extends DBWizardAction<DbActionOptionsDial
+         return dataMapDefaults.getCurrentPreference().get(DB_ADAPTER_PROPERTY, null) != null;
+     }
+ 
+-    private void runLoaderInThread(final DbLoaderContext context, final Runnable callback) {
+-        Thread th = new Thread(() -> {
+-            LoadDataMapTask task = new LoadDataMapTask(Application.getFrame(), "Reengineering DB", context);
+-            task.startAndWait();
+-            SwingUtilities.invokeLater(callback);
+-        });
+-        th.start();
+-    }
+-
+     @Override
+     protected DbActionOptionsDialog createDialog(Collection<String> catalogs, Collection<String> schemas,
+                                                  String currentCatalog, String currentSchema, int command) {
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/dbimport/MoveImportNodeAction.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/dbimport/MoveImportNodeAction.java
+index cf8f44e..c48b032 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/dbimport/MoveImportNodeAction.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/action/dbimport/MoveImportNodeAction.java
+@@ -100,14 +100,14 @@ public class MoveImportNodeAction extends CayenneAction {
+         } else {
+             selectedElement = foundNode;
+         }
+-        if ((nodeClassesIsSameTypes(sourceElement, selectedElement))
++        if ((sourceElement.nodeClassesIsSameTypes(selectedElement, this))
+                 && (sourceElement.getSimpleNodeName().equals(selectedElement.getSimpleNodeName()))) {
+             return false;
+         }
+         int childCount = selectedElement.getChildCount();
+         for (int i = 0; i < childCount; i++) {
+             DbImportTreeNode child = (DbImportTreeNode) selectedElement.getChildAt(i);
+-            if ((nodeClassesIsSameTypes(sourceElement, child))
++            if ((sourceElement.nodeClassesIsSameTypes(child, this))
+                 && (sourceElement.getSimpleNodeName().equals(child.getSimpleNodeName()))) {
+                 return false;
+             }
+@@ -205,25 +205,6 @@ public class MoveImportNodeAction extends CayenneAction {
+         }
+     }
+ 
+-    private boolean nodeClassesIsSameTypes(DbImportTreeNode sourceElement, DbImportTreeNode selectedElement) {
+-        if (sourceElement.getUserObject().getClass() == selectedElement.getUserObject().getClass()) {
+-            return true;
+-        }
+-        if (sourceElement.getUserObject().getClass() == IncludeTable.class) {
+-            if ((selectedElement.getUserObject().getClass() == IncludeTable.class)
+-                || (selectedElement.getUserObject().getClass() == ExcludeTable.class)) {
+-                return true;
+-            }
+-        }
+-        if (sourceElement.getUserObject().getClass() == IncludeProcedure.class) {
+-            if ((selectedElement.getUserObject().getClass() == IncludeProcedure.class)
+-                    || (selectedElement.getUserObject().getClass() == ExcludeProcedure.class)) {
+-                return true;
+-            }
+-        }
+-        return false;
+-    }
+-
+     public void setSourceTree(DbImportTree sourceTree) {
+         this.sourceTree = sourceTree;
+     }
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/autorelationship/InferRelationshipsControllerBase.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/autorelationship/InferRelationshipsControllerBase.java
+index 4a41b32..23e4ca9 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/autorelationship/InferRelationshipsControllerBase.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/autorelationship/InferRelationshipsControllerBase.java
+@@ -119,12 +119,6 @@ public class InferRelationshipsControllerBase extends CayenneController {
+         inferredRelationships.add(myir);
+     }
+ 
+-    public String getJoin(InferredRelationship irItem) {
+-        return irItem.getJoinSource().getName()
+-                + " : "
+-                + irItem.getJoinTarget().getName();
+-    }
+-
+     public String getToMany(InferredRelationship irItem) {
+         if (irItem.isToMany()) {
+             return "to many";
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/autorelationship/InferredRelationship.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/autorelationship/InferredRelationship.java
+index 41f400b..3b1a355 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/autorelationship/InferredRelationship.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/autorelationship/InferredRelationship.java
+@@ -77,4 +77,10 @@ public class InferredRelationship {
+     public void setName(String name) {
+         this.name = name;
+     }
++
++    public String getJoin(InferRelationshipsControllerBase inferRelationshipsControllerBase) {
++        return getJoinSource().getName()
++                + " : "
++                + getJoinTarget().getName();
++    }
+ }
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/DataSourceWizard.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/DataSourceWizard.java
+index 7ef6a1a..17ab8e6 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/DataSourceWizard.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/DataSourceWizard.java
+@@ -23,6 +23,7 @@ import org.apache.cayenne.dba.DbAdapter;
+ import org.apache.cayenne.modeler.ClassLoadingService;
+ import org.apache.cayenne.modeler.ProjectController;
+ import org.apache.cayenne.modeler.action.GetDbConnectionAction;
++import org.apache.cayenne.modeler.action.LoadDbSchemaAction;
+ import org.apache.cayenne.modeler.dialog.pref.GeneralPreferences;
+ import org.apache.cayenne.modeler.dialog.pref.PreferenceDialog;
+ import org.apache.cayenne.modeler.event.DataSourceModificationEvent;
+@@ -318,4 +319,14 @@ public class DataSourceWizard extends CayenneController {
+ 	public DbAdapter getAdapter() {
+ 		return adapter;
+ 	}
++
++    public void saveConnectionInfo(LoadDbSchemaAction loadDbSchemaAction) {
++        DataMapDefaults dataMapDefaults = loadDbSchemaAction.getProjectController().
++                getDataMapPreferences(loadDbSchemaAction.getProjectController().getCurrentDataMap());
++        dataMapDefaults.getCurrentPreference().put(DB_ADAPTER_PROPERTY, getConnectionInfo().getDbAdapter());
++        dataMapDefaults.getCurrentPreference().put(URL_PROPERTY, getConnectionInfo().getUrl());
++        dataMapDefaults.getCurrentPreference().put(USER_NAME_PROPERTY, getConnectionInfo().getUserName());
++        dataMapDefaults.getCurrentPreference().put(PASSWORD_PROPERTY, getConnectionInfo().getPassword());
++        dataMapDefaults.getCurrentPreference().put(JDBC_DRIVER_PROPERTY, getConnectionInfo().getJdbcDriver());
++    }
+ }
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/load/DbImportTreeNode.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/load/DbImportTreeNode.java
+index 98cc338..65ac237 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/load/DbImportTreeNode.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/load/DbImportTreeNode.java
+@@ -30,6 +30,7 @@ import org.apache.cayenne.dbsync.reverse.dbimport.IncludeTable;
+ import org.apache.cayenne.dbsync.reverse.dbimport.PatternParam;
+ import org.apache.cayenne.dbsync.reverse.dbimport.ReverseEngineering;
+ import org.apache.cayenne.dbsync.reverse.dbimport.Schema;
++import org.apache.cayenne.modeler.action.dbimport.MoveImportNodeAction;
+ 
+ import javax.swing.tree.DefaultMutableTreeNode;
+ import java.util.ArrayList;
+@@ -210,4 +211,23 @@ public class DbImportTreeNode extends DefaultMutableTreeNode {
+     public void setLoaded(boolean loaded) {
+         isLoaded = loaded;
+     }
++
++    public boolean nodeClassesIsSameTypes(DbImportTreeNode selectedElement, MoveImportNodeAction moveImportNodeAction) {
++        if (getUserObject().getClass() == selectedElement.getUserObject().getClass()) {
++            return true;
++        }
++        if (getUserObject().getClass() == IncludeTable.class) {
++            if ((selectedElement.getUserObject().getClass() == IncludeTable.class)
++                || (selectedElement.getUserObject().getClass() == ExcludeTable.class)) {
++                return true;
++            }
++        }
++        if (getUserObject().getClass() == IncludeProcedure.class) {
++            if ((selectedElement.getUserObject().getClass() == IncludeProcedure.class)
++                    || (selectedElement.getUserObject().getClass() == ExcludeProcedure.class)) {
++                return true;
++            }
++        }
++        return false;
++    }
+ }
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/load/DbLoaderContext.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/load/DbLoaderContext.java
+index 47a7f33..0b3e990 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/load/DbLoaderContext.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/db/load/DbLoaderContext.java
+@@ -29,6 +29,7 @@ import org.apache.cayenne.dbsync.reverse.filters.FiltersConfigBuilder;
+ import org.apache.cayenne.map.DataMap;
+ import org.apache.cayenne.modeler.Application;
+ import org.apache.cayenne.modeler.ProjectController;
++import org.apache.cayenne.modeler.action.ReverseEngineeringAction;
+ import org.apache.cayenne.modeler.editor.dbimport.DbImportView;
+ import org.apache.cayenne.modeler.pref.DBConnectionInfo;
+ import org.apache.cayenne.util.Util;
+@@ -200,4 +201,13 @@ public class DbLoaderContext {
+     public boolean isInterrupted() {
+         return isInterrupted;
+     }
++
++    public void runLoaderInThread(final Runnable callback, ReverseEngineeringAction reverseEngineeringAction) {
++        Thread th = new Thread(() -> {
++            LoadDataMapTask task = new LoadDataMapTask(Application.getFrame(), "Reengineering DB", this);
++            task.startAndWait();
++            SwingUtilities.invokeLater(callback);
++        });
++        th.start();
++    }
+ }
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/objentity/EntitySyncController.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/objentity/EntitySyncController.java
+index 3319cf0..cde5232 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/objentity/EntitySyncController.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/dialog/objentity/EntitySyncController.java
+@@ -28,8 +28,6 @@ import org.apache.cayenne.modeler.util.CayenneController;
+ import org.apache.cayenne.modeler.util.NameGeneratorPreferences;
+ 
+ import java.awt.*;
+-import java.awt.event.ActionEvent;
+-import java.awt.event.ActionListener;
+ import java.util.Collection;
+ import java.util.Collections;
+ 
+@@ -64,7 +62,7 @@ public class EntitySyncController extends CayenneController {
+ 
+         ObjectNameGenerator namingStrategy;
+         try {
+-            namingStrategy = NameGeneratorPreferences.getInstance().createNamingStrategy(application);
++            namingStrategy = application.createNamingStrategy(NameGeneratorPreferences.getInstance());
+         } catch (Throwable e) {
+             namingStrategy = NameGeneratorPreferences.defaultNameGenerator();
+         }
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/AbstractCallbackMethodsTab.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/AbstractCallbackMethodsTab.java
+index b40037c..3cd844a 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/AbstractCallbackMethodsTab.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/AbstractCallbackMethodsTab.java
+@@ -297,7 +297,7 @@ public abstract class AbstractCallbackMethodsTab extends JPanel {
+     	int index = 0;
+       	for(CallbackType callbackType : callbackTypes) {
+        		tables[index] = createTable(callbackType);
+-       		builder.append(createTablePanel(tables[index++]));
++       		builder.append(tables[index++].createTablePanel(this));
+     	}
+       	
+       	initTablePreferences();
+@@ -346,17 +346,7 @@ public abstract class AbstractCallbackMethodsTab extends JPanel {
+ 	    
+ 		return popup;
+ 	}
+-    
+-    private JPanel createTablePanel(final CayenneTable cayenneTable) {
+-        JPanel panel = new JPanel();
+-        panel.setLayout(new BorderLayout());
+-        
+-        panel.add(cayenneTable.getTableHeader(), BorderLayout.NORTH);
+-        panel.add(cayenneTable, BorderLayout.CENTER);
+-        
+-        return panel;
+-    }
+-    
++
+     private void addButtonAtHeader(JTable table, JButton button, ActionListener buttonListener, ImageIcon buttonIcon){
+         PanelBuilder builder = new PanelBuilder(new FormLayout("left:10dlu, 2dlu", "center:14dlu"));
+         CellConstraints cc = new CellConstraints();
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/CallbackType.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/CallbackType.java
+index 790b98a..3fb0d2b 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/CallbackType.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/CallbackType.java
+@@ -19,6 +19,9 @@
+ package org.apache.cayenne.modeler.editor;
+ 
+ import org.apache.cayenne.map.LifecycleEvent;
++import org.apache.cayenne.map.event.MapEvent;
++import org.apache.cayenne.modeler.action.CreateCallbackMethodAction;
++import org.apache.cayenne.modeler.event.CallbackMethodEvent;
+ import org.apache.cayenne.util.Util;
+ 
+ import java.io.Serializable;
+@@ -101,4 +104,17 @@ public class CallbackType implements Serializable {
+     public int hashCode() {
+         return type.hashCode();
+     }
++
++    public void createCallbackMethod(
++            String methodName, CreateCallbackMethodAction createCallbackMethodAction) {
++        createCallbackMethodAction.getCallbackMap().getCallbackDescriptor(getType()).addCallbackMethod(methodName);
++
++        CallbackMethodEvent ce = new CallbackMethodEvent(
++                createCallbackMethodAction,
++                null,
++                methodName,
++                MapEvent.ADD);
++
++        createCallbackMethodAction.getProjectController().fireCallbackMethodEvent(ce);
++    }
+ }
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/ObjAttributeTableModel.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/ObjAttributeTableModel.java
+index 61fb98b..4e18f85 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/ObjAttributeTableModel.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/ObjAttributeTableModel.java
+@@ -309,7 +309,7 @@ public class ObjAttributeTableModel extends CayenneTableModel<ObjAttributeWrappe
+         attributeNew.setType(attribute.getType());
+         attributeNew.setUsedForLocking(attribute.isUsedForLocking());
+ 
+-        entity.updateAttribute(attributeNew);
++        attributeNew.updateAttribute();
+ 
+         mediator.fireObjEntityEvent(new EntityEvent(this, entity, MapEvent.CHANGE));
+ 
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/validation/ObjAttributeWrapperValidator.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/validation/ObjAttributeWrapperValidator.java
+index 84e9190..46a98b9 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/validation/ObjAttributeWrapperValidator.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/validation/ObjAttributeWrapperValidator.java
+@@ -18,7 +18,6 @@
+  ****************************************************************/
+ package org.apache.cayenne.modeler.editor.validation;
+ 
+-import org.apache.cayenne.map.ObjAttribute;
+ import org.apache.cayenne.modeler.editor.ObjAttributeTableModel;
+ import org.apache.cayenne.modeler.editor.wrapper.ObjAttributeWrapper;
+ import org.apache.cayenne.project.validation.ConfigurationNodeValidator;
+@@ -27,7 +26,7 @@ import org.apache.cayenne.validation.ValidationResult;
+ public class ObjAttributeWrapperValidator extends ConfigurationNodeValidator {
+ 
+     public boolean validate(ObjAttributeWrapper wrapper, ValidationResult validationResult) {
+-        if (isAttributeNameOverlapped(wrapper)) {
++        if (wrapper.isAttributeNameOverlapped(this)) {
+             addFailure(validationResult, new AttributeValidationFailure(
+                     ObjAttributeTableModel.OBJ_ATTRIBUTE,
+                     "Duplicate attribute name."));
+@@ -36,14 +35,4 @@ public class ObjAttributeWrapperValidator extends ConfigurationNodeValidator {
+         return wrapper.isValid();
+     }
+ 
+-    /**
+-     * @return false if entity has attribute with the same name.
+-     */
+-    private boolean isAttributeNameOverlapped(ObjAttributeWrapper attr) {
+-    	ObjAttribute temp = attr.getEntity().getAttributeMap().get(attr.getName());
+-    	if (temp != null && attr.getValue() != temp ){
+-    		return true;
+-    	}
+-    	return false;
+-    }
+ }
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/wrapper/ObjAttributeWrapper.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/wrapper/ObjAttributeWrapper.java
+index bf5530a..9e1117f 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/wrapper/ObjAttributeWrapper.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/editor/wrapper/ObjAttributeWrapper.java
+@@ -163,4 +163,15 @@ public class ObjAttributeWrapper implements Wrapper<ObjAttribute> {
+         return objAttribute.getDbAttributePath();
+     }
+ 
++    /**
++     * @return false if entity has attribute with the same name.
++     * @param objAttributeWrapperValidator
++     */
++    public boolean isAttributeNameOverlapped(ObjAttributeWrapperValidator objAttributeWrapperValidator) {
++        ObjAttribute temp = getEntity().getAttributeMap().get(getName());
++    	if (temp != null && getValue() != temp ){
++    		return true;
++    	}
++    	return false;
++    }
+ }
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/undo/CreateCallbackMethodUndoableEdit.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/undo/CreateCallbackMethodUndoableEdit.java
+index 3287bd3..45db67f 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/undo/CreateCallbackMethodUndoableEdit.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/undo/CreateCallbackMethodUndoableEdit.java
+@@ -39,7 +39,7 @@ public class CreateCallbackMethodUndoableEdit extends CayenneUndoableEdit {
+     public void redo() throws CannotRedoException {
+         CreateCallbackMethodAction action = actionManager
+                 .getAction(CreateCallbackMethodAction.class);
+-        action.createCallbackMethod(callbackType, methodName);
++        callbackType.createCallbackMethod(methodName, action);
+     }
+ 
+     @Override
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/undo/RemoveCallbackMethodUndoableEdit.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/undo/RemoveCallbackMethodUndoableEdit.java
+index 257aa23..c3526df 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/undo/RemoveCallbackMethodUndoableEdit.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/undo/RemoveCallbackMethodUndoableEdit.java
+@@ -56,7 +56,7 @@ public class RemoveCallbackMethodUndoableEdit extends CayenneUndoableEdit {
+     	CreateCallbackMethodAction action = actionManager
+                 .getAction(CreateCallbackMethodAction.class);
+         for (ObjCallbackMethod method : methods) {
+-            action.createCallbackMethod(callbackType, method.getName());
++            callbackType.createCallbackMethod(method.getName(), action);
+         }
+     }
+ }
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/util/CayenneTable.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/util/CayenneTable.java
+index 033ecd7..a669713 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/util/CayenneTable.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/util/CayenneTable.java
+@@ -20,14 +20,10 @@
+ package org.apache.cayenne.modeler.util;
+ 
+ import org.apache.cayenne.modeler.Application;
++import org.apache.cayenne.modeler.editor.AbstractCallbackMethodsTab;
+ import org.apache.cayenne.modeler.pref.TableColumnPreferences;
+ 
+-import javax.swing.BorderFactory;
+-import javax.swing.DefaultCellEditor;
+-import javax.swing.DefaultListSelectionModel;
+-import javax.swing.JTable;
+-import javax.swing.JTextField;
+-import javax.swing.UIManager;
++import javax.swing.*;
+ import javax.swing.event.ChangeEvent;
+ import javax.swing.event.TableModelEvent;
+ import javax.swing.table.DefaultTableCellRenderer;
+@@ -38,8 +34,7 @@ import javax.swing.table.TableColumn;
+ import javax.swing.table.TableColumnModel;
+ import javax.swing.table.TableModel;
+ import javax.swing.text.JTextComponent;
+-import java.awt.Color;
+-import java.awt.Component;
++import java.awt.*;
+ import java.util.EventObject;
+ 
+ /**
+@@ -162,6 +157,16 @@ public class CayenneTable extends JTable {
+         super.tableChanged(e);
+     }
+ 
++    public JPanel createTablePanel(AbstractCallbackMethodsTab abstractCallbackMethodsTab) {
++        JPanel panel = new JPanel();
++        panel.setLayout(new BorderLayout());
++
++        panel.add(getTableHeader(), BorderLayout.NORTH);
++        panel.add(this, BorderLayout.CENTER);
++
++        return panel;
++    }
++
+     /**
+      * ListSelectionModel for Cayenne table. Has a method to set multiple rows selection at once.
+      */
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/util/NameGeneratorPreferences.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/util/NameGeneratorPreferences.java
+index 65b2f74..56d486b 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/util/NameGeneratorPreferences.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/modeler/util/NameGeneratorPreferences.java
+@@ -91,13 +91,6 @@ public class NameGeneratorPreferences {
+         getPreference().put(STRATEGIES_PREFERENCE, res.toString());
+     }
+ 
+-    public ObjectNameGenerator createNamingStrategy(Application application)
+-            throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+-
+-        return application.getClassLoadingService()
+-                .loadClass(ObjectNameGenerator.class, getLastUsedStrategies().get(0)).newInstance();
+-    }
+-
+     public static ObjectNameGenerator defaultNameGenerator() {
+         return new DefaultObjectNameGenerator(NoStemStemmer.getInstance());
+     }
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/swing/BindingBase.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/swing/BindingBase.java
+index 7402940..8f77d37 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/swing/BindingBase.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/swing/BindingBase.java
+@@ -186,4 +186,13 @@ public abstract class BindingBase implements ObjectBinding {
+         throw new BindingException("Evaluation failed in context: " + context, root);
+     }
+ 
++    /**
++     * Configures binding with factory default settings.
++     * @param bindingFactory
++     */
++    public ObjectBinding prepareBinding(BindingFactory bindingFactory) {
++        setUsingNullForEmptyStrings(bindingFactory.isUsingNullForEmptyStrings());
++        setCheckingForValueChange(bindingFactory.isCheckingForValueChange());
++        return this;
++    }
+ }
+diff --git a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/swing/BindingFactory.java b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/swing/BindingFactory.java
+index b967c5a..1b072bb 100644
+--- a/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/swing/BindingFactory.java
++++ b/modeler/cayenne-modeler/src/main/java/org/apache/cayenne/swing/BindingFactory.java
+@@ -55,7 +55,7 @@ public class BindingFactory {
+                 columnClass,
+                 editableState,
+                 sampleLongValues);
+-        return prepareBinding(binding);
++        return binding.prepareBinding(this);
+     }
+ 
+     public ObjectBinding bindToProperty(
+@@ -63,7 +63,7 @@ public class BindingFactory {
+             String property,
+             String boundProperty) {
+         PropertyBinding binding = new PropertyBinding(component, property, boundProperty);
+-        return prepareBinding(binding);
++        return binding.prepareBinding(this);
+     }
+ 
+     /**
+@@ -72,7 +72,7 @@ public class BindingFactory {
+      */
+     public ObjectBinding bindToStateChange(AbstractButton button, String property) {
+         ItemEventBinding binding = new ItemEventBinding(button, property);
+-        return prepareBinding(binding);
++        return binding.prepareBinding(this);
+     }
+ 
+     /**
+@@ -81,7 +81,7 @@ public class BindingFactory {
+      */
+     public ObjectBinding bindToAction(AbstractButton button, String action) {
+         ActionBinding binding = new ActionBinding(button, action);
+-        return prepareBinding(binding);
++        return binding.prepareBinding(this);
+     }
+ 
+     /**
+@@ -91,7 +91,7 @@ public class BindingFactory {
+      */
+     public ObjectBinding bindToAction(Component component, String action) {
+         BeanActionBinding binding = new BeanActionBinding(component, action);
+-        return prepareBinding(binding);
++        return binding.prepareBinding(this);
+     }
+ 
+     public ObjectBinding bindToAction(
+@@ -99,7 +99,7 @@ public class BindingFactory {
+             String action,
+             String boundExpression) {
+         ActionBinding binding = new ActionBinding(component, action, boundExpression);
+-        return prepareBinding(binding);
++        return binding.prepareBinding(this);
+     }
+ 
+     public ObjectBinding bindToComboSelection(
+@@ -110,12 +110,12 @@ public class BindingFactory {
+                 component,
+                 property,
+                 noSelectionValue);
+-        return prepareBinding(binding);
++        return binding.prepareBinding(this);
+     }
+ 
+     public ObjectBinding bindToTextArea(JTextArea component, String property) {
+         TextBinding binding = new TextBinding(component, property);
+-        return prepareBinding(binding);
++        return binding.prepareBinding(this);
+     }
+ 
+     /**
+@@ -123,21 +123,12 @@ public class BindingFactory {
+      */
+     public ObjectBinding bindToTextField(JTextField component, String property) {
+         TextBinding binding = new TextBinding(component, property);
+-        return prepareBinding(binding);
++        return binding.prepareBinding(this);
+     }
+ 
+     public ObjectBinding bindToCheckBox(JCheckBox component, String property) {
+         CheckBoxBinding binding = new CheckBoxBinding(component, property);
+-        return prepareBinding(binding);
+-    }
+-
+-    /**
+-     * Configures binding with factory default settings.
+-     */
+-    protected ObjectBinding prepareBinding(BindingBase binding) {
+-        binding.setUsingNullForEmptyStrings(isUsingNullForEmptyStrings());
+-        binding.setCheckingForValueChange(isCheckingForValueChange());
+-        return binding;
++        return binding.prepareBinding(this);
+     }
+ 
+     public boolean isCheckingForValueChange() {
+diff --git a/modeler/cayenne-wocompat/src/main/java/org/apache/cayenne/wocompat/parser/ParserTokenManager.java b/modeler/cayenne-wocompat/src/main/java/org/apache/cayenne/wocompat/parser/ParserTokenManager.java
+index 97f4c66..e2e18c2 100644
+--- a/modeler/cayenne-wocompat/src/main/java/org/apache/cayenne/wocompat/parser/ParserTokenManager.java
++++ b/modeler/cayenne-wocompat/src/main/java/org/apache/cayenne/wocompat/parser/ParserTokenManager.java
+@@ -650,12 +650,8 @@ private final void ReInitRounds()
+    for (i = 11; i-- > 0;)
+       jjrounds[i] = 0x80000000;
+ }
+-public void ReInit(SimpleCharStream stream, int lexState)
+-{
+-   ReInit(stream);
+-   SwitchTo(lexState);
+-}
+-public void SwitchTo(int lexState)
++
++    public void SwitchTo(int lexState)
+ {
+    if (lexState >= 3 || lexState < 0)
+       throw new TokenMgrError("Error: Ignoring invalid lexical state : " + lexState + ". State unchanged.", TokenMgrError.INVALID_LEXICAL_STATE);
+diff --git a/modeler/cayenne-wocompat/src/main/java/org/apache/cayenne/wocompat/parser/SimpleCharStream.java b/modeler/cayenne-wocompat/src/main/java/org/apache/cayenne/wocompat/parser/SimpleCharStream.java
+index 827ee88..8f03900 100644
+--- a/modeler/cayenne-wocompat/src/main/java/org/apache/cayenne/wocompat/parser/SimpleCharStream.java
++++ b/modeler/cayenne-wocompat/src/main/java/org/apache/cayenne/wocompat/parser/SimpleCharStream.java
+@@ -401,4 +401,9 @@ public class SimpleCharStream
+      column = bufcolumn[j];
+   }
+ 
++    public void ReInitOther(int lexState, ParserTokenManager parserTokenManager)
++    {
++        parserTokenManager.ReInit(this);
++       parserTokenManager.SwitchTo(lexState);
++    }
+ }

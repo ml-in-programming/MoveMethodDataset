@@ -1,0 +1,26 @@
+2019-05-27 22:29:55,851 [INFO] Project /home/mikhail/Documents/Development/MoveMethodGenerator/../MoveMethodDataset/cayenne/cayenne is opened
+2019-05-27 22:31:22,548 [INFO] Total number of java files: 3902
+2019-05-27 22:31:22,548 [INFO] Total number of source java files: 3902
+2019-05-27 22:31:22,548 [INFO] Total number of classes: 1499
+2019-05-27 22:31:22,548 [INFO] Total number of methods: 12164
+2019-05-27 22:31:22,549 [INFO] StaticMethodsFilter filtered: 771
+2019-05-27 22:31:22,549 [INFO] ConstructorsFilter filtered: 1646
+2019-05-27 22:31:22,549 [INFO] AbstractMethodsFilter filtered: 114
+2019-05-27 22:31:22,549 [INFO] GettersFilter filtered: 1171
+2019-05-27 22:31:22,549 [INFO] SettersFilter filtered: 563
+2019-05-27 22:31:22,549 [INFO] EmptyMethodsFilter filtered: 467
+2019-05-27 22:31:22,549 [INFO] ExceptionsThrowersFilter filtered: 58
+2019-05-27 22:31:22,549 [INFO] SingleMethodFilter filtered: 244
+2019-05-27 22:31:22,549 [INFO] SimpleDelegationsFilter filtered: 1619
+2019-05-27 22:31:22,549 [INFO] PrivateMethodsCallersFilter filtered: 1985
+2019-05-27 22:31:22,549 [INFO] PrivateFieldAccessorsFilter filtered: 2133
+2019-05-27 22:31:22,549 [INFO] OverridingMethodsFilter filtered: 594
+2019-05-27 22:31:22,549 [INFO] OverriddenMethodsFilter filtered: 39
+2019-05-27 22:31:22,549 [INFO] MethodCallWithSuperFilter filtered: 18
+2019-05-27 22:31:22,549 [INFO] PrivateClassUserFilter filtered: 0
+2019-05-27 22:31:22,549 [INFO] GenericTypeUserFilter filtered: 0
+2019-05-27 22:31:22,549 [INFO] NoTargetsMethodsFilter filtered: 649
+2019-05-27 22:31:22,549 [INFO] Number of methods after filtration: 93
+2019-05-27 22:45:51,561 [INFO] Project /home/mikhail/Documents/Development/MoveMethodGenerator/../MoveMethodDataset/cayenne/cayenne is opened
+2019-05-27 22:46:46,399 [INFO] 106 potential moves found
+2019-05-27 22:46:46,399 [INFO] 41 moves performed

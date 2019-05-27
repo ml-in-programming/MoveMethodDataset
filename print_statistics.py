@@ -26,7 +26,7 @@ def process_no_info(dirname):
     
     global manual_methods
     manual_methods += len(os.listdir(patches_folder))
-    print(dirname.split('/')[-1] + " " + str(len(os.listdir(patches_folder))))
+    print(dirname.split('/')[-1] + " " + str(len(os.listdir(patches_folder))) + " MANUALLY")
 
 
 def process_project(dirname):
